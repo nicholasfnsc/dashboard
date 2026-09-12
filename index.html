@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Performance Dashboard</title>
+<meta name="description" content="Sales and commission KPIs for the team — cash collected, show rate, close rate and payout owed.">
+<meta name="theme-color" content="#050506">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@200;300;400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!--PAGE-START-->
+<script>
+  /* Runs before the board paints: a locked visitor must never catch a
+     frame of the numbers before the key screen appears. */
+  try {
+    var iaLock = localStorage.getItem('ia-dash:unlocked');
+    if (iaLock !== null && JSON.parse(iaLock) === false) {
+      document.documentElement.classList.add('pre-locked');
+    }
+  } catch (e) { /* storage blocked — the gate still works, just later */ }
+</script>
+
+<div class="gate hidden" id="gate">
+  <div class="gate-box">
+    <span class="brand gate-brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
+    <h1 class="gate-title">Enter your secret key</h1>
+    <p class="gate-sub">Ask whoever shared their Sales Team Board with you for their team secret key.</p>
+    <form id="gateForm">
+      <label class="hidden" for="gateKey">Secret key</label>
+      <input type="text" id="gateKey" placeholder="SECRET KEY" autocomplete="off" spellcheck="false" maxlength="5">
+      <button type="submit" class="btn-gate">Go</button>
+    </form>
+    <p class="gate-error hidden" id="gateError">That key doesn't match. Check it with whoever shared the board.</p>
+
+    <div class="gate-preview hidden" id="gatePreview">
+      <p>You're previewing the team login screen. Your key is <b id="gatePreviewKey"></b>.</p>
+      <button type="button" class="btn-gate-ghost" id="gateExit">Exit preview and go back</button>
+    </div>
+  </div>
+</div>
+
+<header class="topstrip">
+  <div class="topstrip-in">
+    <span class="brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
+    <button type="button" class="crumb" id="goDashboard">&larr; Dashboard</button>
+    <button type="button" class="undo-btn hidden" id="undoBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 9h11a5 5 0 0 1 0 10H9"></path>
+        <polyline points="7 5 3 9 7 13"></polyline>
+      </svg>
+      Undo
+    </button>
+  </div>
+</header>
+
+<div class="app-toast" id="appToast" role="status" aria-live="polite"></div>
+
+<div class="shell">
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
+    <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
+    <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
+    <button class="tab" role="tab" data-tab="team" aria-selected="false">Add Team</button>
+  </nav>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section data-panel="dashboard">
+
+    <div class="dash-head">
+      <span class="brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
+      <div class="dash-head-right">
+        <p class="eyebrow">Sales &amp; commissions</p>
+        <h1 class="dash-title">Performance Dashboard</h1>
+      </div>
+    </div>
+
+    <div class="filters">
+      <span class="fpill">
+        <label class="hidden" for="fRange">Date range</label>
+        <select id="fRange">
+          <option value="ytd">This year so far</option>
+          <option value="today">Today</option>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="mtd">This month</option>
+          <option value="lastMonth">Last month</option>
+          <option value="qtd">This quarter</option>
+          <option value="all">All time</option>
+        </select>
+      </span>
+      <span class="fpill"><label class="hidden" for="fFunnel">Funnel</label><select id="fFunnel"></select></span>
+      <span class="fpill"><label class="hidden" for="fOutcome">Call outcome</label><select id="fOutcome"></select></span>
+      <span class="fpill"><label class="hidden" for="fCloser">Closer</label><select id="fCloser"></select></span>
+      <span class="fpill"><label class="hidden" for="fSetter">Setter</label><select id="fSetter"></select></span>
+      <button class="link-btn" id="resetFilters" type="button">Reset</button>
+    </div>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Team Performance</h2>
+        <p>Deal and call outcome mix for the selected period.</p>
+      </div>
+
+      <div class="panel-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Call outcomes</h3>
+            <p>Booked calls by result</p>
+          </div>
+          <div class="panel-tools">
+            <span class="fpill">
+              <label class="hidden" for="fOutcomeSetter">Filter outcomes by setter</label>
+              <select id="fOutcomeSetter"></select>
+            </span>
+          </div>
+          <div class="panel-body" id="outcomesBody"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Cash collected over time</h3>
+            <p>Payment totals for the selected period</p>
+          </div>
+          <div class="panel-body" id="cashBody"></div>
+        </div>
+      </div>
+
+      <div class="panel-grid" style="margin-top: var(--gap);">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Deals Closed</h3>
+            <p>Closed-won deals by closer</p>
+          </div>
+          <div class="panel-body" id="dealsClosedBody"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Deals Set</h3>
+            <p>Closed-won deals by the setter who booked them</p>
+          </div>
+          <div class="panel-body" id="dealsSetBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>Commission Tracking</h2>
+        <p>Payout owed to each closer and setter this period.</p>
+      </div>
+
+      <div class="panel commission-card">
+        <div class="panel-head">
+          <h3>Closers</h3>
+          <p>Commission on cash collected from their closed deals</p>
+        </div>
+        <div class="panel-body" id="closersBody"></div>
+      </div>
+
+      <div class="panel commission-card">
+        <div class="panel-head">
+          <h3>DM Setters &amp; Dialers</h3>
+          <p>Commission on cash collected from calls they booked</p>
+        </div>
+        <div class="panel-body" id="settersBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= OTHER TABS (next up) ================= -->
+  <section data-panel="postcall" class="hidden">
+    <div class="panel form-card">
+      <div class="panel-head">
+        <h3>Post Call Form</h3>
+        <p>Log the outcome of a call — the dashboard recomputes as soon as you submit.</p>
+      </div>
+
+      <form class="form-body" id="postCallForm" novalidate>
+
+        <p class="edit-banner hidden" id="pcEditBanner"></p>
+
+        <p class="roster-hint hidden" id="pcRosterHint">
+          Add your closers and setters on the
+          <button type="button" class="link-btn" id="pcGoTeam">Add Team</button>
+          tab before logging a call.
+        </p>
+
+        <div class="field-block">
+          <span class="field-label">Funnel</span>
+          <div class="pill-row" id="pcFunnel" role="group" aria-label="Funnel"></div>
+        </div>
+
+        <div class="field-block">
+          <span class="field-label">Outcome</span>
+          <div class="pill-row" id="pcOutcome" role="group" aria-label="Call outcome"></div>
+        </div>
+
+        <hr class="form-rule">
+
+        <div class="field-grid">
+          <p class="field">
+            <label for="pcCall">Call</label>
+            <input type="text" id="pcCall" placeholder="e.g. Call 1" autocomplete="off">
+          </p>
+          <p class="field">
+            <label for="pcDate">Date</label>
+            <input type="date" id="pcDate">
+          </p>
+
+          <p class="field">
+            <label for="pcCloser">Closer</label>
+            <select id="pcCloser"></select>
+          </p>
+          <p class="field">
+            <label for="pcSetter">Setter</label>
+            <select id="pcSetter"></select>
+          </p>
+
+          <p class="field">
+            <label for="pcName">Client Full Name</label>
+            <input type="text" id="pcName" placeholder="e.g. Jamie Smith" autocomplete="off">
+          </p>
+          <p class="field">
+            <label for="pcEmail">Client Email</label>
+            <input type="email" id="pcEmail" placeholder="e.g. jamie@email.com" autocomplete="off">
+          </p>
+
+          <p class="field">
+            <label for="pcPhone">Client Phone Number</label>
+            <input type="tel" id="pcPhone" placeholder="e.g. (555) 123-4567" autocomplete="off">
+          </p>
+          <p class="field">
+            <label for="pcFathom">Fathom URL</label>
+            <input type="url" id="pcFathom" placeholder="https://fathom.video/..." autocomplete="off">
+          </p>
+        </div>
+
+        <!-- Closed/Won/Deposit -->
+        <div class="field-grid" id="grpClosed">
+          <p class="field">
+            <label for="pcPaymentMethod">Payment Method</label>
+            <select id="pcPaymentMethod"></select>
+          </p>
+          <p class="field">
+            <label for="pcCash">Cash Collected ($)</label>
+            <input type="number" id="pcCash" min="0" step="0.01" value="0">
+          </p>
+          <p class="field">
+            <label for="pcRevenue">Revenue Generated ($)</label>
+            <input type="number" id="pcRevenue" min="0" step="0.01" value="0">
+          </p>
+        </div>
+
+        <!-- Disqualified -->
+        <div class="field-grid hidden" id="grpDq">
+          <p class="field">
+            <label for="pcWasCall">Was this a call?</label>
+            <span class="field-help">Select No if this person was disqualified before a call took place.</span>
+            <select id="pcWasCall"></select>
+          </p>
+          <p class="field">
+            <label for="pcDqType">Disqualification Type</label>
+            <select id="pcDqType"></select>
+          </p>
+        </div>
+
+        <!-- Remainder Collection -->
+        <div class="field-grid hidden" id="grpRemainder">
+          <p class="field">
+            <label for="pcRemainder">Remainder Cash Paid Today ($)</label>
+            <input type="number" id="pcRemainder" min="0" step="0.01" value="0">
+          </p>
+        </div>
+
+        <!-- Notes -->
+        <div class="field-block" id="grpNotes">
+          <label class="field-label" for="pcNotes" id="pcNotesLabel">Why did this close?</label>
+          <textarea id="pcNotes" rows="4" placeholder="Anything else worth logging about this call..."></textarea>
+        </div>
+
+        <p class="form-error hidden" id="pcErrors" role="alert"></p>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="pcSubmit">Log Call</button>
+          <button type="button" class="link-btn hidden" id="pcCancelEdit">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section data-panel="data" class="hidden">
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Data</h3>
+        <p>Every logged call behind the dashboard. Edit or delete a row and every chart and total updates.</p>
+      </div>
+
+      <div class="panel-tools data-tools">
+        <span class="fpill"><label class="hidden" for="dOutcome">Outcome</label><select id="dOutcome"></select></span>
+        <button class="link-btn" id="dReset" type="button">Reset</button>
+        <span class="filters-spacer"></span>
+        <span class="axis-note" id="dCount"></span>
+      </div>
+
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Funnel</th>
+              <th scope="col">Call</th>
+              <th scope="col">Closer</th>
+              <th scope="col">Setter</th>
+              <th scope="col">Client</th>
+              <th scope="col">Email</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Fathom</th>
+              <th scope="col">Outcome</th>
+              <th scope="col">Details</th>
+              <th scope="col">Why / Notes</th>
+              <th scope="col" class="num">Cash</th>
+              <th scope="col">Cash Type</th>
+              <th scope="col"><span class="hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody id="dRows"></tbody>
+        </table>
+      </div>
+
+      <p class="data-empty hidden" id="dEmpty">
+        Nothing logged yet. Head to the <button type="button" class="link-btn" id="dGoForm">Post Call Form</button> to add your first call.
+      </p>
+    </div>
+  </section>
+
+  <section data-panel="team" class="hidden">
+    <div class="team-grid">
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Closers &amp; Setters</h3>
+          <p>Manage who shows up in the Post Call Form's Closer and Setter dropdowns.</p>
+        </div>
+        <div class="panel-body team-body">
+
+          <div class="roster-block">
+            <h4>Closers</h4>
+            <form class="add-row" id="addCloserForm">
+              <label class="hidden" for="newCloser">Closer name</label>
+              <input type="text" id="newCloser" placeholder="Add a closer name..." autocomplete="off">
+              <button type="submit" class="btn-primary btn-add">Add</button>
+            </form>
+            <div class="roster-list" id="closerList"></div>
+          </div>
+
+          <div class="roster-block">
+            <h4>Setters</h4>
+            <form class="add-row" id="addSetterForm">
+              <label class="hidden" for="newSetter">Setter name</label>
+              <input type="text" id="newSetter" placeholder="Add a setter name..." autocomplete="off">
+              <button type="submit" class="btn-primary btn-add">Add</button>
+            </form>
+            <div class="roster-list" id="setterList"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Team Secret Key</h3>
+          <p>Share this page and key with your sales team so they can log calls without a portal account.</p>
+        </div>
+        <div class="panel-body team-body">
+
+          <div class="key-field">
+            <label class="field-label" for="teamUrl">Team login page</label>
+            <div class="copy-row">
+              <input type="text" id="teamUrl" autocomplete="off" spellcheck="false">
+              <button type="button" class="btn-copy" data-copy="teamUrl">Copy</button>
+            </div>
+          </div>
+
+          <div class="key-field">
+            <label class="field-label" for="teamKey">Secret key</label>
+            <div class="copy-row">
+              <input type="text" id="teamKey" class="key-input" readonly>
+              <button type="button" class="btn-copy" data-copy="teamKey">Copy</button>
+            </div>
+            <div class="key-actions">
+              <button type="button" class="link-btn hidden" id="regenKey">Generate a new key</button>
+              <button type="button" class="link-btn" id="testGate">Preview the login screen</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+</div>
+<!--PAGE-END-->
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="form.js"></script>
+<script src="datatab.js"></script>
+<script src="team.js"></script>
+</body>
+</html>
