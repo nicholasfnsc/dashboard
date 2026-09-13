@@ -119,7 +119,7 @@ async function setMyPassword(password) {
 }
 
 async function updateMyProfile(name, title) {
-  const { error } = await sb.auth.updateUser({ data: { full_name: name, title } });
+  const { error } = await sb.auth.updateUser({ data: { full_name: name, display_name: name, title } });
   if (error) return error.message;
   CACHE.me.name = name;
   CACHE.me.title = title;
@@ -215,6 +215,9 @@ async function renameBoard(name) {
   const { error } = await sb.from('boards').update({ name }).eq('id', CACHE.boardId);
   if (error) throw error;
   CACHE.board.name = name;
+  /* The team login in Supabase takes the new name too. Not critical, so a
+     failure here never undoes the rename. */
+  serverAction('/api/boards', { action: 'names', boardId: CACHE.boardId }).catch(() => {});
 }
 
 async function saveDirectory(directory) {

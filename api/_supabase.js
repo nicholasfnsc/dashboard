@@ -85,14 +85,34 @@ export async function caller(request) {
   };
 }
 
+/* What the login is called in Supabase → Authentication → Users, so the
+   team logins say which offer they open instead of being blank. */
+export const teamDisplayName = (boardName) => {
+  const name = String(boardName || '').trim();
+  return name && name !== 'Untitled offer' ? name + "'s board" : 'Untitled offer';
+};
+
+const teamMetadata = (boardName) => {
+  const label = teamDisplayName(boardName);
+  return { display_name: label, full_name: label, name: label, team_login: true };
+};
+
+/* Keeps an offer's team login named after the offer. */
+export async function nameTeamAccount(userId, boardName) {
+  if (!userId) return;
+  const { error } = await adminClient().auth.admin.updateUserById(userId, { user_metadata: teamMetadata(boardName) });
+  if (error) throw error;
+}
+
 /* Makes a fresh team account for an offer, with the code as its
    password, and gives it that one offer. */
-export async function makeTeamAccount(boardId, code) {
+export async function makeTeamAccount(boardId, code, boardName) {
   const db = adminClient();
   const { data, error } = await db.auth.admin.createUser({
     email: teamEmailFor(boardId),
     password: code,
-    email_confirm: true
+    email_confirm: true,
+    user_metadata: teamMetadata(boardName)
   });
   if (error) throw error;
 

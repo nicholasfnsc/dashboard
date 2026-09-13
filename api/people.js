@@ -65,7 +65,7 @@ export default async function handler(request, response) {
 
       const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
         redirectTo: 'https://portal.inevitableacq.com/?welcome=1',
-        data: { full_name: name, title }
+        data: { full_name: name, display_name: name, title }
       });
       if (error) {
         const taken = /already/i.test(error.message || '');

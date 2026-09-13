@@ -206,6 +206,9 @@ function initHub() {
     });
 
     $('#peopleSection').classList.remove('hidden');
+
+    /* Quietly bring every team login's name in Supabase up to date. */
+    serverAction('/api/boards', { action: 'names' }).catch(() => {});
     $('#inviteForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = $('#inviteName').value.trim();

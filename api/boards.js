@@ -1,4 +1,4 @@
-import { adminClient, body, send, caller, newCode, makeTeamAccount } from './_supabase.js';
+import { adminClient, body, send, caller, newCode, makeTeamAccount, nameTeamAccount } from './_supabase.js';
 
 /* ============================================================
    api/boards.js — creating offers and changing their codes
@@ -11,6 +11,7 @@ import { adminClient, body, send, caller, newCode, makeTeamAccount } from './_su
      create   owner          a new untitled offer with a fresh code
      rotate   owner, admin   a new code; the old one stops working
      archive  owner          hides an offer; its data stays forever
+     names    owner, admin   names each team login after its offer
    ============================================================ */
 
 async function uniqueCode(db) {
@@ -45,7 +46,7 @@ export default async function handler(request, response) {
       if (error) throw error;
 
       const code = await uniqueCode(db);
-      const team = await makeTeamAccount(board.id, code);
+      const team = await makeTeamAccount(board.id, code, board.name);
 
       await db.from('boards').update({ team_user_id: team.userId }).eq('id', board.id);
       const { error: codeError } = await db.from('board_codes').insert({ board_id: board.id, code });
@@ -59,7 +60,7 @@ export default async function handler(request, response) {
       const boardId = String(input.boardId || '');
       if (!who.manages(boardId)) return send(response, 403, { error: 'You do not manage this offer.' });
 
-      const { data: board } = await db.from('boards').select('id, team_user_id').eq('id', boardId).maybeSingle();
+      const { data: board } = await db.from('boards').select('id, name, team_user_id').eq('id', boardId).maybeSingle();
       if (!board) return send(response, 404, { error: 'No such offer.' });
 
       /* A brand-new team account rather than a new password on the old
@@ -67,7 +68,7 @@ export default async function handler(request, response) {
          locks every one of them out at once. Calls are tied to the offer,
          not the account, so nothing logged is touched. */
       const code = await uniqueCode(db);
-      const team = await makeTeamAccount(board.id, code);
+      const team = await makeTeamAccount(board.id, code, board.name);
 
       await db.from('boards').update({ team_user_id: team.userId }).eq('id', board.id);
       await db.from('board_codes').upsert({ board_id: board.id, code, rotated_at: new Date().toISOString() });
@@ -82,6 +83,22 @@ export default async function handler(request, response) {
       const boardId = String(input.boardId || '');
       await db.from('boards').update({ archived_at: new Date().toISOString() }).eq('id', boardId);
       return send(response, 200, { ok: true });
+    }
+
+    /* ---------- keep team logins named after their offers ---------- */
+    if (input.action === 'names') {
+      let query = db.from('boards').select('id, name, team_user_id').is('archived_at', null);
+      if (input.boardId) query = query.eq('id', String(input.boardId));
+      const { data: boards, error } = await query;
+      if (error) throw error;
+
+      let named = 0;
+      for (const b of boards || []) {
+        if (!who.manages(b.id) || !b.team_user_id) continue;
+        await nameTeamAccount(b.team_user_id, b.name);
+        named++;
+      }
+      return send(response, 200, { named });
     }
 
     return send(response, 400, { error: 'Unknown action.' });
