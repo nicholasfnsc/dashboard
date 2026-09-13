@@ -112,6 +112,11 @@ const hubSections = () => (CACHE.repHub && CACHE.repHub.sections) || [];
 const offerHubValues = () => ((CACHE.board && CACHE.board.directory) || {}).repHub || {};
 const looksLikeUrl = (v) => /^https?:\/\/\S+$/i.test(String(v || '').trim());
 
+/* A "Link or text" row can hold several values — a doc and the Loom that
+   explains it — stored one per line, so rows saved before this still read
+   exactly as they did. */
+const splitValues = (v) => String(v || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
 function hubValue(item) {
   if (item.type === 'offername') return (CACHE.board && CACHE.board.name) || '';
   return item.scope === 'offer' ? (offerHubValues()[item.id] || '') : (item.value || '');
@@ -313,27 +318,28 @@ function readItem(item) {
     frame.setAttribute('allow', 'fullscreen; picture-in-picture');
     frame.className = 'hub-frame';
     cell.appendChild(frame);
-  } else if (looksLikeUrl(value)) {
-    cell.appendChild(openButton(value));
-  } else if (item.type === 'item' && value.length <= 120 && value.indexOf('\n') === -1) {
-    cell.appendChild(copyableText(value));
+  } else if (item.type === 'video') {
+    cell.appendChild(looksLikeUrl(value) ? openButton(value) : copyableText(value));
   } else {
-    const t = el('span', 'hub-plain');
-    t.textContent = value;
-    cell.appendChild(t);
+    const values = el('div', 'hub-values');
+    splitValues(value).forEach((v) => {
+      if (looksLikeUrl(v)) {
+        values.appendChild(openButton(v));
+      } else if (v.length <= 120) {
+        values.appendChild(copyableText(v));
+      } else {
+        const t = el('span', 'hub-plain');
+        t.textContent = v;
+        values.appendChild(t);
+      }
+    });
+    cell.appendChild(values);
   }
   row.appendChild(cell);
   return row;
 }
 
 /* ---------- editing view ---------- */
-function moveInList(list, from, to) {
-  if (to < 0 || to >= list.length) return false;
-  const [moved] = list.splice(from, 1);
-  list.splice(to, 0, moved);
-  return true;
-}
-
 function newRow(type) {
   return {
     id: 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
@@ -341,29 +347,9 @@ function newRow(type) {
   };
 }
 
-/* ↑ ↓ and "Add below" — the owner arranges the template. */
-function orderControls(section, index) {
-  const wrap = el('div', 'hub-order');
-
-  const up = el('button', 'hub-icon-btn', '↑');
-  up.type = 'button';
-  up.title = 'Move up';
-  up.setAttribute('aria-label', 'Move up');
-  up.disabled = index === 0;
-  up.addEventListener('click', () => {
-    if (moveInList(section.items, index, index - 1)) { saveTemplateSoon(); renderRepHub(); }
-  });
-
-  const down = el('button', 'hub-icon-btn', '↓');
-  down.type = 'button';
-  down.title = 'Move down';
-  down.setAttribute('aria-label', 'Move down');
-  down.disabled = index === section.items.length - 1;
-  down.addEventListener('click', () => {
-    if (moveInList(section.items, index, index + 1)) { saveTemplateSoon(); renderRepHub(); }
-  });
-
-  const below = el('button', 'link-btn', '+ Add row below');
+/* "+ Add row below" — a new row exactly where it is wanted. */
+function addBelowControl(section, index) {
+  const below = el('button', 'link-btn hub-add-below', '+ Add row below');
   below.type = 'button';
   below.addEventListener('click', () => {
     const row = newRow('item');
@@ -372,12 +358,97 @@ function orderControls(section, index) {
     saveTemplateSoon();
     renderRepHub();
   });
-
-  wrap.appendChild(up);
-  wrap.appendChild(down);
-  wrap.appendChild(below);
-  return wrap;
+  return below;
 }
+
+/* The six-dot handle a row or section is picked up by. It is a real
+   button, so it can also be moved from the keyboard with the arrow keys. */
+function dragHandle(label) {
+  const grip = el('button', 'hub-grip');
+  grip.type = 'button';
+  grip.title = 'Drag to reorder';
+  grip.setAttribute('aria-label', 'Reorder ' + (label || 'row') + ' — drag, or use the arrow keys');
+  grip.innerHTML = '<svg viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">' +
+    '<circle cx="3" cy="3" r="1.4"/><circle cx="9" cy="3" r="1.4"/>' +
+    '<circle cx="3" cy="9" r="1.4"/><circle cx="9" cy="9" r="1.4"/>' +
+    '<circle cx="3" cy="15" r="1.4"/><circle cx="9" cy="15" r="1.4"/></svg>';
+  return grip;
+}
+
+/* Makes the children of `container` slide into a new order when dragged
+   by their handle. Works with a mouse, a trackpad and a finger. When the
+   drop lands, onOrder receives the ids in their new order. */
+function makeSortable(container, itemSelector, onOrder) {
+  const ids = () => Array.prototype.map.call(container.querySelectorAll(itemSelector), (n) => n.dataset.id);
+
+  container.addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.hub-grip');
+    if (!grip || !container.contains(grip) || e.button > 0) return;
+    const node = grip.closest(itemSelector);
+    if (!node) return;
+
+    e.preventDefault();
+    const before = ids().join('|');
+    try { grip.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety, not a need */ }
+    node.classList.add('is-dragging');
+    container.classList.add('is-sorting');
+
+    const move = (ev) => {
+      const y = ev.clientY;
+      if (y < 70) window.scrollBy(0, -14);
+      else if (y > window.innerHeight - 70) window.scrollBy(0, 14);
+
+      const others = Array.prototype.filter.call(container.querySelectorAll(itemSelector), (n) => n !== node);
+      const target = others.find((n) => {
+        const r = n.getBoundingClientRect();
+        return y < r.top + r.height / 2;
+      });
+      if (target) {
+        if (node.nextElementSibling !== target) container.insertBefore(node, target);
+      } else if (others.length) {
+        const last = others[others.length - 1];
+        if (last.nextElementSibling !== node) last.after(node);
+      }
+    };
+
+    const drop = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', drop);
+      grip.removeEventListener('pointercancel', drop);
+      node.classList.remove('is-dragging');
+      container.classList.remove('is-sorting');
+      const after = ids();
+      if (after.join('|') !== before) onOrder(after, node.dataset.id);
+    };
+
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', drop);
+    grip.addEventListener('pointercancel', drop);
+  });
+
+  container.addEventListener('keydown', (e) => {
+    const grip = e.target.closest('.hub-grip');
+    if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    const node = grip.closest(itemSelector);
+    const order = ids();
+    const at = order.indexOf(node.dataset.id);
+    const to = at + (e.key === 'ArrowUp' ? -1 : 1);
+    if (to < 0 || to >= order.length) return;
+    e.preventDefault();
+    order.splice(to, 0, order.splice(at, 1)[0]);
+    onOrder(order, node.dataset.id, true);
+  });
+}
+
+/* Puts a list back in the order the ids now say. */
+function reorderBy(list, order) {
+  const byId = new Map(list.map((x) => [x.id, x]));
+  const next = order.map((id) => byId.get(id)).filter(Boolean);
+  list.forEach((x) => { if (next.indexOf(x) === -1) next.push(x); });
+  return next;
+}
+
+let hubGripFocusId = '';
 
 let hubFocusId = '';
 
@@ -387,6 +458,7 @@ function editItem(section, item, index) {
   const box = el('div', 'hub-edit');
 
   box.dataset.item = item.id;
+  box.dataset.id = item.id;
 
   if (!editable) {
     const shown = readItem(item) || el('p', 'hub-empty-value', item.label + ' — not filled in yet');
@@ -396,13 +468,19 @@ function editItem(section, item, index) {
       : 'Shared by every offer — only the owner changes this.';
     box.appendChild(el('p', 'hub-locked', why));
     box.classList.add('is-locked');
-    if (owner) box.appendChild(orderControls(section, index));   // the owner can still move it
+    if (owner) {                                                // the owner can still move it
+      box.insertBefore(dragHandle(item.label), box.firstChild);
+      const foot = el('div', 'hub-edit-foot');
+      foot.appendChild(addBelowControl(section, index));
+      box.appendChild(foot);
+    }
     return box;
   }
 
   /* Owner-only controls: what the row is, and where it applies. */
   if (owner) {
     const controls = el('div', 'hub-edit-controls');
+    controls.appendChild(dragHandle(item.label));
 
     if (item.type !== 'text' && item.type !== 'note') {
       const label = document.createElement('input');
@@ -452,14 +530,15 @@ function editItem(section, item, index) {
     controls.appendChild(remove);
 
     box.appendChild(controls);
-    box.appendChild(orderControls(section, index));
   } else {
     const label = el('span', 'hub-label');
     label.textContent = item.label;
     box.appendChild(label);
   }
 
-  if (item.type !== 'heading') {
+  if (item.type === 'item') {
+    box.appendChild(linksEditor(item));
+  } else if (item.type !== 'heading') {
     const long = item.type === 'text' || item.type === 'note';
     const input = document.createElement(long ? 'textarea' : 'input');
     if (!long) input.type = 'text';
@@ -471,15 +550,73 @@ function editItem(section, item, index) {
     input.setAttribute('aria-label', item.label || 'Value');
     input.addEventListener('change', () => saveHubValue(item, input.value.trim()));
     box.appendChild(input);
-
-    if (owner) {
-      box.appendChild(el('p', 'hub-scope-note', item.scope === 'offer'
-        ? 'This offer only — what you type here shows on this offer. Each offer fills in its own.'
-        : 'All offers — what you type here shows on every offer.'));
-    }
   }
 
+  /* One quiet footer line: where this row applies, and adding below it. */
+  if (owner) {
+    const foot = el('div', 'hub-edit-foot');
+    if (item.type !== 'heading') {
+      foot.appendChild(el('p', 'hub-scope-note', item.scope === 'offer'
+        ? 'This offer only — each offer fills in its own.'
+        : 'All offers — shows on every offer.'));
+    }
+    foot.appendChild(addBelowControl(section, index));
+    box.appendChild(foot);
+  }
   return box;
+}
+
+/* One box per link, and "+ Add another link" for the next. */
+function linksEditor(item) {
+  const wrap = el('div', 'hub-links-edit');
+
+  const save = () => {
+    const joined = Array.prototype.map.call(wrap.querySelectorAll('.hub-edit-value'), (i) => i.value.trim())
+      .filter(Boolean).join('\n');
+    saveHubValue(item, joined);
+  };
+
+  const add = el('button', 'link-btn hub-add-link', '+ Add another link');
+  add.type = 'button';
+
+  const paintRemovers = () => {
+    const lines = wrap.querySelectorAll('.hub-link-line');
+    lines.forEach((line) => { line.querySelector('.hub-line-remove').hidden = lines.length === 1; });
+  };
+
+  const addLine = (value, focus) => {
+    const line = el('div', 'hub-link-line');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'hub-edit-value';
+    input.placeholder = 'Paste a link, or type the text';
+    input.value = value;
+    input.setAttribute('aria-label', (item.label || 'Row') + ' link');
+    input.addEventListener('change', save);
+    line.appendChild(input);
+
+    const remove = el('button', 'hub-line-remove', '×');
+    remove.type = 'button';
+    remove.title = 'Remove this link';
+    remove.setAttribute('aria-label', 'Remove this link');
+    remove.addEventListener('click', () => {
+      line.remove();
+      paintRemovers();
+      save();
+    });
+    line.appendChild(remove);
+
+    wrap.insertBefore(line, add);
+    paintRemovers();
+    if (focus) input.focus();
+  };
+
+  add.addEventListener('click', () => addLine('', true));
+  wrap.appendChild(add);
+
+  const values = splitValues(hubValue(item));
+  (values.length ? values : ['']).forEach((v) => addLine(v, false));
+  return wrap;
 }
 
 /* ---------- the page ---------- */
@@ -495,6 +632,8 @@ function renderRepHub() {
 
   /* ---- section menu ---- */
   nav.textContent = '';
+  const sortingSections = hubEditing && owner;
+  const navList = el('div', 'hub-nav-list');
   sections.forEach((s) => {
     const b = el('button', 'hub-nav-item');
     b.type = 'button';
@@ -505,8 +644,27 @@ function renderRepHub() {
       renderRepHub();
       $('#repHubContent').scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
-    nav.appendChild(b);
+
+    if (sortingSections) {
+      const rowEl = el('div', 'hub-nav-row');
+      rowEl.dataset.id = s.id;
+      rowEl.appendChild(dragHandle(s.title));
+      rowEl.appendChild(b);
+      navList.appendChild(rowEl);
+    } else {
+      navList.appendChild(b);
+    }
   });
+  nav.appendChild(navList);
+
+  if (sortingSections) {
+    makeSortable(navList, '.hub-nav-row', (order, movedId, byKeyboard) => {
+      CACHE.repHub.sections = reorderBy(CACHE.repHub.sections, order);
+      if (byKeyboard) hubGripFocusId = 'nav:' + movedId;
+      saveTemplateSoon();
+      renderRepHub();
+    });
+  }
 
   if (hubEditing && owner) {
     const add = el('button', 'hub-nav-add', '+ Add section');
@@ -562,22 +720,6 @@ function renderRepHub() {
     });
     titleRow.appendChild(removeSection);
 
-    const at = sections.findIndex((s) => s.id === section.id);
-    const sectionUp = el('button', 'link-btn', '↑ Move section up');
-    sectionUp.type = 'button';
-    sectionUp.disabled = at === 0;
-    sectionUp.addEventListener('click', () => {
-      if (moveInList(CACHE.repHub.sections, at, at - 1)) { saveTemplateSoon(); renderRepHub(); }
-    });
-    const sectionDown = el('button', 'link-btn', '↓ Move section down');
-    sectionDown.type = 'button';
-    sectionDown.disabled = at === sections.length - 1;
-    sectionDown.addEventListener('click', () => {
-      if (moveInList(CACHE.repHub.sections, at, at + 1)) { saveTemplateSoon(); renderRepHub(); }
-    });
-    titleRow.appendChild(sectionUp);
-    titleRow.appendChild(sectionDown);
-
     content.appendChild(titleRow);
   }
 
@@ -597,6 +739,15 @@ function renderRepHub() {
   });
   if (!shown) list.appendChild(el('p', 'hub-empty', 'Nothing here yet.'));
   content.appendChild(list);
+
+  if (hubEditing && owner) {
+    makeSortable(list, '.hub-edit', (order, movedId, byKeyboard) => {
+      section.items = reorderBy(section.items, order);
+      if (byKeyboard) hubGripFocusId = movedId;
+      saveTemplateSoon();
+      renderRepHub();
+    });
+  }
 
   if (hubEditing && owner) {
     const adder = el('div', 'hub-adder');
@@ -624,6 +775,16 @@ function renderRepHub() {
 
   if (!CACHE.repHubReady && owner) {
     paintHubHint('Setup needed before edits save');
+  }
+
+  /* Keyboard reordering keeps the focus on the handle that was moved. */
+  if (hubGripFocusId) {
+    const scope = hubGripFocusId.indexOf('nav:') === 0 ? nav : content;
+    const id = hubGripFocusId.replace(/^nav:/, '');
+    hubGripFocusId = '';
+    const holder = scope.querySelector('[data-id="' + id + '"]');
+    const grip = holder && holder.querySelector('.hub-grip');
+    if (grip) grip.focus();
   }
 
   if (hubFocusId) {

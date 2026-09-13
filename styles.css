@@ -770,14 +770,44 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .hub-copy:hover { color: var(--accent-ink); border-color: var(--accent-deep); }
 
-.hub-order { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 2px; }
-.hub-icon-btn {
-  width: 28px; height: 26px; display: grid; place-items: center;
-  background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: 7px;
-  font-size: 13px; cursor: pointer;
+.hub-values { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* ---------- dragging ---------- */
+.hub-grip {
+  flex: none; width: 22px; height: 28px; display: grid; place-items: center;
+  background: none; border: 0; border-radius: 6px; padding: 0;
+  color: var(--muted); cursor: grab; touch-action: none;
 }
-.hub-icon-btn:hover:not(:disabled) { border-color: var(--accent-deep); color: var(--accent-ink); }
-.hub-icon-btn:disabled, .hub-title-edit .link-btn:disabled { opacity: .35; cursor: default; text-decoration: none; }
+.hub-grip svg { width: 9px; height: 14px; }
+.hub-grip:hover { color: var(--ink); background: var(--surface-3); }
+.hub-grip:active { cursor: grabbing; }
+.is-sorting { user-select: none; -webkit-user-select: none; }
+.is-sorting .hub-grip { cursor: grabbing; }
+.hub-edit.is-dragging, .hub-nav-row.is-dragging {
+  position: relative; z-index: 2;
+  border-color: var(--accent-bright); background: var(--surface-3);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+}
+.hub-edit.is-locked .hub-grip { align-self: flex-start; }
+
+.hub-nav-list { display: flex; flex-direction: column; gap: 2px; }
+.hub-nav-row { display: flex; align-items: center; gap: 2px; border-radius: 8px; border: 1px solid transparent; }
+.hub-nav-row .hub-nav-item { flex: 1; min-width: 0; }
+
+/* ---------- several links in one row ---------- */
+.hub-links-edit { display: flex; flex-direction: column; gap: 6px; }
+.hub-link-line { display: flex; align-items: center; gap: 6px; }
+.hub-link-line .hub-edit-value { flex: 1; }
+.hub-line-remove {
+  flex: none; width: 30px; height: 34px; display: grid; place-items: center;
+  background: none; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--muted); font-size: 16px; cursor: pointer;
+}
+.hub-line-remove:hover { color: #f87171; border-color: #57242a; }
+.hub-line-remove[hidden] { display: none; }
+.hub-edit-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hub-edit-foot .hub-add-below { margin-left: auto; }
+.hub-add-link, .hub-add-below { align-self: flex-start; padding: 2px 0; font-size: 12px; }
 
 .hub-empty-value { color: var(--muted); font-size: 12.5px; font-style: italic; }
 .hub-empty { margin: 0; padding: 26px 0; color: var(--muted); font-size: 13px; }
