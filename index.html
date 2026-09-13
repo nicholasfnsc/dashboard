@@ -70,11 +70,14 @@
       <p>One board per offer, each with its own team, its own key and its own numbers.</p>
     </div>
 
-    <form class="add-row hub-new" id="newBoardForm">
+    <form class="hub-new" id="newBoardForm">
       <label class="hidden" for="newBoardName">Board name</label>
       <input type="text" id="newBoardName" placeholder="Name a new offer, e.g. MBA Accelerator" autocomplete="off">
+      <label class="hidden" for="newBoardKey">Key</label>
+      <input type="text" id="newBoardKey" class="hub-new-key" placeholder="Key (optional)" autocomplete="off" spellcheck="false" maxlength="12">
       <button type="submit" class="btn-primary btn-add">Create board</button>
     </form>
+    <p class="hub-hint">Leave the key blank and one is generated for you.</p>
 
     <div class="hub-grid" id="hubBoards"></div>
   </div>

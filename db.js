@@ -132,14 +132,24 @@ function signOut() {
 }
 
 /* ---------- boards ---------- */
-async function createBoard(name) {
+async function createBoard(name, key) {
   if (!CACHE.shared) {
-    const key = Math.random().toString(36).slice(2, 6).toUpperCase();
-    CACHE.boards = CACHE.boards.concat({ key: key, name: name });
+    const made = (key || Math.random().toString(36).slice(2, 6)).toUpperCase();
+    CACHE.boards = CACHE.boards.concat({ key: made, name: name });
     local.write('boards', CACHE.boards);
     return;
   }
-  absorb(await ask({ action: 'createBoard', name: name }));
+  absorb(await ask({ action: 'createBoard', name: name, key: key || '' }));
+}
+
+async function changeBoardKey(oldKey, newKey) {
+  if (!CACHE.shared) {
+    CACHE.boards = CACHE.boards.map((b) =>
+      (b.key === oldKey ? Object.assign({}, b, { key: newKey.toUpperCase() }) : b));
+    local.write('boards', CACHE.boards);
+    return;
+  }
+  absorb(await ask({ action: 'changeKey', boardKey: oldKey, key: newKey }));
 }
 
 async function renameBoard(key, name) {

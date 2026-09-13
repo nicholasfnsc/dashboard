@@ -201,13 +201,29 @@ export default async function handler(request, response) {
     const boardKey = (body.boardKey || '').toString().trim().toUpperCase();
 
     /* ---------- boards: the owner's alone ---------- */
-    if (body.action === 'createBoard' || body.action === 'renameBoard' || body.action === 'deleteBoard') {
+    if (body.action === 'createBoard' || body.action === 'renameBoard'
+        || body.action === 'deleteBoard' || body.action === 'changeKey') {
       if (!isOwner) { response.status(403).json({ error: 'Not allowed' }); return; }
 
       if (body.action === 'createBoard') {
         const name = String(body.name || '').trim() || 'Untitled board';
-        let key = newKey();
-        for (let tries = 0; tries < 40 && await boardExists(key); tries++) key = newKey();
+
+        /* Choose your own key, or leave it blank and get one. */
+        let key = String(body.key || '').trim().toUpperCase();
+        if (key) {
+          if (!/^[A-Z0-9]{3,12}$/.test(key)) {
+            response.status(400).json({ error: 'A key must be 3 to 12 letters or digits.' });
+            return;
+          }
+          if (await boardExists(key)) {
+            response.status(409).json({ error: 'That key is already in use by another board.' });
+            return;
+          }
+        } else {
+          key = newKey();
+          for (let tries = 0; tries < 40 && await boardExists(key); tries++) key = newKey();
+        }
+
         await client.sql`INSERT INTO boards (key, name) VALUES (${key}, ${name})`;
 
         const { rows } = await client.sql`SELECT count(*)::int AS n FROM boards`;
@@ -216,6 +232,23 @@ export default async function handler(request, response) {
 
       if (body.action === 'renameBoard') {
         await client.sql`UPDATE boards SET name = ${String(body.name || '').trim()} WHERE key = ${boardKey}`;
+      }
+
+      if (body.action === 'changeKey') {
+        const wanted = String(body.key || '').trim().toUpperCase();
+        if (!/^[A-Z0-9]{3,12}$/.test(wanted)) {
+          response.status(400).json({ error: 'A key must be 3 to 12 letters or digits.' });
+          return;
+        }
+        if (wanted !== boardKey && await boardExists(wanted)) {
+          response.status(409).json({ error: 'That key is already in use by another board.' });
+          return;
+        }
+        /* The board's rows travel with it, so nothing is orphaned. */
+        await client.sql`UPDATE boards   SET key = ${wanted}       WHERE key = ${boardKey}`;
+        await client.sql`UPDATE calls    SET board_key = ${wanted} WHERE board_key = ${boardKey}`;
+        await client.sql`UPDATE team     SET board_key = ${wanted} WHERE board_key = ${boardKey}`;
+        await client.sql`UPDATE settings SET board_key = ${wanted} WHERE board_key = ${boardKey}`;
       }
 
       if (body.action === 'deleteBoard') {

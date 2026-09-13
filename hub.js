@@ -119,6 +119,26 @@ function renderHub() {
     });
     actions.appendChild(rename);
 
+    const rekey = el('button', 'link-btn', 'Change key');
+    rekey.type = 'button';
+    rekey.addEventListener('click', async () => {
+      const next = window.prompt(
+        'New key for "' + b.name + '".
+
+3 to 12 letters or digits. Anyone using the old key '
+        + 'is locked out straight away, so send the new one to whoever should still have it.', b.key);
+      if (next === null) return;
+      const wanted = next.trim().toUpperCase();
+      if (!wanted || wanted === b.key) return;
+      if (!/^[A-Z0-9]{3,12}$/.test(wanted)) { notify('A key must be 3 to 12 letters or digits.'); return; }
+      try { await changeBoardKey(b.key, wanted); } catch (err) {
+        console.error(err); notify(err.message || "Couldn't change that key."); return;
+      }
+      renderHub();
+      notify('Key for ' + b.name + ' is now ' + wanted + '.');
+    });
+    actions.appendChild(rekey);
+
     const remove = el('button', 'link-btn danger', 'Delete');
     remove.type = 'button';
     remove.addEventListener('click', async () => {
@@ -147,20 +167,30 @@ function initHub() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const input = $('#newBoardName');
+    const keyInput = $('#newBoardKey');
     const name = (input.value || '').trim();
+    const wanted = (keyInput.value || '').trim().toUpperCase();
     if (!name) { input.focus(); return; }
 
-    input.value = '';
-    try {
-      await createBoard(name);
-    } catch (err) {
-      console.error(err);
-      notify("Couldn't create that board — check your connection and try again.");
+    if (wanted && !/^[A-Z0-9]{3,12}$/.test(wanted)) {
+      notify('A key must be 3 to 12 letters or digits.');
+      keyInput.focus();
       return;
     }
+
+    try {
+      await createBoard(name, wanted);
+    } catch (err) {
+      console.error(err);
+      notify(err.message || "Couldn't create that board — check your connection and try again.");
+      return;
+    }
+
+    input.value = '';
+    keyInput.value = '';
     renderHub();
 
-    const made = (CACHE.boards || []).slice(-1)[0];
+    const made = (CACHE.boards || []).find((b) => b.name === name);
     notify(made ? 'Created ' + name + '. Its key is ' + made.key + '.' : 'Board created.');
   });
 
