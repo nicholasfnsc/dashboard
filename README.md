@@ -180,12 +180,15 @@ locked visitor never catches a frame of the figures.
 
 **Preview the login screen** locks this browser so the gate can be tried end to end. The
 gate shows the key and an exit route while the key is held in this browser, so previewing
-can never strand the owner. The team login page URL is editable and saved.
+can never strand the owner. The team login page URL is editable and saved; it defaults to
+`https://sales.inevitableacq.com/sales-access`, and `vercel.json` rewrites that path to
+`index.html` so the link resolves.
 
-> Enforcement is client-side until the backend lands: the key is checked in the browser
-> that holds it. Moving the check server-side — key stored hashed, verified on request,
-> session cookie issued — is part of the backend step below, and is what turns this from a
-> gate into access control.
+> **Enforcement is client-side, which means there is none.** The key is generated and
+> checked inside the visitor's own browser. Anything the browser must know, the visitor can
+> read — so no secret placed in this code is secret, and no gate built on one keeps anybody
+> out. Do not put a real password anywhere in this repo. Access control starts existing
+> when the check moves to a server, which is the backend step below.
 
 ## Interactions already wired
 

@@ -10,7 +10,8 @@
    come with the backend.
    ============================================================ */
 
-const DEFAULT_TEAM_URL = 'https://portal.inevitableacquisition.com/sales-access';
+const DEFAULT_TEAM_URL = 'https://sales.inevitableacq.com/sales-access';
+const LEGACY_TEAM_URLS = ['https://portal.inevitableacquisition.com/sales-access'];
 
 function newSecretKey() {
   const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O — they read as 1 and 0
@@ -121,7 +122,15 @@ function paintKeyPanel() {
   const keyInput = $('#teamKey');
   if (!keyInput) return;
   keyInput.value = currentKey();
-  $('#teamUrl').value = store.read('teamUrl', DEFAULT_TEAM_URL);
+
+  /* Carry an older saved URL forward rather than leaving a dead domain
+     sitting in the field. */
+  let url = store.read('teamUrl', DEFAULT_TEAM_URL);
+  if (LEGACY_TEAM_URLS.indexOf(url) !== -1) {
+    url = DEFAULT_TEAM_URL;
+    store.write('teamUrl', url);
+  }
+  $('#teamUrl').value = url;
   $('#regenKey').classList.toggle('hidden', !isOwner());
 }
 
