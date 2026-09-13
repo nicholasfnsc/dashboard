@@ -751,12 +751,34 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 .hub-value { min-width: 0; }
 .hub-plain { font-size: 13.5px; color: var(--ink-2); word-break: break-word; }
 .hub-link {
-  display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-  padding: 6px 12px; border-radius: var(--r-pill);
-  border: 1px solid var(--accent-deep); background: var(--accent-wash); color: var(--accent-ink);
-  font-size: 12.5px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
+  padding: 7px 12px 7px 10px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  font-size: 13px; text-decoration: none;
+  transition: border-color .14s, background .14s, color .14s;
 }
-.hub-link:hover { border-color: var(--accent-bright); color: #cfe0f5; }
+.hub-link:hover { border-color: var(--accent-bright); background: var(--accent-wash); color: #fff; }
+.hub-link-icon { width: 16px; height: 16px; flex: none; color: var(--accent-ink); }
+.hub-link-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub-link-arrow { width: 13px; height: 13px; flex: none; color: var(--muted); transition: transform .14s, color .14s; }
+.hub-link:hover .hub-link-arrow { color: var(--accent-ink); transform: translate(1px, -1px); }
+
+.hub-copyable { display: inline-flex; align-items: center; gap: 10px; max-width: 100%; flex-wrap: wrap; }
+.hub-copy {
+  background: none; border: 1px solid var(--line); border-radius: 6px;
+  color: var(--muted); font-size: 11px; padding: 3px 8px; cursor: pointer;
+}
+.hub-copy:hover { color: var(--accent-ink); border-color: var(--accent-deep); }
+
+.hub-order { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-top: 2px; }
+.hub-icon-btn {
+  width: 28px; height: 26px; display: grid; place-items: center;
+  background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: 7px;
+  font-size: 13px; cursor: pointer;
+}
+.hub-icon-btn:hover:not(:disabled) { border-color: var(--accent-deep); color: var(--accent-ink); }
+.hub-icon-btn:disabled, .hub-title-edit .link-btn:disabled { opacity: .35; cursor: default; text-decoration: none; }
+
 .hub-empty-value { color: var(--muted); font-size: 12.5px; font-style: italic; }
 .hub-empty { margin: 0; padding: 26px 0; color: var(--muted); font-size: 13px; }
 

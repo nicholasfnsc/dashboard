@@ -189,16 +189,91 @@ function paintHubHint(text) {
 }
 
 /* ---------- reading view ---------- */
+/* Small line icons. Drawn here rather than borrowed brand logos, so the
+   page stays one consistent style whatever the link points at. */
+const HUB_ICONS = {
+  play:   '<path d="M8 5.5v13l10.5-6.5z"/>',
+  camera: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.2" cy="6.8" r=".6" fill="currentColor"/>',
+  folder: '<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
+  doc:    '<path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4M9 12.5h6M9 16h6"/>',
+  sheet:  '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.5h16M4 14.5h16M10 9.5v10.5"/>',
+  slides: '<rect x="3.5" y="5" width="17" height="11.5" rx="2"/><path d="M12 16.5v3M8.5 19.5h7"/>',
+  form:   '<rect x="5" y="3.5" width="14" height="17" rx="2"/><path d="M8.5 9h7M8.5 12.5h7M8.5 16h4"/>',
+  board:  '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M7.5 9.5h4v5h-4zM14 9.5h2.5M14 12.5h2.5"/>',
+  megaphone: '<path d="M4 10v4h3l7 4V6l-7 4z"/><path d="M17.5 9.5a3.5 3.5 0 0 1 0 5"/>',
+  card:   '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 14.5h3"/>',
+  globe:  '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.3 3.6 5.2 3.6 8.5s-1.2 6.2-3.6 8.5c-2.4-2.3-3.6-5.2-3.6-8.5S9.6 5.8 12 3.5z"/>'
+};
+
+function svgIcon(name, cls) {
+  return '<svg class="' + cls + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (HUB_ICONS[name] || HUB_ICONS.globe) + '</svg>';
+}
+
+/* What a link is, in words a rep recognises. */
+function describeLink(url) {
+  let u;
+  try { u = new URL(String(url).trim()); } catch (e) { return { icon: 'globe', text: 'Open link' }; }
+  const host = u.hostname.replace(/^www\./, '');
+  const path = u.pathname;
+
+  if (host === 'youtube.com' || host === 'youtu.be' || host === 'm.youtube.com') {
+    return /\/@|\/channel\/|\/c\//.test(path) ? { icon: 'play', text: 'YouTube channel' } : { icon: 'play', text: 'Watch on YouTube' };
+  }
+  if (host === 'instagram.com') return { icon: 'camera', text: 'Instagram' };
+  if (host === 'loom.com') return { icon: 'play', text: 'Watch on Loom' };
+  if (host === 'drive.google.com') return { icon: 'folder', text: 'Google Drive' };
+  if (host === 'docs.google.com') {
+    if (path.indexOf('/spreadsheets') === 0) return { icon: 'sheet', text: 'Google Sheet' };
+    if (path.indexOf('/presentation') === 0) return { icon: 'slides', text: 'Google Slides' };
+    if (path.indexOf('/forms') === 0) return { icon: 'form', text: 'Google Form' };
+    return { icon: 'doc', text: 'Google Doc' };
+  }
+  if (host === 'forms.gle') return { icon: 'form', text: 'Google Form' };
+  if (host === 'miro.com') return { icon: 'board', text: 'Miro board' };
+  if (host === 'airtable.com') return { icon: 'sheet', text: 'Airtable' };
+  if (/(^|\.)notion\.(so|site)$/.test(host)) return { icon: 'doc', text: 'Notion page' };
+  if (host === 'canva.com') return { icon: 'slides', text: 'Canva' };
+  if (host === 'facebook.com' && path.indexOf('/ads/library') === 0) return { icon: 'megaphone', text: 'Ads Library' };
+  if (/stripe\.com$|whop\.com$|paypal\.com$|klarna\.com$|affirm\.com$/.test(host)) return { icon: 'card', text: host.split('.').slice(-2, -1)[0].replace(/^./, (c) => c.toUpperCase()) };
+  /* A website: its address says the most. Keep the page path, so a
+     landing page and its thank-you page don't read the same. */
+  const page = path.replace(/\/+$/, '');
+  const shown = host + (page && page.length <= 28 ? page : page ? '/…' : '');
+  return { icon: 'globe', text: shown };
+}
+
 function openButton(url) {
   const a = document.createElement('a');
   a.href = url.trim();
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
   a.className = 'hub-link';
-  let host = url;
-  try { host = new URL(url.trim()).hostname.replace(/^www\./, ''); } catch (e) { /* keep as typed */ }
-  a.textContent = 'Open · ' + host;
+  const what = describeLink(url);
+  a.innerHTML = svgIcon(what.icon, 'hub-link-icon') +
+    '<span class="hub-link-text"></span>' +
+    '<svg class="hub-link-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 16 16 8M9.5 8H16v6.5"/></svg>';
+  a.querySelector('.hub-link-text').textContent = what.text;  // a hostname is still text, never markup
   return a;
+}
+
+/* Plain text a rep will paste somewhere — an email, a password. */
+function copyableText(value) {
+  const wrap = el('span', 'hub-copyable');
+  const t = el('span', 'hub-plain');
+  t.textContent = value;
+  wrap.appendChild(t);
+
+  const b = el('button', 'hub-copy', 'Copy');
+  b.type = 'button';
+  b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(value); } catch (e) { /* clipboard blocked */ }
+    b.textContent = 'Copied';
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+  wrap.appendChild(b);
+  return wrap;
 }
 
 function readItem(item) {
@@ -240,6 +315,8 @@ function readItem(item) {
     cell.appendChild(frame);
   } else if (looksLikeUrl(value)) {
     cell.appendChild(openButton(value));
+  } else if (item.type === 'item' && value.length <= 120 && value.indexOf('\n') === -1) {
+    cell.appendChild(copyableText(value));
   } else {
     const t = el('span', 'hub-plain');
     t.textContent = value;
@@ -250,10 +327,66 @@ function readItem(item) {
 }
 
 /* ---------- editing view ---------- */
+function moveInList(list, from, to) {
+  if (to < 0 || to >= list.length) return false;
+  const [moved] = list.splice(from, 1);
+  list.splice(to, 0, moved);
+  return true;
+}
+
+function newRow(type) {
+  return {
+    id: 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+    type, scope: 'all', label: type === 'heading' ? 'New heading' : 'New row', value: ''
+  };
+}
+
+/* ↑ ↓ and "Add below" — the owner arranges the template. */
+function orderControls(section, index) {
+  const wrap = el('div', 'hub-order');
+
+  const up = el('button', 'hub-icon-btn', '↑');
+  up.type = 'button';
+  up.title = 'Move up';
+  up.setAttribute('aria-label', 'Move up');
+  up.disabled = index === 0;
+  up.addEventListener('click', () => {
+    if (moveInList(section.items, index, index - 1)) { saveTemplateSoon(); renderRepHub(); }
+  });
+
+  const down = el('button', 'hub-icon-btn', '↓');
+  down.type = 'button';
+  down.title = 'Move down';
+  down.setAttribute('aria-label', 'Move down');
+  down.disabled = index === section.items.length - 1;
+  down.addEventListener('click', () => {
+    if (moveInList(section.items, index, index + 1)) { saveTemplateSoon(); renderRepHub(); }
+  });
+
+  const below = el('button', 'link-btn', '+ Add row below');
+  below.type = 'button';
+  below.addEventListener('click', () => {
+    const row = newRow('item');
+    section.items.splice(index + 1, 0, row);
+    hubFocusId = row.id;
+    saveTemplateSoon();
+    renderRepHub();
+  });
+
+  wrap.appendChild(up);
+  wrap.appendChild(down);
+  wrap.appendChild(below);
+  return wrap;
+}
+
+let hubFocusId = '';
+
 function editItem(section, item, index) {
   const owner = isHubOwner();
   const editable = canEditHubItem(item);
   const box = el('div', 'hub-edit');
+
+  box.dataset.item = item.id;
 
   if (!editable) {
     const shown = readItem(item) || el('p', 'hub-empty-value', item.label + ' — not filled in yet');
@@ -263,6 +396,7 @@ function editItem(section, item, index) {
       : 'Shared by every offer — only the owner changes this.';
     box.appendChild(el('p', 'hub-locked', why));
     box.classList.add('is-locked');
+    if (owner) box.appendChild(orderControls(section, index));   // the owner can still move it
     return box;
   }
 
@@ -318,6 +452,7 @@ function editItem(section, item, index) {
     controls.appendChild(remove);
 
     box.appendChild(controls);
+    box.appendChild(orderControls(section, index));
   } else {
     const label = el('span', 'hub-label');
     label.textContent = item.label;
@@ -426,6 +561,23 @@ function renderRepHub() {
       renderRepHub();
     });
     titleRow.appendChild(removeSection);
+
+    const at = sections.findIndex((s) => s.id === section.id);
+    const sectionUp = el('button', 'link-btn', '↑ Move section up');
+    sectionUp.type = 'button';
+    sectionUp.disabled = at === 0;
+    sectionUp.addEventListener('click', () => {
+      if (moveInList(CACHE.repHub.sections, at, at - 1)) { saveTemplateSoon(); renderRepHub(); }
+    });
+    const sectionDown = el('button', 'link-btn', '↓ Move section down');
+    sectionDown.type = 'button';
+    sectionDown.disabled = at === sections.length - 1;
+    sectionDown.addEventListener('click', () => {
+      if (moveInList(CACHE.repHub.sections, at, at + 1)) { saveTemplateSoon(); renderRepHub(); }
+    });
+    titleRow.appendChild(sectionUp);
+    titleRow.appendChild(sectionDown);
+
     content.appendChild(titleRow);
   }
 
@@ -459,10 +611,9 @@ function renderRepHub() {
     const add = el('button', 'btn-primary', '+ Add row');
     add.type = 'button';
     add.addEventListener('click', () => {
-      section.items.push({
-        id: 'i' + Date.now().toString(36), type: type.value,
-        scope: 'all', label: type.value === 'heading' ? 'New heading' : 'New row', value: ''
-      });
+      const row = newRow(type.value);
+      section.items.push(row);
+      hubFocusId = row.id;
       saveTemplateSoon();
       renderRepHub();
     });
@@ -473,6 +624,16 @@ function renderRepHub() {
 
   if (!CACHE.repHubReady && owner) {
     paintHubHint('Setup needed before edits save');
+  }
+
+  if (hubFocusId) {
+    const box = content.querySelector('[data-item="' + hubFocusId + '"]');
+    hubFocusId = '';
+    if (box) {
+      box.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const field = box.querySelector('.hub-edit-label, .hub-edit-value');
+      if (field) { field.focus(); if (field.select) field.select(); }
+    }
   }
 }
 
