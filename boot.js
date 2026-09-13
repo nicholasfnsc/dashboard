@@ -73,8 +73,7 @@
     if (password.length < 8) return fail('welcomeError', 'Use at least 8 characters.');
     const problem = await setMyPassword(password);
     if (problem) return fail('welcomeError', problem);
-    history.replaceState(null, '', '/');
-    start();
+    location.replace('/');
   });
 
   $('#signOutBtn').addEventListener('click', signOut);
@@ -149,7 +148,6 @@
   async function start() {
     show('viewLoading');
 
-    const invited = params.get('welcome') === '1' || /type=(invite|recovery)/.test(location.hash);
     const me = await loadMe().catch(() => null);
 
     if (path === '/sales-team') {
@@ -168,7 +166,7 @@
       return;
     }
 
-    if (invited && me.kind === 'person') {
+    if (me.kind === 'person' && me.needsPassword) {
       show('viewWelcome');
       $('#welcomePassword').focus();
       return;

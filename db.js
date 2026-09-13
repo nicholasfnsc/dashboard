@@ -58,13 +58,18 @@ async function loadMe() {
   ]);
 
   const p = profile.data || {};
+  const meta = session.user.user_metadata || {};
   CACHE.me = {
     id: session.user.id,
     email: session.user.email,
     name: p.full_name || '',
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
-    memberships: memberships.data || []
+    memberships: memberships.data || [],
+    /* Only someone who arrived by invitation and has not yet chosen a
+       password. Decided by the account, never by the link, so a person
+       who is already signed in can never be shown this screen. */
+    needsPassword: !!session.user.invited_at && meta.password_set !== true && p.is_owner !== true
   };
   return CACHE.me;
 }
@@ -98,8 +103,16 @@ async function signInWithCode(code) {
 }
 
 async function setMyPassword(password) {
-  const { error } = await sb.auth.updateUser({ password });
-  return error ? error.message : null;
+  const { error } = await sb.auth.updateUser({ password, data: { password_set: true } });
+  if (!error) return null;
+
+  /* Supabase refuses to "change" a password to the one it already is.
+     That only happens when it was already saved — so it is done. */
+  if (/different from the old password/i.test(error.message || '')) {
+    const { error: flagError } = await sb.auth.updateUser({ data: { password_set: true } });
+    return flagError ? flagError.message : null;
+  }
+  return error.message;
 }
 
 async function signOut() {
