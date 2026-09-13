@@ -1,39 +1,27 @@
-import { next, rewrite } from '@vercel/edge';
+import { next } from '@vercel/edge';
 
 /* ============================================================
    middleware.js — the front door
 
-   Runs on Vercel's servers before any file is sent, so someone
-   without a way in never receives the board at all.
+   One password, one door. Vercel checks it on its servers before a
+   single file is sent, so anyone without it never receives the
+   dashboard at all — not the HTML, not the scripts, not a number.
 
-   Three kinds of address:
-     /                    your hub. OWNER_PASSWORD.
-     /sales-team          key entry for a sales team.
-     /sales-team/ABCD     that board, once the key has been entered.
+   The password lives in Vercel → Settings → Environment Variables
+   as OWNER_PASSWORD. It is never in this repo and never reaches a
+   browser. Share it with whoever should see the board.
 
-   Your password opens everything. A board key opens that board and
-   nothing else — not the hub, not another offer.
-
-   OWNER_PASSWORD lives in Vercel's settings. Board keys live in the
-   database, so a new board costs a click rather than a deploy.
-
-   To take the door off entirely: delete this file and redeploy.
+   To take the door off entirely and make the site public: delete
+   this file and redeploy.
    ============================================================ */
 
-/* Deliberately no matcher. This runs on every request and decides in one
-   visible place what is let through — a matcher pattern that quietly fails
-   to exclude the endpoint the front door depends on is worse than a line
-   of code you can read. */
-
-const PASS_COOKIE = 'ia_pass';
-const ROLE_COOKIE = 'ia_role';    /* readable by the page, so it can show owner-only controls */
-const BOARD_COOKIE = 'ia_board';
+const COOKIE = 'ia_pass';
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
-/* Cookies hold a hash, so a stolen cookie never reveals the secret —
-   and changing a secret invalidates every cookie issued under it. */
-async function stamp(secret, scope) {
-  const bytes = new TextEncoder().encode('ia-dash|' + scope + '|' + secret);
+/* The cookie holds a hash, so a stolen cookie never reveals the
+   password — and changing the password invalidates every old cookie. */
+async function stamp(secret) {
+  const bytes = new TextEncoder().encode('ia-dash|v1|' + secret);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, '0'))
@@ -43,7 +31,7 @@ async function stamp(secret, scope) {
 function readCookie(request, name) {
   const header = request.headers.get('cookie') || '';
   const hit = header.split(';').map((c) => c.trim()).find((c) => c.startsWith(name + '='));
-  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : '';
 }
 
 /* Constant-time compare, so timing never leaks how much was right. */
@@ -54,118 +42,67 @@ function same(a, b) {
   return diff === 0;
 }
 
-async function submitted(request) {
-  try {
-    const body = await request.formData();
-    return String(body.get('secret') || '').trim();
-  } catch (err) {
-    return '';
-  }
-}
-
 export default async function middleware(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
 
-  /* The API guards itself: it recomputes the same stamps this file issues
-     and refuses anything it cannot verify. It must stay reachable, since
-     checking a key is how anyone gets in at all. The logo is needed by the
-     sign-in page before there is any session. */
+  /* The API guards itself and the sign-in page needs the logo. */
   if (path === '/logo.png' || path.startsWith('/api/')) return next();
-
-  const teamMatch = path.match(/^\/sales-team(?:\/([A-Za-z0-9]{1,12}))?$/);
-  const isTeamDoor = !!teamMatch;
-  const pathKey = teamMatch && teamMatch[1] ? teamMatch[1].toUpperCase() : '';
 
   if (url.searchParams.has('signout')) {
     return new Response(null, {
       status: 303,
-      headers: new Headers([
-        ['location', isTeamDoor ? '/sales-team' : '/'],
-        ['set-cookie', PASS_COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
-        ['set-cookie', ROLE_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0'],
-        ['set-cookie', BOARD_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0']
-      ])
+      headers: {
+        location: '/',
+        'set-cookie': COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+      }
     });
   }
 
-  const ownerPassword = process.env.OWNER_PASSWORD;
-  if (!ownerPassword) {
+  const password = process.env.OWNER_PASSWORD;
+  if (!password) {
     return page('Almost there',
       'Add an environment variable named <b>OWNER_PASSWORD</b> in your Vercel project settings, then redeploy. Until then this board stays closed.',
-      null, 503);
+      false, 503);
   }
 
-  const ownerStamp = await stamp(ownerPassword, 'v1');
-  const signedInAsOwner = same(readCookie(request, PASS_COOKIE) || '', ownerStamp);
+  const good = await stamp(password);
+  if (same(readCookie(request, COOKIE), good)) return next();
 
-  /* ---------- the hub, and anything that is not a team door ---------- */
-  if (!isTeamDoor) {
-    if (signedInAsOwner) return next();
-
-    if (request.method === 'POST') {
-      if (same(await submitted(request), ownerPassword)) {
-        return new Response(null, {
-          status: 303,
-          headers: new Headers([
-            ['location', path],
-            ['set-cookie', PASS_COOKIE + '=' + ownerStamp + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS],
-            ['set-cookie', ROLE_COOKIE + '=owner; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS]
-          ])
-        });
-      }
-      await new Promise((done) => setTimeout(done, 1000));   // guessing should cost something
-      return ownerPage(true);
+  if (request.method === 'POST') {
+    let entered = '';
+    try {
+      entered = String((await request.formData()).get('secret') || '').trim();
+    } catch (err) {
+      entered = '';
     }
 
-    return ownerPage(false);
+    if (same(entered, password)) {
+      return new Response(null, {
+        status: 303,
+        headers: {
+          location: path,
+          'set-cookie': COOKIE + '=' + good + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS
+        }
+      });
+    }
+
+    await new Promise((done) => setTimeout(done, 1000));   // guessing should cost something
+    return page('Sign in', 'This board is private.', true);
   }
 
-  /* ---------- a sales team's door ---------- */
-  /* From the hub you walk into any board without typing its key. */
-  if (signedInAsOwner && pathKey) return rewrite(new URL('/', request.url));
-
-  const boardCookie = readCookie(request, BOARD_COOKIE) || '';
-  if (pathKey && same(boardCookie, await stamp(pathKey, 'board'))) {
-    return rewrite(new URL('/', request.url));
-  }
-
-  return teamPage(url.searchParams.get('e'));
+  return page('Sign in', 'This board is private.', false);
 }
 
-const ownerPage = (wrong) => page('Sign in', 'This board is private.', {
-  placeholder: 'Password', spaced: false, button: 'Sign in', wrong,
-  wrongText: "That password doesn't match."
-});
-
-/* api/enter.js sends back why it refused, so the screen can say something
-   true rather than blaming the key for a problem behind it. */
-const WHY = {
-  nokey: "That key doesn't match any board. Check it with whoever shared the board.",
-  empty: 'Enter the key you were given.',
-  nodb:  'The board could not be checked just now. Tell the account owner — this is not your key.'
-};
-
-const teamPage = (reason) => page('Enter your secret key',
-  'Ask whoever shared their Sales Team Board with you for their team secret key.', {
-    placeholder: 'SECRET KEY', spaced: true, button: 'Go',
-    action: '/api/enter',
-    wrong: !!(reason && WHY[reason]),
-    wrongText: WHY[reason] || ''
-  });
-
 /* A self-contained page: no stylesheet, no script, nothing fetched. */
-function page(title, sub, form, status) {
-  const field = form
-    ? `<form method="POST"${form.action ? ' action="' + form.action + '"' : ''}>
-         <label class="sr" for="secret">${form.placeholder}</label>
-         <input id="secret" name="secret" type="${form.spaced ? 'text' : 'password'}"
-                placeholder="${form.placeholder}" autocomplete="${form.spaced ? 'off' : 'current-password'}"
-                autofocus spellcheck="false" class="${form.spaced ? 'spaced' : ''}">
-         <button type="submit">${form.button}</button>
+function page(title, sub, wrong, status) {
+  const form = status ? '' : `<form method="POST">
+         <label class="sr" for="secret">Password</label>
+         <input id="secret" name="secret" type="password" placeholder="Password"
+                autocomplete="current-password" autofocus spellcheck="false">
+         <button type="submit">Sign in</button>
        </form>
-       ${form.wrong ? `<p class="err">${form.wrongText}</p>` : ''}`
-    : '';
+       ${wrong ? '<p class="err">That password doesn\'t match.</p>' : ''}`;
 
   const html = `<!doctype html>
 <html lang="en"><head>
@@ -193,10 +130,6 @@ function page(title, sub, form, status) {
     width: 100%; padding: 16px; border-radius: 11px; font: inherit; font-size: 15px;
     background: #0e0f12; color: #f0f1f3; border: 1px solid #1f2229; text-align: center;
   }
-  input.spaced {
-    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-    letter-spacing: .55em; text-indent: .55em; font-size: 18px;
-  }
   input::placeholder { color: #3a3e47; }
   input:focus { outline: none; border-color: #5289c9; background: #15171b; }
   button {
@@ -212,7 +145,7 @@ function page(title, sub, form, status) {
     <span class="brand"><img src="/logo.png" alt="">Inevitable Acquisition</span>
     <h1>${title}</h1>
     <p class="sub">${sub}</p>
-    ${field}
+    ${form}
   </div>
 </body></html>`;
 

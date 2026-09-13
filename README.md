@@ -162,58 +162,32 @@ Deleting a row asks first and is undoable from the top strip.
 
 `middleware.js` runs on Vercel's servers and checks the password **before a single file
 is sent**. Someone without it never receives the dashboard — not the HTML, not the
-scripts, not one number. There is nothing on their machine to inspect.
+scripts, not one number.
 
-Two doors, two secrets, both held by Vercel:
+Set `OWNER_PASSWORD` in **Vercel → Settings → Environment Variables**, then redeploy.
+One password, shared with whoever should see the board. Until it exists the board refuses
+to open at all, so it can never be public by accident.
 
-| Address | Who | Environment variable |
-|---|---|---|
-| `sales.inevitableacq.com` | you | `OWNER_PASSWORD` |
-| `sales.inevitableacq.com/sales-team` | the sales team | `TEAM_KEY` |
+The password is never in this repo and never sent to a browser. The sign-in page posts
+what was typed; Vercel compares it server-side and answers with a cookie holding only a
+hash. Changing the password invalidates every cookie issued under the old one.
 
-Set them in **Vercel → Settings → Environment Variables**, then redeploy. Until
-`OWNER_PASSWORD` exists the board refuses to open at all, so it can never be public by
-accident.
-
-Neither value is in this repo, and neither is ever sent to a browser. The sign-in page
-posts what was typed; Vercel compares it server-side and answers with a cookie holding
-only a hash. Changing a password invalidates every cookie issued under the old one.
-
-To change the team key, edit `TEAM_KEY` and redeploy. To take the door off entirely,
-delete `middleware.js`.
-
-`package.json` exists only so Vercel can install the one package the middleware imports.
-Nothing is installed on your machine and the site still has no build step.
+To take the door off and make the site public: delete `middleware.js` and redeploy.
 
 ## Sharing data with the team
 
-Without this, every browser keeps its own copy: your team logs calls on their machines
-and those calls never reach your dashboard. With it, everyone reads and writes the same
-rows.
+Without it, every browser keeps its own copy and nobody sees anyone else's calls. With
+it, everyone reads and writes the same rows.
 
-**Two clicks, no copying anything:**
-
-1. Vercel → your project → **Storage** → **Create Database** → choose **Neon (Postgres)**
+1. Vercel → your project → **Storage** → **Create Database** → **Neon (Postgres)**
 2. **Connect to Project**, then redeploy
 
-That is the whole setup. Vercel adds the connection details to the project itself, and
-`api/board.js` creates its own tables the first time it runs. There is no SQL to paste
-and no keys to copy.
+No SQL to paste and no keys to copy — `api/board.js` creates its own tables on first use.
+Until a database is connected the board quietly saves locally instead, so nothing is
+broken in the meantime.
 
-Until a database is connected the API answers `connected: false` and the board quietly
-saves locally instead, so nothing is broken in the meantime — just not shared.
-
-### How it fits together
-
-```
-browser  ──►  /api/board  ──►  Postgres
-                    ▲
-             middleware.js — password checked here first
-```
-
-The connection string stays on the server. Only someone already past the password can
-reach the API, because the middleware guards `/api` like everything else. The page keeps
-up by asking for fresh rows every 15 seconds and whenever you return to the tab.
+The page keeps up by asking for fresh rows every 15 seconds and whenever you return to
+the tab.
 
 
 ## Add Team

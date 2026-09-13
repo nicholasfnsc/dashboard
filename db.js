@@ -1,22 +1,24 @@
 /* ============================================================
    db.js — where the rows live
    ------------------------------------------------------------
-   Which board you are looking at comes from the address:
+   The page asks /api/board for everything and posts changes back.
+   That API runs on Vercel's servers, so every device is reading and
+   writing the same rows — which is what makes one team see one set
+   of numbers.
 
-     /                  the hub — every board, plus the totals
-     /sales-team/ABCD   that board alone
+   If no database is connected yet, the API says so and everything
+   falls back to this browser alone. The board still works; it just
+   isn't shared until you connect one (Vercel → Storage).
 
-   Every read and every write carries that board's key, so one
-   offer's numbers can never appear on another's.
+   Reads stay synchronous for the rest of the app: rows sit in CACHE
+   and are refreshed after every change, on a timer, and whenever you
+   come back to the tab.
    ============================================================ */
 
-const CACHE = {
-  calls: [], team: [], settings: {},
-  role: 'owner', shared: false,
-  boardKey: '', board: null,
-  boards: [], allCalls: [], allTeam: []
-};
+const CACHE = { calls: [], team: [], settings: {}, role: 'owner', shared: false };
 
+/* The middleware sets this after a correct password. It decides which
+   controls are shown, not what the server will allow. */
 function readRoleCookie() {
   const hit = (document.cookie || '').split(';')
     .map((c) => c.trim())
@@ -24,17 +26,9 @@ function readRoleCookie() {
   return hit ? hit.slice('ia_role='.length) : 'owner';
 }
 
-/* The address bar still reads /sales-team/ABCD after the server serves
-   the app, so it is the honest source for which board this is. */
-function boardKeyFromUrl() {
-  const hit = location.pathname.match(/^\/sales-team\/([A-Za-z0-9]{1,12})\/?$/);
-  return hit ? hit[1].toUpperCase() : '';
-}
-
 const isShared = () => CACHE.shared;
-const isHub = () => !CACHE.boardKey;
 
-/* ---------- this browser only, when no database is connected ---------- */
+/* ---------- this browser only, when nothing is connected ---------- */
 const local = {
   read(key, fallback) {
     try {
@@ -47,40 +41,30 @@ const local = {
   }
 };
 
-const localKey = (name) => name + (CACHE.boardKey ? ':' + CACHE.boardKey : '');
-
 function loadLocal() {
-  CACHE.calls = local.read(localKey('calls'), []) || [];
-  CACHE.team = local.read(localKey('team'), []) || [];
-  CACHE.settings = local.read(localKey('settings'), {}) || {};
-  CACHE.boards = local.read('boards', []) || [];
+  CACHE.calls = local.read('calls', []) || [];
+  CACHE.team = local.read('team', []) || [];
+  CACHE.settings = local.read('settings', {}) || {};
 }
 
 /* ---------- talking to the server ---------- */
-async function ask(payload, query) {
-  const url = '/api/board' + (query || '');
+async function ask(payload) {
   const options = payload
     ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }
     : { method: 'GET' };
 
-  const response = await fetch(url, options);
+  const response = await fetch('/api/board', options);
+  if (!response.ok) throw new Error('Board API returned ' + response.status);
+
   const type = response.headers.get('content-type') || '';
   if (type.indexOf('application/json') === -1) throw new Error('Not signed in');
 
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || ('Board API returned ' + response.status));
-  return body;
+  return response.json();
 }
 
 function absorb(board) {
   CACHE.shared = board.connected === true;
   if (!CACHE.shared) { loadLocal(); return; }
-
-  if (board.boards) CACHE.boards = board.boards;
-  if (board.allCalls) CACHE.allCalls = board.allCalls;
-  if (board.allTeam) CACHE.allTeam = board.allTeam;
-
-  if (board.board) CACHE.board = board.board;
   CACHE.calls = board.calls || [];
   CACHE.team = board.team || [];
   CACHE.settings = board.settings || {};
@@ -88,10 +72,8 @@ function absorb(board) {
 
 async function loadAll() {
   CACHE.role = readRoleCookie();
-  CACHE.boardKey = boardKeyFromUrl();
-
   try {
-    absorb(await ask(null, CACHE.boardKey ? '?key=' + encodeURIComponent(CACHE.boardKey) : ''));
+    absorb(await ask(null));
   } catch (err) {
     console.error('Falling back to this browser only', err);
     CACHE.shared = false;
@@ -99,13 +81,16 @@ async function loadAll() {
   }
 }
 
-/* One path for every change: the server when connected, otherwise here. */
+/* One path for every change: try the server, fall back to local. */
 async function change(payload, localUpdate) {
   if (!CACHE.shared) { localUpdate(); return; }
-  absorb(await ask(Object.assign({ boardKey: CACHE.boardKey }, payload)));
+  absorb(await ask(payload));
 }
 
 /* ---------- keeping up with everyone else ---------- */
+/* No live socket to maintain: a quiet check every 15 seconds, plus one
+   the moment you come back to the tab, is enough for a sales board and
+   is far less to go wrong. */
 function watchChanges(onChange) {
   let busy = false;
 
@@ -113,11 +98,11 @@ function watchChanges(onChange) {
     if (!CACHE.shared || busy || document.hidden) return;
     busy = true;
     try {
-      const before = JSON.stringify([CACHE.calls.length, CACHE.team.length, CACHE.boards.length]);
-      absorb(await ask(null, CACHE.boardKey ? '?key=' + encodeURIComponent(CACHE.boardKey) : ''));
-      if (JSON.stringify([CACHE.calls.length, CACHE.team.length, CACHE.boards.length]) !== before) onChange();
+      const before = JSON.stringify([CACHE.calls.length, CACHE.team.length]);
+      absorb(await ask(null));
+      if (JSON.stringify([CACHE.calls.length, CACHE.team.length]) !== before) onChange();
     } catch (err) {
-      /* a blip; the next tick catches up */
+      /* a blip; the next tick will catch up */
     } finally {
       busy = false;
     }
@@ -131,45 +116,6 @@ function signOut() {
   location.href = location.pathname + '?signout=1';
 }
 
-/* ---------- boards ---------- */
-async function createBoard(name, key) {
-  if (!CACHE.shared) {
-    const made = (key || Math.random().toString(36).slice(2, 6)).toUpperCase();
-    CACHE.boards = CACHE.boards.concat({ key: made, name: name });
-    local.write('boards', CACHE.boards);
-    return;
-  }
-  absorb(await ask({ action: 'createBoard', name: name, key: key || '' }));
-}
-
-async function changeBoardKey(oldKey, newKey) {
-  if (!CACHE.shared) {
-    CACHE.boards = CACHE.boards.map((b) =>
-      (b.key === oldKey ? Object.assign({}, b, { key: newKey.toUpperCase() }) : b));
-    local.write('boards', CACHE.boards);
-    return;
-  }
-  absorb(await ask({ action: 'changeKey', boardKey: oldKey, key: newKey }));
-}
-
-async function renameBoard(key, name) {
-  if (!CACHE.shared) {
-    CACHE.boards = CACHE.boards.map((b) => (b.key === key ? Object.assign({}, b, { name: name }) : b));
-    local.write('boards', CACHE.boards);
-    return;
-  }
-  absorb(await ask({ action: 'renameBoard', boardKey: key, name: name }));
-}
-
-async function deleteBoard(key) {
-  if (!CACHE.shared) {
-    CACHE.boards = CACHE.boards.filter((b) => b.key !== key);
-    local.write('boards', CACHE.boards);
-    return;
-  }
-  absorb(await ask({ action: 'deleteBoard', boardKey: key }));
-}
-
 /* ---------- calls ---------- */
 async function saveCall(record) {
   await change({ action: 'saveCall', record: record }, () => {
@@ -177,38 +123,39 @@ async function saveCall(record) {
     const at = rows.findIndex((r) => r.id === record.id);
     if (at === -1) rows.push(record); else rows[at] = record;
     CACHE.calls = rows;
-    local.write(localKey('calls'), rows);
+    local.write('calls', rows);
   });
 }
 
 async function deleteCall(id) {
   await change({ action: 'deleteCall', id: id }, () => {
     CACHE.calls = CACHE.calls.filter((r) => r.id !== id);
-    local.write(localKey('calls'), CACHE.calls);
+    local.write('calls', CACHE.calls);
   });
 }
 
+/* Undo restores a row that may or may not still exist — save covers both. */
 const restoreCall = (record) => saveCall(record);
 
 /* ---------- roster ---------- */
 async function addMember(person) {
   await change({ action: 'addMember', person: person }, () => {
     CACHE.team = CACHE.team.concat(person);
-    local.write(localKey('team'), CACHE.team);
+    local.write('team', CACHE.team);
   });
 }
 
 async function removeMember(person) {
   await change({ action: 'removeMember', person: person }, () => {
     CACHE.team = CACHE.team.filter((x) => !(x.name === person.name && x.role === person.role));
-    local.write(localKey('team'), CACHE.team);
+    local.write('team', CACHE.team);
   });
 }
 
 async function replaceTeam(people) {
   await change({ action: 'replaceTeam', people: people }, () => {
     CACHE.team = people.slice();
-    local.write(localKey('team'), CACHE.team);
+    local.write('team', CACHE.team);
   });
 }
 
@@ -216,6 +163,6 @@ async function replaceTeam(people) {
 async function saveSetting(key, value) {
   CACHE.settings[key] = value;
   await change({ action: 'saveSetting', key: key, value: value }, () => {
-    local.write(localKey('settings'), CACHE.settings);
+    local.write('settings', CACHE.settings);
   });
 }
