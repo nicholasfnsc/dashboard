@@ -79,44 +79,6 @@
 
   $('#signOutBtn').addEventListener('click', signOut);
 
-  /* ---------- a rep picks who they are ---------- */
-  function askWho(force) {
-    if (CACHE.role !== 'rep') return;
-    const names = Array.from(new Set(CACHE.team.map((p) => p.name)));
-    const current = chosenName();
-    if (!force && current && names.indexOf(current) !== -1) return paintWho();
-
-    const list = $('#whoList');
-    list.textContent = '';
-    names.forEach((n) => {
-      const b = el('button', 'who-option');
-      b.type = 'button';
-      b.textContent = n;
-      b.addEventListener('click', () => {
-        setChosenName(n);
-        $('#viewWho').classList.add('hidden');
-        paintWho();
-        window.PostCallForm.prefillMe();
-      });
-      list.appendChild(b);
-    });
-    $('#viewWho').classList.remove('hidden');
-  }
-
-  function paintWho() {
-    const label = $('#whoLabel');
-    const name = chosenName();
-    label.classList.toggle('hidden', CACHE.role !== 'rep');
-    label.textContent = name ? name + ' · change' : 'Pick your name';
-  }
-
-  $('#whoSkip').addEventListener('click', () => {
-    setChosenName('');
-    $('#viewWho').classList.add('hidden');
-    paintWho();
-  });
-  $('#whoLabel').addEventListener('click', () => askWho(true));
-
   /* ---------- the offer tabs, for owners and admins ---------- */
   function paintOfferTabs() {
     const nav = $('#offerTabs');
@@ -173,9 +135,6 @@
 
     const wanted = params.get('tab');
     if (wanted && document.querySelector('.tab[data-tab="' + wanted + '"]:not(.hidden)')) showTab(wanted);
-
-    askWho(false);
-    paintWho();
 
     watchChanges(() => {
       fillTeamSelects();

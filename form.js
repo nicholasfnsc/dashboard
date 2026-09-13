@@ -130,7 +130,8 @@ function initPostCallForm() {
       payments: [],
       notes: ($('#pcNotes').value || '').trim(),
       loggedAt: new Date().toISOString(),
-      /* Who submitted it: a rep's chosen name, or the signed-in person. */
+      /* Owners and admins are named; reps share their team's account, and
+         the Closer and Setter fields already record who did the work. */
       loggedBy: currentLogger()
     };
 
@@ -287,16 +288,7 @@ function initPostCallForm() {
     $('#pcPaymentMethod').value = '';
     $('#pcWasCall').value = '';
     $('#pcDqType').value = '';
-    prefillMe();
     clearErrors();
-  }
-
-  /* A rep who picked their name gets it filled in where it fits. */
-  function prefillMe() {
-    const me = chosenName();
-    if (!me) return;
-    if (rosterBy('closer').some((p) => p.name === me) && !$('#pcCloser').value) $('#pcCloser').value = me;
-    if (rosterBy('setter').some((p) => p.name === me) && !$('#pcSetter').value) $('#pcSetter').value = me;
   }
 
   /* With no roster, Closer and Setter are empty dropdowns and the form is a
@@ -308,7 +300,7 @@ function initPostCallForm() {
   $('#pcGoTeam').addEventListener('click', () => showTab('team'));
 
   /* The Data tab drives editing through this — one form, one set of rules. */
-  window.PostCallForm = { startEdit: startEdit, paintRosterHint: paintRosterHint, prefillMe: prefillMe };
+  window.PostCallForm = { startEdit: startEdit, paintRosterHint: paintRosterHint };
 
   /* ---------- boot ---------- */
   /* Closer and Setter are filled by fillTeamSelects() in app.js — the
@@ -336,23 +328,10 @@ function initPostCallForm() {
 
   applyOutcome('closed');
   paintRosterHint();
-  prefillMe();
 }
 
 /* ---------- who is logging ---------- */
-const whoKey = () => 'ia-who:' + CACHE.boardId;
-
-function chosenName() {
-  try { return localStorage.getItem(whoKey()) || ''; } catch (e) { return ''; }
-}
-
-function setChosenName(name) {
-  try {
-    if (name) localStorage.setItem(whoKey(), name); else localStorage.removeItem(whoKey());
-  } catch (e) { /* private mode: they simply pick again next time */ }
-}
-
 function currentLogger() {
   if (CACHE.me && CACHE.me.kind === 'person') return CACHE.me.name || CACHE.me.email;
-  return chosenName() || 'Team';
+  return 'Team';
 }
