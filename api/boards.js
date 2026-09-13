@@ -26,8 +26,12 @@ export default async function handler(request, response) {
   if (request.method !== 'POST') return send(response, 405, { error: 'Use POST' });
 
   let who;
-  try { who = await caller(request); } catch (e) { who = null; }
-  if (!who || who.kind !== 'person') return send(response, 401, { error: 'Sign in first.' });
+  try { who = await caller(request); } catch (e) { console.error('boards: caller threw', e); who = null; }
+  if (!who) return send(response, 401, { error: 'Sign in first.' });
+  if (who.kind !== 'person') {
+    console.error('boards: signed in, but as', who.kind);
+    return send(response, 403, { error: 'Team accounts cannot manage offers.' });
+  }
 
   const input = body(request);
   const db = adminClient();

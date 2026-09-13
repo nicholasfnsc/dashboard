@@ -56,11 +56,17 @@ export function send(response, status, payload) {
 export async function caller(request) {
   const header = request.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  if (!token) return null;
+  if (!token) {
+    console.error('caller: no bearer token on the request');
+    return null;
+  }
 
   const db = adminClient();
   const { data, error } = await db.auth.getUser(token);
-  if (error || !data || !data.user) return null;
+  if (error || !data || !data.user) {
+    console.error('caller: Supabase rejected the session:', error && (error.status + ' ' + error.message));
+    return null;
+  }
 
   const [profile, memberships] = await Promise.all([
     db.from('profiles').select('is_owner, kind, email, full_name').eq('id', data.user.id).maybeSingle(),

@@ -23,11 +23,13 @@ export default async function handler(request, response) {
 
   try {
     const db = adminClient();
-    const { data: row } = await db
+    const { data: row, error: lookupError } = await db
       .from('board_codes')
       .select('board_id, boards!inner(id, team_user_id, archived_at)')
       .eq('code', code)
       .maybeSingle();
+    /* A lookup that failed is not the same as a code that does not exist. */
+    if (lookupError) throw lookupError;
 
     const board = row && row.boards;
     if (!board || board.archived_at || !board.team_user_id) {
