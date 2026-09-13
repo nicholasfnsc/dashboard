@@ -62,7 +62,10 @@ async function loadMe() {
   CACHE.me = {
     id: session.user.id,
     email: session.user.email,
-    name: p.full_name || '',
+    /* Name and role live on the account itself, so each person edits
+       their own without being able to touch anything that grants access. */
+    name: meta.full_name || p.full_name || '',
+    title: meta.title || '',
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
     memberships: memberships.data || [],
@@ -113,6 +116,14 @@ async function setMyPassword(password) {
     return flagError ? flagError.message : null;
   }
   return error.message;
+}
+
+async function updateMyProfile(name, title) {
+  const { error } = await sb.auth.updateUser({ data: { full_name: name, title } });
+  if (error) return error.message;
+  CACHE.me.name = name;
+  CACHE.me.title = title;
+  return null;
 }
 
 async function signOut() {
@@ -270,7 +281,7 @@ async function replaceTeam(people) {
 
 /* ---------- admins (owner) ---------- */
 const listAdmins = () => serverAction('/api/people', { action: 'list' });
-const inviteAdmin = (name, email, boardIds) => serverAction('/api/people', { action: 'invite', name, email, boardIds });
+const inviteAdmin = (name, email, title, boardIds) => serverAction('/api/people', { action: 'invite', name, email, title, boardIds });
 const setAdminAccess = (userId, boardIds) => serverAction('/api/people', { action: 'access', userId, boardIds });
 const removeAdmin = (userId) => serverAction('/api/people', { action: 'remove', userId });
 

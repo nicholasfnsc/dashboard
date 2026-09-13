@@ -33,26 +33,39 @@ export default async function handler(request, response) {
 
   try {
     if (input.action === 'list') {
-      const [{ data: people }, { data: access }] = await Promise.all([
+      const [{ data: people }, { data: access }, { data: accounts }] = await Promise.all([
         db.from('profiles').select('id, email, full_name, created_at')
           .eq('kind', 'person').eq('is_owner', false).order('created_at'),
-        db.from('memberships').select('user_id, board_id').eq('role', 'admin')
+        db.from('memberships').select('user_id, board_id').eq('role', 'admin'),
+        db.auth.admin.listUsers({ page: 1, perPage: 1000 })
       ]);
-      const admins = (people || []).map((p) => ({
-        id: p.id, email: p.email, name: p.full_name || '',
-        boardIds: (access || []).filter((a) => a.user_id === p.id).map((a) => a.board_id)
-      }));
+      /* Admins edit their own name and role, which live on their account. */
+      const meta = {};
+      ((accounts && accounts.users) || []).forEach((u) => {
+        meta[u.id] = { md: u.user_metadata || {}, joined: !!u.last_sign_in_at };
+      });
+      const admins = (people || []).map((p) => {
+        const m = meta[p.id] || { md: {}, joined: false };
+        return {
+          id: p.id, email: p.email,
+          name: m.md.full_name || p.full_name || '',
+          title: m.md.title || '',
+          joined: m.joined,
+          boardIds: (access || []).filter((a) => a.user_id === p.id).map((a) => a.board_id)
+        };
+      });
       return send(response, 200, { admins });
     }
 
     if (input.action === 'invite') {
       const email = String(input.email || '').trim().toLowerCase();
       const name = String(input.name || '').trim();
+      const title = String(input.title || '').trim();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(response, 400, { error: 'That email does not look right.' });
 
       const { data, error } = await db.auth.admin.inviteUserByEmail(email, {
         redirectTo: 'https://portal.inevitableacq.com/?welcome=1',
-        data: { full_name: name }
+        data: { full_name: name, title }
       });
       if (error) {
         const taken = /already/i.test(error.message || '');

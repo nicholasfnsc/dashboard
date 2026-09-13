@@ -132,11 +132,12 @@ function renderAdmins() {
     const name = el('span', 'admin-name');
     name.textContent = a.name || a.email;
     who.appendChild(name);
-    if (a.name) {
-      const email = el('span', 'admin-email');
-      email.textContent = a.email;
-      who.appendChild(email);
-    }
+
+    const detail = el('span', 'admin-email');
+    detail.textContent = [a.title, a.name ? a.email : ''].filter(Boolean).join(' · ');
+    if (detail.textContent) who.appendChild(detail);
+
+    if (!a.joined) who.appendChild(el('span', 'admin-pending', 'Invite not accepted yet'));
     rowEl.appendChild(who);
 
     const boards = el('div', 'check-row');
@@ -209,13 +210,14 @@ function initHub() {
       e.preventDefault();
       const name = $('#inviteName').value.trim();
       const email = $('#inviteEmail').value.trim();
+      const title = $('#inviteTitle').value.trim();
       const ids = checkedIn($('#inviteBoards'));
       if (!email) { $('#inviteEmail').focus(); return; }
 
       const button = $('#inviteBtn');
       button.disabled = true;
       try {
-        await inviteAdmin(name, email, ids);
+        await inviteAdmin(name, email, title, ids);
       } catch (err) {
         console.error(err);
         notify(err.message);
@@ -225,6 +227,7 @@ function initHub() {
       }
       $('#inviteName').value = '';
       $('#inviteEmail').value = '';
+      $('#inviteTitle').value = '';
       delete $('#inviteBoards').dataset.touched;
       notify('Invite sent to ' + email + '.');
       loadAdmins();

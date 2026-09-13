@@ -63,19 +63,52 @@
 </div>
 
 
+<div class="gate gate-overlay hidden" id="viewProfile" role="dialog" aria-labelledby="profileHeading">
+  <form class="gate-box gate-form" id="profileForm">
+    <h1 class="gate-title" id="profileHeading">Your profile</h1>
+    <p class="gate-sub" id="profileEmail"></p>
+    <label class="field-label" for="profileNameInput">Name</label>
+    <input type="text" id="profileNameInput" placeholder="Your name" autocomplete="name">
+    <label class="field-label" for="profileTitleInput">Role</label>
+    <input type="text" id="profileTitleInput" placeholder="e.g. COO, Sales Manager" autocomplete="organization-title">
+    <button type="submit" class="btn-gate">Save</button>
+    <button type="button" class="link-btn" id="profileCancel">Cancel</button>
+    <p class="gate-error hidden" id="profileError"></p>
+  </form>
+</div>
+
+<div class="gate gate-overlay hidden" id="viewWho" role="dialog" aria-labelledby="whoHeading">
+  <div class="gate-box">
+    <h1 class="gate-title" id="whoHeading">Who's logging in?</h1>
+    <p class="gate-sub">Pick your name from the team.</p>
+    <div class="who-list" id="whoList"></div>
+  </div>
+</div>
+
 <header class="topstrip hidden" id="topStrip">
   <div class="topstrip-in">
-    <span class="brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
-    <a class="crumb hidden" id="toHub" href="/">&larr; Main hub</a>
-    <button type="button" class="crumb" id="signOutBtn">Sign out</button>
-    <button type="button" class="undo-btn hidden" id="undoBtn">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M3 9h11a5 5 0 0 1 0 10H9"></path>
-        <polyline points="7 5 3 9 7 13"></polyline>
-      </svg>
-      Undo
-    </button>
+    <div class="topstrip-side">
+      <span class="brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
+      <a class="crumb hidden" id="toHub" href="/">&larr; Main hub</a>
+    </div>
+    <div class="topstrip-side">
+      <button type="button" class="undo-btn hidden" id="undoBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 9h11a5 5 0 0 1 0 10H9"></path>
+          <polyline points="7 5 3 9 7 13"></polyline>
+        </svg>
+        Undo
+      </button>
+      <button type="button" class="profile-chip hidden" id="profileChip" aria-haspopup="dialog">
+        <span class="avatar" id="profileAvatar"></span>
+        <span class="profile-text">
+          <span class="profile-name" id="profileName"></span>
+          <span class="profile-title" id="profileTitle"></span>
+        </span>
+      </button>
+      <button type="button" class="crumb" id="signOutBtn">Sign out</button>
+    </div>
   </div>
 </header>
 
@@ -132,6 +165,8 @@
             <input type="text" id="inviteName" placeholder="Name" autocomplete="off">
             <label class="hidden" for="inviteEmail">Email</label>
             <input type="email" id="inviteEmail" placeholder="Email" autocomplete="off">
+            <label class="hidden" for="inviteTitle">Role</label>
+            <input type="text" id="inviteTitle" placeholder="Role, e.g. COO (they can change it)" autocomplete="off">
           </div>
           <div class="check-row" id="inviteBoards"></div>
           <button type="submit" class="btn-primary" id="inviteBtn">Send invite</button>
@@ -524,6 +559,7 @@
 <script src="/team.js"></script>
 <script src="/onboarding.js"></script>
 <script src="/hub.js"></script>
+<script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>
 </html>

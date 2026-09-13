@@ -106,6 +106,7 @@
     $('#undoBtn').classList.add('hidden');
     document.title = 'Main Hub · Inevitable Acquisition';
     initHub();
+    initProfile();
     watchChanges(renderHub);
   }
 
@@ -131,6 +132,7 @@
     initTeamTab();
     initOnboarding();
     paintOfferTabs();
+    initProfile();
 
     const wanted = params.get('tab');
     if (wanted && document.querySelector('.tab[data-tab="' + wanted + '"]:not(.hidden)')) showTab(wanted);
@@ -142,6 +144,7 @@
       renderRoster();
       renderOnboarding();
       paintBoardName();
+      paintProfile();
     });
   }
 
