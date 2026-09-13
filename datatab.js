@@ -110,21 +110,22 @@ function renderDataTab() {
 
     const del = el('button', 'link-btn danger', 'Delete');
     del.type = 'button';
-    del.addEventListener('click', () => {
+    del.addEventListener('click', async () => {
       const who = r.clientName || 'this call';
-      const rows = loggedCalls();
-      const index = rows.findIndex((x) => x.id === r.id);
-      if (index === -1) return;
+      if (!window.confirm('Delete the logged call for ' + who + ' on ' + r.callDate +
+          '?
 
-      pushUndo({
-        kind: 'restoreCall',
-        label: 'Deleted the call for ' + who,
-        row: rows[index],
-        index: index
-      });
+This removes it for the whole team. You can undo it.')) return;
 
-      rows.splice(index, 1);
-      store.write('calls', rows);
+      pushUndo({ kind: 'restoreCall', label: 'Deleted the call for ' + who, row: r });
+
+      try {
+        await deleteCall(r.id);
+      } catch (err) {
+        console.error(err);
+        notify("Couldn't delete that — check your connection and try again.");
+        return;
+      }
       renderDataTab();
       render();
       notify('Deleted the call for ' + who + '. Use Undo to bring it back.');
@@ -136,7 +137,7 @@ function renderDataTab() {
   });
 }
 
-(function initDataTab() {
+function initDataTab() {
   const sel = $('#dOutcome');
   if (!sel) return;
 
@@ -157,4 +158,4 @@ function renderDataTab() {
   $('#dGoForm').addEventListener('click', () => showTab('postcall'));
 
   renderDataTab();
-})();
+}

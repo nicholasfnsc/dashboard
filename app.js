@@ -181,8 +181,7 @@ function computeMetrics(rows, range) {
    of the dropdowns and out of Commission Tracking; it never touches a
    call they already logged. */
 function roster() {
-  const saved = store.read('team', []);
-  return Array.isArray(saved) ? saved : [];
+  return CACHE.team;
 }
 
 const rosterBy = (role) => roster().filter((t) => t.role === role);
@@ -216,10 +215,10 @@ function fillTeamSelects() {
   }
 }
 
-/* Rows logged through the Post Call Form, newest last. */
+/* Rows logged through the Post Call Form, newest last. Shared by the
+   whole team — this is whatever the database last handed us. */
 function loggedCalls() {
-  const rows = store.read('calls', []);
-  return Array.isArray(rows) ? rows : [];
+  return CACHE.calls;
 }
 
 function activeCalls() {
@@ -288,27 +287,25 @@ function paintUndo() {
   if (last) btn.title = 'Undo: ' + last.label;
 }
 
-function applyUndo() {
+async function applyUndo() {
   const s = undoStack();
   const entry = s.pop();
   if (!entry) return;
   store.write('undo', s);
+  paintUndo();
 
-  if (entry.kind === 'restoreCall') {
-    const rows = loggedCalls();
-    const at = rows.findIndex((r) => r.id === entry.row.id);
-    if (at !== -1) {
-      rows[at] = entry.row;                                   // roll an edit back
-    } else {
-      const i = entry.index == null ? rows.length : Math.min(entry.index, rows.length);
-      rows.splice(i, 0, entry.row);                           // put a deleted row back
+  try {
+    if (entry.kind === 'restoreCall') {
+      await restoreCall(entry.row);        // upsert puts back a delete or an edit alike
+    } else if (entry.kind === 'restoreTeam') {
+      await replaceTeam(entry.team);
     }
-    store.write('calls', rows);
-  } else if (entry.kind === 'restoreTeam') {
-    store.write('team', entry.team);
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't undo that — check your connection and try again.");
+    return;
   }
 
-  paintUndo();
   fillTeamSelects();
   render();
   if (typeof renderDataTab === 'function') renderDataTab();
@@ -765,8 +762,12 @@ function render() {
   renderCommission(m);
 }
 
-initTabs();
-initFilters();
-$('#undoBtn').addEventListener('click', applyUndo);
-paintUndo();
-render();
+/* Called by boot.js once a session exists and the data has loaded. */
+function initApp() {
+  initTabs();
+  initFilters();
+  $('#undoBtn').addEventListener('click', applyUndo);
+  $('#signOutBtn').addEventListener('click', signOut);
+  paintUndo();
+  render();
+}

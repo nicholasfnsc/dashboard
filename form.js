@@ -6,7 +6,7 @@
    fields appear depends entirely on the outcome picked.
    ============================================================ */
 
-(function () {
+function initPostCallForm() {
   const form = $('#postCallForm');
   if (!form) return;
 
@@ -101,7 +101,7 @@
   }
 
   /* ---------- submit ---------- */
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     clearErrors();
     const errors = [];
@@ -178,22 +178,37 @@
       } else {
         rows.push(row);           // row was deleted while being edited
       }
-      store.write('calls', rows);
+      try {
+        await saveCall(row);
+      } catch (err) {
+        console.error(err);
+        fail(["Couldn't save those changes — check your connection and try again."]);
+        return;
+      }
       endEdit();
       render();
-      if (typeof renderDataTab === 'function') renderDataTab();
+      renderDataTab();
       showTab('data');
-      notify('Changes saved.');
+      notify('Changes saved. Everyone on the board sees them.');
       return;
     }
 
-    rows.push(row);
-    store.write('calls', rows);
+    const button = $('#pcSubmit');
+    button.disabled = true;
+    try {
+      await saveCall(row);
+    } catch (err) {
+      console.error(err);
+      fail(["Couldn't log that call — check your connection and try again."]);
+      return;
+    } finally {
+      button.disabled = false;
+    }
 
     resetForm();
     render();
-    if (typeof renderDataTab === 'function') renderDataTab();
-    notify('Call logged — the dashboard has been updated.');
+    renderDataTab();
+    notify('Call logged — the dashboard has been updated for everyone.');
   });
 
   /* ---------- editing an existing row ---------- */
@@ -310,4 +325,4 @@
 
   applyOutcome('closed');
   paintRosterHint();
-})();
+}

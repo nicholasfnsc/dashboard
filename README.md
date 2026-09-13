@@ -6,6 +6,10 @@ in a browser and it runs, and Vercel deploys it as-is with no build step.
 
 ```
 index.html    markup for all four tabs
+config.js     your Supabase URL and anon key (safe to publish)
+db.js         shared storage, sign-in, and live updates
+boot.js       start-up: confirm a session, then start the board
+supabase-schema.sql   run once in the Supabase SQL editor
 logo.png      the IA mark — brand mark in the header and the favicon
 styles.css    design tokens + all styling (black ground, steel-blue accent)
 data.js       record shape and shared vocabulary (outcomes, funnels, rates)
@@ -154,6 +158,76 @@ overwrites the row in place, keeping its `id` and original `loggedAt`, and stamp
 
 Deleting a row asks first and is undoable from the top strip.
 
+## Backend setup
+
+Do this once. It takes about ten minutes and turns the board from
+one-browser-at-a-time into something the whole team shares.
+
+**1. Create a Supabase project** at supabase.com — the free tier is plenty.
+
+**2. Build the database.** Open **SQL Editor**, paste the whole of
+`supabase-schema.sql`, and run it.
+
+**3. Turn off public sign-ups.** **Authentication → Providers → Email** and switch
+**Enable sign ups** off. Without this, anyone could create themselves an account and
+walk in.
+
+**4. Create the two accounts.** **Authentication → Users → Add user**, twice. Tick
+**Auto Confirm User** both times.
+
+| Account | Email | Password |
+|---|---|---|
+| You | your own email | a strong password, **new** — not one you have used elsewhere |
+| The team | `team@inevitableacq.com` | the secret key you hand out |
+
+Nobody types these into a file. Supabase hashes them and checks them on its server.
+
+**5. Say which one is the owner.** Back in the SQL Editor, with your own email
+substituted:
+
+```sql
+insert into public.profiles (id, role)
+select id, 'owner' from auth.users where email = 'YOUR-EMAIL-HERE'
+on conflict (id) do update set role = 'owner';
+
+insert into public.profiles (id, role)
+select id, 'team' from auth.users where email = 'team@inevitableacq.com'
+on conflict (id) do update set role = 'team';
+```
+
+**6. Connect the site.** **Project Settings → API** gives you a **Project URL** and an
+**anon public** key. Paste both into `config.js`, then commit and push — Vercel
+redeploys on its own.
+
+Those two values are meant to be public. On their own they open nothing: every table
+refuses to answer without a signed-in session, which is what Row Level Security in the
+schema enforces.
+
+**7. Point the domain at it.** In Vercel, add `sales.inevitableacq.com` under
+**Settings → Domains**.
+
+### How access works afterwards
+
+| Address | Who | What they type |
+|---|---|---|
+| `sales.inevitableacq.com` | you | your email and password |
+| `sales.inevitableacq.com/sales-access` | the sales team | the secret key |
+
+Both land on the same board with the same numbers. The roster and the team login link
+are owner-only; everything else is shared.
+
+To change the key, edit the `team@inevitableacq.com` user's password under
+**Authentication → Users**. To cut someone off entirely, change it and hand the new one
+only to the people who should still have it.
+
+### Why no secret lives in this repo
+
+Everything in these files is downloaded by every visitor's browser — that is what a
+website is. So nothing secret can be kept here, and nothing secret is: passwords and the
+team key exist only inside Supabase, stored as hashes, compared on their server. The
+browser only ever learns yes or no.
+
+
 ## Add Team
 
 The roster here is the single source for the Closer and Setter dropdowns everywhere else,
@@ -184,11 +258,8 @@ can never strand the owner. The team login page URL is editable and saved; it de
 `https://sales.inevitableacq.com/sales-access`, and `vercel.json` rewrites that path to
 `index.html` so the link resolves.
 
-> **Enforcement is client-side, which means there is none.** The key is generated and
-> checked inside the visitor's own browser. Anything the browser must know, the visitor can
-> read — so no secret placed in this code is secret, and no gate built on one keeps anybody
-> out. Do not put a real password anywhere in this repo. Access control starts existing
-> when the check moves to a server, which is the backend step below.
+Sign-in is handled by Supabase Auth. The key is the password on the shared
+`team@inevitableacq.com` account, so this page never holds it and cannot reveal it.
 
 ## Interactions already wired
 
@@ -202,7 +273,7 @@ can never strand the owner. The team login page URL is editable and saved; it de
 
 ## Next
 
-1. **Backend.** Two things need it and they are the same job: rows shared across devices
-   (today each browser holds its own copy, so a teammate's calls never reach your
-   dashboard), and server-side key checking so access is actually enforced. The metric
-   code does not change — only where `loggedCalls()` reads from.
+1. A **Date Booked** field on the form, so Calls On Calendar measures calls set rather
+   than calls held (see "Known gap" above).
+2. Per-person logins, if you ever want the board to know who logged each row. The
+   `logged_by` column is already recorded against every call, waiting for it.

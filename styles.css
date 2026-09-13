@@ -516,7 +516,6 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
   margin: 0 auto 28px; font-size: 13.5px; color: var(--muted);
   line-height: 1.6; max-width: 36ch;
 }
-#gateForm { display: flex; flex-direction: column; gap: 12px; }
 #gateKey {
   width: 100%; background: var(--surface); color: var(--ink);
   border: 1px solid var(--line); border-radius: 11px;
@@ -536,22 +535,24 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 .btn-gate:hover { background: var(--chart-blue); border-color: var(--chart-blue); }
 .gate-error { margin: 16px 0 0; font-size: 12.5px; color: #f87171; }
 
-.gate-preview {
-  margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--line);
-  display: flex; flex-direction: column; gap: 12px; align-items: center;
+.gate-busy { margin: 16px 0 0; font-size: 12.5px; color: var(--muted); }
+.gate-form { display: flex; flex-direction: column; gap: 12px; }
+.gate-form input[type="email"],
+.gate-form input[type="password"] {
+  width: 100%; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 15px 16px; font-size: 14px;
 }
-.gate-preview p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
-.gate-preview b {
-  font-family: var(--f-mono); font-weight: 500; color: var(--ink);
-  letter-spacing: .22em; margin-left: 2px;
+.gate-form input[type="email"]::placeholder,
+.gate-form input[type="password"]::placeholder { color: #3a3e47; letter-spacing: 0; }
+.gate-form input:hover { border-color: #2e323b; }
+.gate-form input:focus { outline: none; border-color: var(--accent-bright); background: var(--surface-2); }
+.gate-form input:disabled, .gate-form button:disabled { opacity: .5; }
+
+.key-note {
+  margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.65;
 }
-.btn-gate-ghost {
-  background: none; color: var(--accent-ink);
-  border: 1px solid var(--accent-deep); border-radius: 9px;
-  padding: 9px 18px; font-size: 12.5px; cursor: pointer;
-  transition: background .14s, border-color .14s;
-}
-.btn-gate-ghost:hover { background: var(--accent-wash); border-color: var(--accent); }
+.key-note b { color: var(--ink-2); font-weight: 500; }
 
 @media (max-width: 860px) {
   .team-grid { grid-template-columns: 1fr; }
