@@ -20,12 +20,10 @@ import { next, rewrite } from '@vercel/edge';
    To take the door off entirely: delete this file and redeploy.
    ============================================================ */
 
-export const config = {
-  /* The logo is needed by the sign-in page itself, and /api/board must
-     stay reachable so a key can be checked before anyone is let in.
-     Without a session that endpoint answers nothing but yes or no. */
-  matcher: ['/((?!logo\\.png|api/board).*)']
-};
+/* Deliberately no matcher. This runs on every request and decides in one
+   visible place what is let through — a matcher pattern that quietly fails
+   to exclude the endpoint the front door depends on is worse than a line
+   of code you can read. */
 
 const PASS_COOKIE = 'ia_pass';
 const ROLE_COOKIE = 'ia_role';    /* readable by the page, so it can show owner-only controls */
@@ -59,15 +57,12 @@ function same(a, b) {
 /* Board keys are checked against the database, since boards are made
    without a deploy. The endpoint answers only true or false. */
 async function keyIsReal(request, key) {
-  try {
-    const check = new URL('/api/board?verify=' + encodeURIComponent(key), request.url);
-    const answer = await fetch(check.toString(), { headers: { 'x-ia-check': '1' } });
-    if (!answer.ok) return false;
-    const body = await answer.json();
-    return body && body.valid === true;
-  } catch (err) {
-    return false;
-  }
+  const check = new URL('/api/board?verify=' + encodeURIComponent(key), request.url);
+  const answer = await fetch(check.toString(), { headers: { 'x-ia-check': '1' } });
+  if (!answer.ok) throw new Error('Key check failed with ' + answer.status);
+  const body = await answer.json();
+  if (body && body.connected === false) throw new Error('No database connected');
+  return !!(body && body.valid === true);
 }
 
 async function submitted(request) {
@@ -82,6 +77,13 @@ async function submitted(request) {
 export default async function middleware(request) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
+
+  /* The API guards itself: it recomputes the same stamps this file issues
+     and refuses anything it cannot verify. It must stay reachable, since
+     checking a key is how anyone gets in at all. The logo is needed by the
+     sign-in page before there is any session. */
+  if (path === '/logo.png' || path.startsWith('/api/')) return next();
+
   const teamMatch = path.match(/^\/sales-team(?:\/([A-Za-z0-9]{1,12}))?$/);
   const isTeamDoor = !!teamMatch;
   const pathKey = teamMatch && teamMatch[1] ? teamMatch[1].toUpperCase() : '';
@@ -141,7 +143,17 @@ export default async function middleware(request) {
 
   if (request.method === 'POST') {
     const entered = (await submitted(request)).toUpperCase();
-    if (entered && await keyIsReal(request, entered)) {
+
+    let valid = false;
+    try {
+      valid = entered ? await keyIsReal(request, entered) : false;
+    } catch (err) {
+      return page('Not ready yet',
+        'The board could not be checked just now. If this keeps happening, the database may not be connected — '
+        + 'open the hub and confirm the board exists.', null, 503);
+    }
+
+    if (valid) {
       return new Response(null, {
         status: 303,
         headers: new Headers([

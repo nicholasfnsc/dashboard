@@ -1,4 +1,5 @@
 import { createPool } from '@vercel/postgres';
+import { createHash, timingSafeEqual } from 'crypto';
 
 /* ============================================================
    api/board.js — the shared store
@@ -149,6 +150,32 @@ async function readEverything() {
 
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 
+/* Same stamp the front door issues, recomputed here. The cookie holds a
+   hash of a secret this server knows, so it cannot be forged by editing
+   cookies in a browser — which ia_role, being plain text, absolutely can. */
+function stamp(secret, scope) {
+  return createHash('sha256').update('ia-dash|' + scope + '|' + secret).digest('hex');
+}
+
+function cookieFrom(request, name) {
+  const header = request.headers.cookie || '';
+  const hit = header.split(';').map((c) => c.trim()).find((c) => c.startsWith(name + '='));
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : '';
+}
+
+function same(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length || !a) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+const asksAsOwner = (request) =>
+  !!process.env.OWNER_PASSWORD &&
+  same(cookieFrom(request, 'ia_pass'), stamp(process.env.OWNER_PASSWORD, 'v1'));
+
+/* Either you signed in as the owner, or you typed this board's key. */
+const mayUseBoard = (request, boardKey) =>
+  asksAsOwner(request) || same(cookieFrom(request, 'ia_board'), stamp(boardKey, 'board'));
+
 export default async function handler(request, response) {
   if (!CONNECTION) {
     response.status(200).json({ connected: false });
@@ -158,8 +185,7 @@ export default async function handler(request, response) {
   try {
     await ensureTables();
 
-    const isOwner = (request.headers['x-ia-role'] || '') === 'owner' ||
-      /(?:^|;\s*)ia_role=owner(?:;|$)/.test(request.headers.cookie || '');
+    const isOwner = asksAsOwner(request);
 
     /* ---------- checking a key, used by the front door ---------- */
     if (request.method === 'GET' && request.query.verify) {
@@ -177,6 +203,11 @@ export default async function handler(request, response) {
         if (!isOwner) { response.status(403).json({ error: 'Not allowed' }); return; }
         const [boards, everything] = await Promise.all([listBoards(), readEverything()]);
         response.status(200).json(Object.assign({ connected: true, boards: boards }, everything));
+        return;
+      }
+
+      if (!mayUseBoard(request, boardKey)) {
+        response.status(403).json({ error: 'Not allowed' });
         return;
       }
 
@@ -264,6 +295,11 @@ export default async function handler(request, response) {
     }
 
     /* ---------- everything else happens inside one board ---------- */
+    if (!mayUseBoard(request, boardKey)) {
+      response.status(403).json({ error: 'Not allowed' });
+      return;
+    }
+
     if (!boardKey || !(await boardExists(boardKey))) {
       response.status(404).json({ error: 'No such board' });
       return;
