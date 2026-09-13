@@ -781,13 +781,20 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 .hub-grip svg { width: 9px; height: 14px; }
 .hub-grip:hover { color: var(--ink); background: var(--surface-3); }
 .hub-grip:active { cursor: grabbing; }
-.is-sorting { user-select: none; -webkit-user-select: none; }
-.is-sorting .hub-grip { cursor: grabbing; }
+/* While a row is held */
+.is-sorting { position: relative; }
+.is-dragging-something, .is-dragging-something * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
 .hub-edit.is-dragging, .hub-nav-row.is-dragging {
-  position: relative; z-index: 2;
   border-color: var(--accent-bright); background: var(--surface-3);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, .55);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .6), 0 0 0 1px rgba(82, 137, 201, .35);
+  opacity: .97; will-change: transform;
 }
+.is-sorting > .hub-edit:not(.is-dragging), .is-sorting > .hub-nav-row:not(.is-dragging) { will-change: transform; }
+.sort-gap {
+  flex: none; border-radius: 12px;
+  border: 1px dashed var(--accent-deep); background: rgba(47, 95, 158, .08);
+}
+.hub-nav-list > .sort-gap { border-radius: 8px; }
 .hub-edit.is-locked .hub-grip { align-self: flex-start; }
 
 .hub-nav-list { display: flex; flex-direction: column; gap: 2px; }

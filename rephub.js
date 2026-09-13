@@ -376,56 +376,146 @@ function dragHandle(label) {
 }
 
 /* Makes the children of `container` slide into a new order when dragged
-   by their handle. Works with a mouse, a trackpad and a finger. When the
-   drop lands, onOrder receives the ids in their new order. */
+   by their handle — with a mouse, a trackpad or a finger.
+
+   The row you hold lifts out and follows the pointer exactly. A gap the
+   same size stays where it will land, and the rows around it glide out
+   of the way. Move as far as you like in one motion; the page scrolls
+   when you reach the top or bottom edge. Escape puts everything back.
+
+   Movement is tracked on the whole window rather than the handle, so a
+   row shifting under the pointer can never drop the drag. */
 function makeSortable(container, itemSelector, onOrder) {
-  const ids = () => Array.prototype.map.call(container.querySelectorAll(itemSelector), (n) => n.dataset.id);
+  const EASE = 'cubic-bezier(.2, .8, .2, 1)';
+  const members = () => Array.prototype.filter.call(container.children, (n) => n.matches(itemSelector));
+  const ids = () => members().map((n) => n.dataset.id);
 
   container.addEventListener('pointerdown', (e) => {
     const grip = e.target.closest('.hub-grip');
     if (!grip || !container.contains(grip) || e.button > 0) return;
     const node = grip.closest(itemSelector);
-    if (!node) return;
-
+    if (!node || node.parentElement !== container) return;
     e.preventDefault();
-    const before = ids().join('|');
-    try { grip.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety, not a need */ }
-    node.classList.add('is-dragging');
+
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const glide = calm ? 'none' : 'transform 220ms ' + EASE;
+    const startOrder = ids().join('|');
+    const start = node.getBoundingClientRect();
+    const grabOffset = e.clientY - start.top;
+    let pointerY = e.clientY;
+    let active = true;
+    let frame = 0;
+
+    /* The gap the row will land in. */
+    const gap = document.createElement('div');
+    gap.className = 'sort-gap';
+    gap.style.height = start.height + 'px';
+    const originalNext = node.nextSibling;
+    container.insertBefore(gap, node);
+
+    /* Lift the row out of the flow, exactly where it was. */
     container.classList.add('is-sorting');
+    document.documentElement.classList.add('is-dragging-something');
+    node.classList.add('is-dragging');
+    Object.assign(node.style, {
+      position: 'fixed', left: start.left + 'px', top: start.top + 'px',
+      width: start.width + 'px', height: start.height + 'px',
+      margin: '0', zIndex: '70', pointerEvents: 'none', transition: 'none',
+      transform: 'translate3d(0, 0, 0)'
+    });
 
-    const move = (ev) => {
-      const y = ev.clientY;
-      if (y < 70) window.scrollBy(0, -14);
-      else if (y > window.innerHeight - 70) window.scrollBy(0, 14);
+    const others = () => members().filter((n) => n !== node);
 
-      const others = Array.prototype.filter.call(container.querySelectorAll(itemSelector), (n) => n !== node);
-      const target = others.find((n) => {
-        const r = n.getBoundingClientRect();
-        return y < r.top + r.height / 2;
-      });
-      if (target) {
-        if (node.nextElementSibling !== target) container.insertBefore(node, target);
-      } else if (others.length) {
-        const last = others[others.length - 1];
-        if (last.nextElementSibling !== node) last.after(node);
+    /* Slide the gap to where the pointer is, animating everything that
+       moves because of it (First, Last, Invert, Play). */
+    function placeGap() {
+      const siblings = others();
+      const box = container.getBoundingClientRect();
+      const y = pointerY - box.top;
+
+      let target = null;
+      for (const s of siblings) {
+        if (y < s.offsetTop + s.offsetHeight / 2) { target = s; break; }
       }
+      let next = gap.nextElementSibling;
+      if (next === node) next = next.nextElementSibling;          // the lifted row is not a neighbour
+      if (target ? next === target : next === null) return;       // the gap is already there
+
+      const firstTops = new Map(siblings.map((s) => [s, s.getBoundingClientRect().top]));
+      if (target) container.insertBefore(gap, target);
+      else container.appendChild(gap);
+
+      const newBox = container.getBoundingClientRect();
+      siblings.forEach((s) => {
+        const delta = firstTops.get(s) - (newBox.top + s.offsetTop);
+        if (Math.abs(delta) < 0.5) return;
+        s.style.transition = 'none';
+        s.style.transform = 'translate3d(0, ' + delta + 'px, 0)';
+        s.getBoundingClientRect();                       // commit the starting point
+        s.style.transition = glide;
+        s.style.transform = '';
+      });
+    }
+
+    function tick() {
+      if (!active) return;
+
+      /* Scroll when the pointer nears the top or bottom of the window. */
+      const edge = 90;
+      if (pointerY < edge) window.scrollBy(0, -Math.ceil((edge - pointerY) / 6));
+      else if (pointerY > window.innerHeight - edge) window.scrollBy(0, Math.ceil((pointerY - (window.innerHeight - edge)) / 6));
+
+      node.style.transform = 'translate3d(0, ' + (pointerY - grabOffset - start.top) + 'px, 0)';
+      placeGap();
+      frame = requestAnimationFrame(tick);
+    }
+
+    const onMove = (ev) => { pointerY = ev.clientY; };
+    const onKey = (ev) => {
+      if (ev.key !== 'Escape') return;
+      container.insertBefore(gap, originalNext && originalNext.parentNode === container ? originalNext : null);
+      finish(true);
     };
 
-    const drop = () => {
-      grip.removeEventListener('pointermove', move);
-      grip.removeEventListener('pointerup', drop);
-      grip.removeEventListener('pointercancel', drop);
-      node.classList.remove('is-dragging');
-      container.classList.remove('is-sorting');
-      const after = ids();
-      if (after.join('|') !== before) onOrder(after, node.dataset.id);
-    };
+    function finish(cancelled) {
+      if (!active) return;
+      active = false;
+      cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('keydown', onKey, true);
 
-    grip.addEventListener('pointermove', move);
-    grip.addEventListener('pointerup', drop);
-    grip.addEventListener('pointercancel', drop);
+      /* Settle into the gap, then hand the row back to the page. */
+      const land = gap.getBoundingClientRect();
+      node.style.transition = calm ? 'none' : 'transform 200ms ' + EASE;
+      node.style.transform = 'translate3d(0, ' + (land.top - start.top) + 'px, 0)';
+
+      const done = () => {
+        container.insertBefore(node, gap);
+        gap.remove();
+        ['position', 'left', 'top', 'width', 'height', 'margin', 'zIndex', 'pointerEvents', 'transition', 'transform']
+          .forEach((k) => { node.style[k] = ''; });
+        members().forEach((s) => { s.style.transition = ''; s.style.transform = ''; });
+        node.classList.remove('is-dragging');
+        container.classList.remove('is-sorting');
+        document.documentElement.classList.remove('is-dragging-something');
+        const endOrder = ids();
+        if (!cancelled && endOrder.join('|') !== startOrder) onOrder(endOrder, node.dataset.id);
+      };
+      if (calm) done(); else setTimeout(done, 210);
+    }
+
+    const onUp = () => finish(false);
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('keydown', onKey, true);
+    frame = requestAnimationFrame(tick);
   });
 
+  /* Keyboard: focus a handle, then the arrow keys move that row. */
   container.addEventListener('keydown', (e) => {
     const grip = e.target.closest('.hub-grip');
     if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
