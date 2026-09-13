@@ -13,8 +13,8 @@ Main Hub and the offers it is allowed. A code gets one offer's board and nothing
 | Admin | `portal.inevitableacq.com` | email + password | Main Hub, only their offers |
 | Rep | `portal.inevitableacq.com/sales-team` | the offer's code | that offer's board only |
 
-Every board has the same tabs: Dashboard, Post Call Form, Data and Add Team (owner and admins
-only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
+Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, and Add Team (owner
+and admins only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
 
 ## Where things live
 
@@ -28,12 +28,14 @@ app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
 team.js           Add Team: offer name, roster, team login page, code, new code
+rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 profile.js        the name at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
 api/boards.js     create an offer, make a new code, archive
 api/people.js     invite admins, change their offers, remove them
 supabase/schema.sql   tables and access rules
+supabase/rep-hub.sql  the shared Rep Hub template table
 ```
 
 ## Security
@@ -191,3 +193,14 @@ overwrites the row in place, keeping its `id` and original `loggedAt`, and stamp
 `editedAt`. **Delete** asks first and cannot be undone.
 
 Deleting a row asks first and is undoable from the top strip.
+
+## Rep Hub
+
+A template shown on every board. Each row is either **All offers** (filled in once, stored in
+the `rep_hub` table) or **This offer only** (stored on the offer, in `boards.directory.repHub`).
+
+- The owner edits everything: values, labels, row types, which rows are shared, sections.
+- An offer's admins fill in that offer's "This offer only" rows.
+- Reps read and click. Empty rows, and headings with nothing under them, are hidden from reps.
+
+Loom and YouTube links play inside the page; anything else opens in a new tab.

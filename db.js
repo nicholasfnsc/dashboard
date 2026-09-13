@@ -179,7 +179,8 @@ async function loadBoard(boardId) {
   const [board, roster, calls] = await Promise.all([
     sb.from('boards').select('id, name, directory').eq('id', boardId).maybeSingle(),
     sb.from('roster').select('name, role, rate, active').eq('board_id', boardId).order('created_at'),
-    readAll(() => sb.from('calls').select('data').eq('board_id', boardId).order('created_at', { ascending: true }))
+    readAll(() => sb.from('calls').select('data').eq('board_id', boardId).order('created_at', { ascending: true })),
+    loadRepHub()
   ]);
   if (board.error) throw board.error;
 
@@ -218,6 +219,30 @@ async function renameBoard(name) {
   /* The team login in Supabase takes the new name too. Not critical, so a
      failure here never undoes the rename. */
   serverAction('/api/boards', { action: 'names', boardId: CACHE.boardId }).catch(() => {});
+}
+
+/* ---------- Rep Hub ---------- */
+/* The shared template. Until the one-time setup is run, the built-in
+   template still shows — it just cannot be saved yet. */
+async function loadRepHub() {
+  const { data, error } = await sb.from('rep_hub').select('content').eq('id', 1).maybeSingle();
+  const saved = !error && data && data.content && Array.isArray(data.content.sections) ? data.content : null;
+  CACHE.repHubReady = !error;
+  CACHE.repHub = saved || JSON.parse(JSON.stringify(DEFAULT_REP_HUB));
+}
+
+async function saveRepHubTemplate() {
+  const { error } = await sb.from('rep_hub')
+    .upsert({ id: 1, content: CACHE.repHub, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
+/* "This offer only" values live on the offer itself. */
+async function saveOfferHubValue(itemId, value) {
+  const directory = Object.assign({}, CACHE.board.directory || {});
+  directory.repHub = Object.assign({}, directory.repHub || {});
+  directory.repHub[itemId] = value;
+  await saveDirectory(directory);
 }
 
 async function saveDirectory(directory) {

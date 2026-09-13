@@ -733,6 +733,7 @@ function showTab(name) {
     p.classList.toggle('hidden', p.dataset.panel !== name);
   });
   if (name === 'data' && typeof renderDataTab === 'function') renderDataTab();
+  if (name === 'rephub' && typeof renderRepHub === 'function') renderRepHub();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

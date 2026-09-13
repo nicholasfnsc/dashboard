@@ -185,6 +185,7 @@
     <button class="tab" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
     <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
+    <button class="tab" role="tab" data-tab="rephub" aria-selected="false">Rep Hub</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
   </nav>
 
@@ -460,6 +461,26 @@
     </div>
   </section>
 
+  <!-- ================= REP HUB ================= -->
+  <section data-panel="rephub" class="hidden">
+    <div class="rephub">
+      <nav class="rephub-nav" id="repHubNav" aria-label="Rep Hub sections"></nav>
+      <div class="rephub-body">
+        <div class="rephub-head">
+          <div>
+            <p class="eyebrow">Rep Hub</p>
+            <h2 class="rephub-title" id="repHubTitle"></h2>
+          </div>
+          <div class="rephub-tools">
+            <span class="axis-note" id="repHubHint"></span>
+            <button class="btn-primary hidden" id="repHubEdit" type="button">Edit</button>
+          </div>
+        </div>
+        <div id="repHubContent"></div>
+      </div>
+    </div>
+  </section>
+
   <section data-panel="team" class="hidden">
     <div class="panel offer-name-panel">
       <div class="panel-body offer-name-body">
@@ -543,6 +564,7 @@
 <script src="/form.js"></script>
 <script src="/datatab.js"></script>
 <script src="/team.js"></script>
+<script src="/rephub.js"></script>
 <script src="/hub.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>

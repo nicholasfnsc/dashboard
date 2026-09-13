@@ -133,6 +133,7 @@
     initPostCallForm();
     initDataTab();
     initTeamTab();
+    initRepHub();
     paintOfferTabs();
     initProfile();
 
@@ -146,6 +147,7 @@
       renderRoster();
       paintBoardName();
       paintProfile();
+      if (!hubEditing) renderRepHub();       // never pull the page out from under someone typing
     });
   }
 
