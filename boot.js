@@ -133,7 +133,6 @@
     initPostCallForm();
     initDataTab();
     initTeamTab();
-    initOnboarding();
     paintOfferTabs();
     initProfile();
 
@@ -145,7 +144,6 @@
       render();
       renderDataTab();
       renderRoster();
-      renderOnboarding();
       paintBoardName();
       paintProfile();
     });

@@ -141,7 +141,7 @@
     <div class="section-head section-head-row">
       <div>
         <h2>Sales team boards</h2>
-        <p>One board per offer. Name each one on its Onboarding tab.</p>
+        <p>One board per offer. Name each one on its Add Team tab.</p>
       </div>
       <button type="button" class="btn-primary hidden" id="createBoardBtn">+ New offer</button>
     </div>
@@ -186,7 +186,6 @@
     <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
-    <button class="tab" role="tab" data-tab="onboarding" aria-selected="false">Onboarding</button>
   </nav>
 
   <!-- ================= DASHBOARD ================= -->
@@ -462,6 +461,13 @@
   </section>
 
   <section data-panel="team" class="hidden">
+    <div class="panel offer-name-panel">
+      <div class="panel-body offer-name-body">
+        <label class="field-label" for="offerNameInput">Offer name</label>
+        <input type="text" id="offerNameInput" class="offer-name-input" placeholder="e.g. Alex" autocomplete="off">
+      </div>
+    </div>
+
     <div class="team-grid">
 
       <div class="panel">
@@ -525,26 +531,6 @@
     </div>
   </section>
 
-  <!-- ================= ONBOARDING ================= -->
-  <section data-panel="onboarding" class="hidden">
-    <div class="panel">
-      <div class="panel-head">
-        <h3>Directory</h3>
-        <p>Quick links for this offer — everyone on the team can find these in one place.</p>
-      </div>
-      <div class="panel-body">
-        <div class="dir-grid" id="directoryRows"></div>
-        <div class="dir-extra" id="directoryExtra"></div>
-        <form class="add-row dir-add" id="directoryAddForm">
-          <label class="hidden" for="dirNewLabel">Link name</label>
-          <input type="text" id="dirNewLabel" placeholder="Link name, e.g. Objection doc" autocomplete="off">
-          <label class="hidden" for="dirNewUrl">Link</label>
-          <input type="url" id="dirNewUrl" placeholder="https://…" autocomplete="off">
-          <button type="submit" class="btn-primary btn-add">Add link</button>
-        </form>
-      </div>
-    </div>
-  </section>
 
 
 </div>
@@ -557,7 +543,6 @@
 <script src="/form.js"></script>
 <script src="/datatab.js"></script>
 <script src="/team.js"></script>
-<script src="/onboarding.js"></script>
 <script src="/hub.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>

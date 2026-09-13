@@ -733,7 +733,6 @@ function showTab(name) {
     p.classList.toggle('hidden', p.dataset.panel !== name);
   });
   if (name === 'data' && typeof renderDataTab === 'function') renderDataTab();
-  if (name === 'onboarding' && typeof renderOnboarding === 'function') renderOnboarding();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

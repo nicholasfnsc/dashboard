@@ -13,8 +13,8 @@ Main Hub and the offers it is allowed. A code gets one offer's board and nothing
 | Admin | `portal.inevitableacq.com` | email + password | Main Hub, only their offers |
 | Rep | `portal.inevitableacq.com/sales-team` | the offer's code | that offer's board only |
 
-Every board has the same tabs: Dashboard, Post Call Form, Data, Add Team (owner and admins
-only) and Onboarding. Offers differ only by name and data — one board, rendered per offer.
+Every board has the same tabs: Dashboard, Post Call Form, Data and Add Team (owner and admins
+only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
 
 ## Where things live
 
@@ -27,8 +27,8 @@ hub.js            Main Hub: offer cards, new offer, admins and invites
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
-team.js           Add Team: roster, team login page, code, new code
-onboarding.js     Onboarding: the offer's name and Directory links
+team.js           Add Team: offer name, roster, team login page, code, new code
+profile.js        the name at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
 api/boards.js     create an offer, make a new code, archive

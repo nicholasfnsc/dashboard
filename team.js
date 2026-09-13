@@ -1,7 +1,7 @@
 /* ============================================================
    team.js — Add Team tab
    ------------------------------------------------------------
-   Who is on this offer's team, and how new people get in.
+   This offer's name, who is on its team, and how new people get in.
    Owner and admins only; reps never see this tab.
 
    Removing someone switches them off rather than deleting them, so
@@ -141,7 +141,45 @@ async function makeNewCode() {
   notify('New code: ' + CACHE.code + '. Send it to everyone who should still have access.');
 }
 
+/* ---------- the offer's name ----------
+   One copy, stored on the offer. The hub card, the offer tabs, the top
+   of the dashboard and the team login's name in Supabase all read it. */
+function paintBoardName() {
+  const name = (CACHE.board && CACHE.board.name) || 'Sales team board';
+  const head = $('#boardNameHead');
+  if (head) head.textContent = name;
+  document.title = name + ' · Inevitable Acquisition';
+
+  const tab = document.querySelector('.offer-tab[data-board="' + CACHE.boardId + '"]');
+  if (tab) tab.textContent = name;
+
+  const input = $('#offerNameInput');
+  if (input && document.activeElement !== input) {
+    input.value = name === 'Untitled offer' ? '' : name;
+  }
+}
+
+async function saveOfferName() {
+  const input = $('#offerNameInput');
+  const name = input.value.trim() || 'Untitled offer';
+  if (CACHE.board && name === CACHE.board.name) return;
+  try {
+    await renameBoard(name);
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't rename this offer.");
+    return;
+  }
+  paintBoardName();
+  notify('Offer renamed to ' + name + '.');
+}
+
 function initTeamTab() {
+  const nameInput = $('#offerNameInput');
+  nameInput.addEventListener('change', saveOfferName);
+  nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') nameInput.blur(); });
+  paintBoardName();
+
   if (!$('#closerList')) return;
 
   $('#addCloserForm').addEventListener('submit', (e) => { e.preventDefault(); addPerson('closer', 'newCloser'); });

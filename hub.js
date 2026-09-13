@@ -196,8 +196,8 @@ function initHub() {
       create.disabled = true;
       try {
         const result = await createBoard();
-        notify('Offer created. Its code is ' + result.code + '. Opening it now — name it on the Onboarding tab.');
-        setTimeout(() => { location.href = '/board/' + result.board.id + '?tab=onboarding'; }, 900);
+        notify('Offer created. Its code is ' + result.code + '. Opening it now — name it at the top of Add Team.');
+        setTimeout(() => { location.href = '/board/' + result.board.id + '?tab=team'; }, 900);
       } catch (err) {
         console.error(err);
         notify(err.message);

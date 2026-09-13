@@ -647,25 +647,9 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 }
 .invite-form .btn-primary { align-self: flex-start; }
 
-/* ============================================================
-   Onboarding — Directory
-   ============================================================ */
-.dir-grid, .dir-extra { display: flex; flex-direction: column; }
-.dir-row {
-  display: grid; grid-template-columns: 180px 1fr auto; align-items: center; gap: 16px;
-  padding: 8px 0;
-}
-.dir-label { font-size: 13px; color: var(--ink-2); }
-.dir-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dir-text { font-size: 13.5px; color: var(--ink); }
-.dir-empty { color: var(--muted); }
-.dir-extra:not(:empty) { border-top: 1px solid var(--line-soft); margin-top: 8px; padding-top: 8px; }
-.dir-add { margin-top: 14px; }
-
 @media (max-width: 760px) {
   .hub-totals { grid-template-columns: repeat(2, 1fr); }
   .admin-row { grid-template-columns: 1fr; }
-  .dir-row { grid-template-columns: 1fr; gap: 6px; }
 }
 
 /* ============================================================
@@ -706,3 +690,14 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
   .topstrip-in { justify-content: center; }
   .profile-name, .profile-title { max-width: 120px; }
 }
+
+/* ---------- offer name, top of Add Team ---------- */
+.offer-name-panel { margin-bottom: var(--gap); }
+.offer-name-body { display: flex; flex-direction: column; gap: 8px; }
+.offer-name-input {
+  width: 100%; max-width: 420px;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px; font-size: 15px;
+}
+.offer-name-input:hover { border-color: #2e323b; }
+.offer-name-input:focus { outline: none; border-color: var(--accent-bright); background: var(--surface-3); }
