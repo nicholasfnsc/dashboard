@@ -737,6 +737,7 @@ function initTabs() {
     t.addEventListener('click', () => showTab(t.dataset.tab));
   });
   $('#goDashboard').addEventListener('click', () => showTab('dashboard'));
+  $('#goDashboard').textContent = '← Dashboard';
 }
 
 /* ---------- main render ---------- */

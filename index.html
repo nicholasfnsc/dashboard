@@ -33,7 +33,56 @@
 
 <div class="app-toast" id="appToast" role="status" aria-live="polite"></div>
 
-<div class="shell">
+
+<!-- ================= HUB (owner only, at /) ================= -->
+<div class="shell hidden" id="hubShell">
+  <div class="dash-head">
+    <span class="brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
+    <div class="dash-head-right">
+      <p class="eyebrow">All offers</p>
+      <h1 class="dash-title">Main Hub</h1>
+    </div>
+  </div>
+
+  <div class="filters">
+    <span class="fpill">
+      <label class="hidden" for="hubRange">Date range</label>
+      <select id="hubRange">
+        <option value="ytd">This year so far</option>
+        <option value="today">Today</option>
+        <option value="7d">Last 7 days</option>
+        <option value="30d">Last 30 days</option>
+        <option value="mtd">This month</option>
+        <option value="lastMonth">Last month</option>
+        <option value="qtd">This quarter</option>
+        <option value="all">All time</option>
+      </select>
+    </span>
+    <span class="filters-spacer"></span>
+    <span class="axis-note" id="hubCount"></span>
+  </div>
+
+  <div class="hub-totals" id="hubTotals"></div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Boards</h2>
+      <p>One board per offer, each with its own team, its own key and its own numbers.</p>
+    </div>
+
+    <form class="add-row hub-new" id="newBoardForm">
+      <label class="hidden" for="newBoardName">Board name</label>
+      <input type="text" id="newBoardName" placeholder="Name a new offer, e.g. MBA Accelerator" autocomplete="off">
+      <button type="submit" class="btn-primary btn-add">Create board</button>
+    </form>
+
+    <div class="hub-grid" id="hubBoards"></div>
+  </div>
+</div>
+
+<div class="shell hidden" id="boardShell">
+
+  <div class="board-bar" id="boardBar"></div>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button class="tab" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
@@ -386,6 +435,7 @@
 <!--PAGE-END-->
 <script src="data.js"></script>
 <script src="db.js"></script>
+<script src="hub.js"></script>
 <script src="app.js"></script>
 <script src="form.js"></script>
 <script src="datatab.js"></script>

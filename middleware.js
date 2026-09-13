@@ -3,33 +3,37 @@ import { next, rewrite } from '@vercel/edge';
 /* ============================================================
    middleware.js — the front door
 
-   This runs on Vercel's servers BEFORE any file is sent. Someone
-   without the password never receives the dashboard at all — not the
-   HTML, not the scripts, not a single number. There is nothing on
-   their machine to inspect.
+   Runs on Vercel's servers before any file is sent, so someone
+   without a way in never receives the board at all.
 
-   The password itself lives in Vercel → Settings → Environment
-   Variables. It is never in this repo and never sent to a browser.
+   Three kinds of address:
+     /                    your hub. OWNER_PASSWORD.
+     /sales-team          key entry for a sales team.
+     /sales-team/ABCD     that board, once the key has been entered.
 
-   Two doors, two secrets:
-     /sales-team     the sales team, using TEAM_KEY
-     everything else you, using OWNER_PASSWORD
+   Your password opens everything. A board key opens that board and
+   nothing else — not the hub, not another offer.
 
-   To switch the whole thing off: delete this file and redeploy.
+   OWNER_PASSWORD lives in Vercel's settings. Board keys live in the
+   database, so a new board costs a click rather than a deploy.
+
+   To take the door off entirely: delete this file and redeploy.
    ============================================================ */
 
 export const config = {
-  /* Everything is behind the door except the logo, which the sign-in
-     page itself needs to display. */
-  matcher: ['/((?!logo\\.png).*)']
+  /* The logo is needed by the sign-in page itself, and /api/board must
+     stay reachable so a key can be checked before anyone is let in.
+     Without a session that endpoint answers nothing but yes or no. */
+  matcher: ['/((?!logo\\.png|api/board).*)']
 };
 
-const COOKIE = 'ia_pass';
-const ROLE_COOKIE = 'ia_role';      /* readable by the page, so it can show owner-only controls */
+const PASS_COOKIE = 'ia_pass';
+const ROLE_COOKIE = 'ia_role';    /* readable by the page, so it can show owner-only controls */
+const BOARD_COOKIE = 'ia_board';
 const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
-/* The cookie holds a hash, so a stolen cookie never reveals the
-   password — and changing the password invalidates every old cookie. */
+/* Cookies hold a hash, so a stolen cookie never reveals the secret —
+   and changing a secret invalidates every cookie issued under it. */
 async function stamp(secret, scope) {
   const bytes = new TextEncoder().encode('ia-dash|' + scope + '|' + secret);
   const digest = await crypto.subtle.digest('SHA-256', bytes);
@@ -52,98 +56,118 @@ function same(a, b) {
   return diff === 0;
 }
 
+/* Board keys are checked against the database, since boards are made
+   without a deploy. The endpoint answers only true or false. */
+async function keyIsReal(request, key) {
+  try {
+    const check = new URL('/api/board?verify=' + encodeURIComponent(key), request.url);
+    const answer = await fetch(check.toString(), { headers: { 'x-ia-check': '1' } });
+    if (!answer.ok) return false;
+    const body = await answer.json();
+    return body && body.valid === true;
+  } catch (err) {
+    return false;
+  }
+}
+
+async function submitted(request) {
+  try {
+    const body = await request.formData();
+    return String(body.get('secret') || '').trim();
+  } catch (err) {
+    return '';
+  }
+}
+
 export default async function middleware(request) {
   const url = new URL(request.url);
-  const isTeamDoor = url.pathname.replace(/\/+$/, '') === '/sales-team';
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  const teamMatch = path.match(/^\/sales-team(?:\/([A-Za-z0-9]{1,12}))?$/);
+  const isTeamDoor = !!teamMatch;
+  const pathKey = teamMatch && teamMatch[1] ? teamMatch[1].toUpperCase() : '';
 
-  /* Signing out just drops the cookies and shows the door again. */
   if (url.searchParams.has('signout')) {
     return new Response(null, {
       status: 303,
       headers: new Headers([
         ['location', isTeamDoor ? '/sales-team' : '/'],
-        ['set-cookie', COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
-        ['set-cookie', ROLE_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0']
+        ['set-cookie', PASS_COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
+        ['set-cookie', ROLE_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0'],
+        ['set-cookie', BOARD_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0']
       ])
     });
   }
 
   const ownerPassword = process.env.OWNER_PASSWORD;
-  const teamKey = process.env.TEAM_KEY;
-
-  /* Nothing configured yet — say so rather than quietly going public. */
   if (!ownerPassword) {
-    return page(
-      'Almost there',
+    return page('Almost there',
       'Add an environment variable named <b>OWNER_PASSWORD</b> in your Vercel project settings, then redeploy. Until then this board stays closed.',
-      null, 503
-    );
+      null, 503);
   }
 
-  /* Accepted secrets for this door. The owner password opens everything. */
-  const accepted = isTeamDoor && teamKey ? [teamKey, ownerPassword] : [ownerPassword];
+  const ownerStamp = await stamp(ownerPassword, 'v1');
+  const signedInAsOwner = same(readCookie(request, PASS_COOKIE) || '', ownerStamp);
 
-  /* Already signed in? */
-  const cookie = readCookie(request, COOKIE);
-  if (cookie) {
-    for (const secret of accepted) {
-      if (same(cookie, await stamp(secret, 'v1'))) return open(request, isTeamDoor);
-    }
-  }
+  /* ---------- the hub, and anything that is not a team door ---------- */
+  if (!isTeamDoor) {
+    if (signedInAsOwner) return next();
 
-  /* Someone submitting the form. */
-  if (request.method === 'POST') {
-    let entered = '';
-    try {
-      const body = await request.formData();
-      entered = String(body.get('secret') || '').trim();
-    } catch (err) {
-      entered = '';
-    }
-
-    for (const secret of accepted) {
-      if (same(entered, secret)) {
-        const value = await stamp(secret, 'v1');
-        const role = same(secret, ownerPassword) ? 'owner' : 'team';
+    if (request.method === 'POST') {
+      if (same(await submitted(request), ownerPassword)) {
         return new Response(null, {
           status: 303,
           headers: new Headers([
-            ['location', url.pathname],
-            ['set-cookie', COOKIE + '=' + value + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS],
-            ['set-cookie', ROLE_COOKIE + '=' + role + '; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS]
+            ['location', path],
+            ['set-cookie', PASS_COOKIE + '=' + ownerStamp + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS],
+            ['set-cookie', ROLE_COOKIE + '=owner; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS]
           ])
         });
       }
+      await new Promise((done) => setTimeout(done, 1000));   // guessing should cost something
+      return ownerPage(true);
     }
 
-    await new Promise((done) => setTimeout(done, 1000));
-    return doorPage(isTeamDoor, true);
+    return ownerPage(false);
   }
 
-  return doorPage(isTeamDoor, false);
+  /* ---------- a sales team's door ---------- */
+  /* From the hub you walk into any board without typing its key. */
+  if (signedInAsOwner && pathKey) return rewrite(new URL('/', request.url));
+
+  const boardCookie = readCookie(request, BOARD_COOKIE) || '';
+  if (pathKey && same(boardCookie, await stamp(pathKey, 'board'))) {
+    return rewrite(new URL('/', request.url));
+  }
+
+  if (request.method === 'POST') {
+    const entered = (await submitted(request)).toUpperCase();
+    if (entered && await keyIsReal(request, entered)) {
+      return new Response(null, {
+        status: 303,
+        headers: new Headers([
+          ['location', '/sales-team/' + entered],
+          ['set-cookie', BOARD_COOKIE + '=' + (await stamp(entered, 'board')) + '; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS],
+          ['set-cookie', ROLE_COOKIE + '=team; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS]
+        ])
+      });
+    }
+    await new Promise((done) => setTimeout(done, 1000));
+    return teamPage(true);
+  }
+
+  return teamPage(false);
 }
 
-/* /sales-team has no file of its own — it is the same board, reached by
-   a different door. Rewriting here keeps the address in the bar while
-   serving the app, and does not depend on where rewrites land in the
-   routing order. */
-function open(request, isTeamDoor) {
-  return isTeamDoor ? rewrite(new URL('/', request.url)) : next();
-}
+const ownerPage = (wrong) => page('Sign in', 'This board is private.', {
+  placeholder: 'Password', spaced: false, button: 'Sign in', wrong,
+  wrongText: "That password doesn't match."
+});
 
-function doorPage(isTeamDoor, wrong) {
-  return isTeamDoor
-    ? page(
-        'Enter your secret key',
-        'Ask whoever shared their Sales Team Board with you for their team secret key.',
-        { placeholder: 'SECRET KEY', spaced: true, button: 'Go', wrong,
-          wrongText: "That key doesn't match. Check it with whoever shared the board." })
-    : page(
-        'Sign in',
-        'This board is private.',
-        { placeholder: 'Password', spaced: false, button: 'Sign in', wrong,
-          wrongText: "That password doesn't match." });
-}
+const teamPage = (wrong) => page('Enter your secret key',
+  'Ask whoever shared their Sales Team Board with you for their team secret key.', {
+    placeholder: 'SECRET KEY', spaced: true, button: 'Go', wrong,
+    wrongText: "That key doesn't match. Check it with whoever shared the board."
+  });
 
 /* A self-contained page: no stylesheet, no script, nothing fetched. */
 function page(title, sub, form, status) {
@@ -196,8 +220,6 @@ function page(title, sub, form, status) {
   }
   button:hover { background: #3b82f6; border-color: #3b82f6; }
   .err { margin: 16px 0 0; font-size: 12.5px; color: #f87171; }
-  .note { margin: 24px 0 0; font-size: 12.5px; line-height: 1.7; color: #6d727e; }
-  .note b { color: #a8adb8; font-weight: 500; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head><body>
@@ -205,7 +227,7 @@ function page(title, sub, form, status) {
     <span class="brand"><img src="/logo.png" alt="">Inevitable Acquisition</span>
     <h1>${title}</h1>
     <p class="sub">${sub}</p>
-    ${field || `<p class="note">${sub ? '' : ''}</p>`}
+    ${field}
   </div>
 </body></html>`;
 
