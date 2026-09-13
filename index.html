@@ -15,41 +15,6 @@
 </head>
 <body>
 <!--PAGE-START-->
-<script>
-  /* The board is hidden until a session is confirmed, so nothing of it
-     is ever on screen for someone who has not signed in. */
-  document.documentElement.classList.add('pre-locked');
-</script>
-
-<div class="gate" id="gate">
-  <div class="gate-box">
-    <span class="brand gate-brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
-
-    <!-- your own sign-in, at the bare domain -->
-    <form id="ownerForm" class="gate-form hidden">
-      <h1 class="gate-title">Sign in</h1>
-      <p class="gate-sub">This board is private.</p>
-      <label class="hidden" for="ownerEmail">Email</label>
-      <input type="email" id="ownerEmail" placeholder="you@inevitableacq.com" autocomplete="username">
-      <label class="hidden" for="ownerPassword">Password</label>
-      <input type="password" id="ownerPassword" placeholder="Password" autocomplete="current-password">
-      <button type="submit" class="btn-gate">Sign in</button>
-    </form>
-
-    <!-- the team's sign-in, at /sales-access -->
-    <form id="teamForm" class="gate-form hidden">
-      <h1 class="gate-title">Enter your secret key</h1>
-      <p class="gate-sub">Ask whoever shared their Sales Team Board with you for their team secret key.</p>
-      <label class="hidden" for="gateKey">Secret key</label>
-      <input type="text" id="gateKey" placeholder="SECRET KEY" autocomplete="off" spellcheck="false">
-      <button type="submit" class="btn-gate">Go</button>
-    </form>
-
-    <p class="gate-error hidden" id="gateError"></p>
-    <p class="gate-busy hidden" id="gateBusy">Checking…</p>
-  </div>
-</div>
-
 <header class="topstrip">
   <div class="topstrip-in">
     <span class="brand"><img class="brand-mark" src="logo.png" alt="">Inevitable Acquisition</span>
@@ -401,10 +366,9 @@
           <div class="key-field">
             <span class="field-label">Secret key</span>
             <p class="key-note" id="keyOwnerOnly">
-              The key is the password on your shared sales account, held by Supabase.
-              This page cannot read it, and neither can anyone who inspects the site.
-              Set it or change it under
-              <b>Authentication &rarr; Users</b> in your Supabase project.
+              The key is checked by Vercel before this page is sent, so it is never
+              part of the site and cannot be read from it. Set or change it under
+              <b>Vercel &rarr; Settings &rarr; Environment Variables &rarr; TEAM_KEY</b>.
             </p>
             <p class="key-note hidden" id="keyTeamNote">
               Ask the account owner for the key.

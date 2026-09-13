@@ -6,10 +6,11 @@ in a browser and it runs, and Vercel deploys it as-is with no build step.
 
 ```
 index.html    markup for all four tabs
-config.js     your Supabase URL and anon key (safe to publish)
-db.js         shared storage, sign-in, and live updates
-boot.js       start-up: confirm a session, then start the board
-supabase-schema.sql   run once in the Supabase SQL editor
+middleware.js the front door — Vercel checks the password before sending anything
+config.js     optional Supabase URL and anon key (safe to publish)
+db.js         storage: this browser alone, or shared, same interface either way
+boot.js       start-up
+supabase-schema.sql   optional, run once in the Supabase SQL editor
 logo.png      the IA mark — brand mark in the header and the favicon
 styles.css    design tokens + all styling (black ground, steel-blue accent)
 data.js       record shape and shared vocabulary (outcomes, funnels, rates)
@@ -158,74 +159,53 @@ overwrites the row in place, keeping its `id` and original `loggedAt`, and stamp
 
 Deleting a row asks first and is undoable from the top strip.
 
-## Backend setup
+## Locking the board
 
-Do this once. It takes about ten minutes and turns the board from
-one-browser-at-a-time into something the whole team shares.
+`middleware.js` runs on Vercel's servers and checks the password **before a single file
+is sent**. Someone without it never receives the dashboard — not the HTML, not the
+scripts, not one number. There is nothing on their machine to inspect.
 
-**1. Create a Supabase project** at supabase.com — the free tier is plenty.
+Two doors, two secrets, both held by Vercel:
 
-**2. Build the database.** Open **SQL Editor**, paste the whole of
-`supabase-schema.sql`, and run it.
-
-**3. Turn off public sign-ups.** **Authentication → Providers → Email** and switch
-**Enable sign ups** off. Without this, anyone could create themselves an account and
-walk in.
-
-**4. Create the two accounts.** **Authentication → Users → Add user**, twice. Tick
-**Auto Confirm User** both times.
-
-| Account | Email | Password |
+| Address | Who | Environment variable |
 |---|---|---|
-| You | your own email | a strong password, **new** — not one you have used elsewhere |
-| The team | `team@inevitableacq.com` | the secret key you hand out |
+| `sales.inevitableacq.com` | you | `OWNER_PASSWORD` |
+| `sales.inevitableacq.com/sales-access` | the sales team | `TEAM_KEY` |
 
-Nobody types these into a file. Supabase hashes them and checks them on its server.
+Set them in **Vercel → Settings → Environment Variables**, then redeploy. Until
+`OWNER_PASSWORD` exists the board refuses to open at all, so it can never be public by
+accident.
 
-**5. Say which one is the owner.** Back in the SQL Editor, with your own email
-substituted:
+Neither value is in this repo, and neither is ever sent to a browser. The sign-in page
+posts what was typed; Vercel compares it server-side and answers with a cookie holding
+only a hash. Changing a password invalidates every cookie issued under the old one.
 
-```sql
-insert into public.profiles (id, role)
-select id, 'owner' from auth.users where email = 'YOUR-EMAIL-HERE'
-on conflict (id) do update set role = 'owner';
+To change the team key, edit `TEAM_KEY` and redeploy. To take the door off entirely,
+delete `middleware.js`.
 
-insert into public.profiles (id, role)
-select id, 'team' from auth.users where email = 'team@inevitableacq.com'
-on conflict (id) do update set role = 'team';
-```
+`package.json` exists only so Vercel can install the one package the middleware imports.
+Nothing is installed on your machine and the site still has no build step.
 
-**6. Connect the site.** **Project Settings → API** gives you a **Project URL** and an
-**anon public** key. Paste both into `config.js`, then commit and push — Vercel
-redeploys on its own.
+## Sharing data with the team
 
-Those two values are meant to be public. On their own they open nothing: every table
-refuses to answer without a signed-in session, which is what Row Level Security in the
-schema enforces.
+**Optional.** Without it, the board works immediately and saves everything in whichever
+browser you are using — fine for you alone, but your team's calls stay on their machines.
 
-**7. Point the domain at it.** In Vercel, add `sales.inevitableacq.com` under
-**Settings → Domains**.
+To put everyone on the same rows:
 
-### How access works afterwards
+1. Create a free project at supabase.com
+2. **SQL Editor** → paste all of `supabase-schema.sql` → Run
+3. **Project Settings → API** → paste the **Project URL** and **anon public** key into
+   `config.js`, then push
 
-| Address | Who | What they type |
-|---|---|---|
-| `sales.inevitableacq.com` | you | your email and password |
-| `sales.inevitableacq.com/sales-access` | the sales team | the secret key |
+That is the whole setup. No accounts to create, no roles to assign — who may open the
+board was already settled at the door.
 
-Both land on the same board with the same numbers. The roster and the team login link
-are owner-only; everything else is shared.
+Once connected, open boards refresh themselves within a second of anyone logging a call.
 
-To change the key, edit the `team@inevitableacq.com` user's password under
-**Authentication → Users**. To cut someone off entirely, change it and hand the new one
-only to the people who should still have it.
-
-### Why no secret lives in this repo
-
-Everything in these files is downloaded by every visitor's browser — that is what a
-website is. So nothing secret can be kept here, and nothing secret is: passwords and the
-team key exist only inside Supabase, stored as hashes, compared on their server. The
-browser only ever learns yes or no.
+Those two values in `config.js` are meant to be public, but they are only reachable by
+someone already past the password, since the middleware gates every file including that
+one.
 
 
 ## Add Team
@@ -258,8 +238,8 @@ can never strand the owner. The team login page URL is editable and saved; it de
 `https://sales.inevitableacq.com/sales-access`, and `vercel.json` rewrites that path to
 `index.html` so the link resolves.
 
-Sign-in is handled by Supabase Auth. The key is the password on the shared
-`team@inevitableacq.com` account, so this page never holds it and cannot reveal it.
+The key is checked by Vercel before this page is sent, so it is never part of the site
+and cannot be read from it. See "Locking the board" above.
 
 ## Interactions already wired
 

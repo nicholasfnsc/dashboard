@@ -1,26 +1,22 @@
 /* ============================================================
-   config.js — connection settings
+   config.js — optional shared storage
 
-   Paste the two values from your Supabase project here:
-     Supabase dashboard → Project Settings → API
+   Leave this alone and the board works right now, saving everything
+   in your own browser.
 
-   These two are SAFE to publish. The anon key is designed to sit in
-   the browser; it grants nothing on its own, because every table is
-   locked behind Row Level Security and requires a signed-in session.
+   Fill it in when you want your team's calls to reach your dashboard:
+   Supabase → Project Settings → API gives you both values.
+   See README.md → "Sharing data with the team".
 
-   Nothing secret belongs in this file, or in any other file in this
-   repo. Passwords and the team key live inside Supabase, hashed, and
-   are checked on their server — never here.
+   These two are safe to publish. Nothing secret belongs in this file,
+   or in any other file in this repo — the password and the team key
+   live in Vercel's settings and are checked before this page is ever
+   sent to anyone.
    ============================================================ */
 
 const SUPABASE_URL = 'PASTE_YOUR_PROJECT_URL_HERE';
 const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_PUBLIC_KEY_HERE';
 
-/* The shared sales account. Its password is the team secret key, so the
-   key is verified by Supabase rather than by anything in this code.
-   The address itself is not a secret — the key is. */
-const TEAM_ACCOUNT_EMAIL = 'team@inevitableacq.com';
-
-/* Visiting this path shows the team key screen instead of your own
-   sign-in. vercel.json rewrites it to the app. */
+/* Visiting this path shows the team key screen instead of yours.
+   vercel.json rewrites it to the app. */
 const TEAM_ACCESS_PATH = '/sales-access';

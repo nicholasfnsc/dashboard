@@ -1,0 +1,10 @@
+{
+  "name": "ia-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Sales and commission dashboard for Inevitable Acquisition",
+  "comment": "The site itself has no build step. This file exists only so Vercel can install the one package middleware.js needs. Nothing is installed on your machine.",
+  "dependencies": {
+    "@vercel/edge": "^1.1.1"
+  }
+}
