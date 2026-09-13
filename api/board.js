@@ -15,11 +15,27 @@ import { createPool } from '@vercel/postgres';
    first use. Connect a database in Vercel → Storage and it works.
    ============================================================ */
 
-const CONNECTION =
-  process.env.POSTGRES_URL ||
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_PRISMA_URL ||
-  '';
+/* Vercel names the connection variable after whatever prefix you chose
+   when connecting the database, so rather than insisting on one name we
+   take the usual ones first and otherwise find the Postgres URL sitting
+   in the environment. Pooled connections are preferred: serverless opens
+   and closes a lot of them. */
+function findConnection() {
+  const known = [
+    'POSTGRES_URL', 'DATABASE_URL', 'STORAGE_URL',
+    'POSTGRES_PRISMA_URL', 'POSTGRES_URL_NON_POOLING'
+  ];
+  for (const name of known) {
+    if (process.env[name]) return process.env[name];
+  }
+
+  const looksRight = (value) => typeof value === 'string' && /^postgres(ql)?:\/\//.test(value);
+  const names = Object.keys(process.env).filter((n) => looksRight(process.env[n]));
+  const pooled = names.find((n) => !/UNPOOLED|NON_POOLING/i.test(n));
+  return process.env[pooled || names[0]] || '';
+}
+
+const CONNECTION = findConnection();
 
 let pool = null;
 let ready = false;
