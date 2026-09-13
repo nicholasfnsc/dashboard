@@ -59,6 +59,9 @@
     const result = await signInWithCode(code);
     button.disabled = false;
     if (result.error) return fail('codeError', result.error);
+    /* A fresh code entry is a fresh person: forget whoever was picked on
+       this device before, so "Who's logging in?" is always asked. */
+    try { localStorage.removeItem('ia-who:' + result.boardId); } catch (err) { /* private window */ }
     location.href = '/board/' + result.boardId;
   });
 

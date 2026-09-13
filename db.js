@@ -128,6 +128,9 @@ async function updateMyProfile(name, title) {
 
 async function signOut() {
   const wasTeam = CACHE.me && CACHE.me.kind === 'team';
+  if (wasTeam && CACHE.boardId) {
+    try { localStorage.removeItem('ia-who:' + CACHE.boardId); } catch (e) { /* private window */ }
+  }
   await sb.auth.signOut();
   location.href = wasTeam ? TEAM_LOGIN_PATH : '/';
 }
