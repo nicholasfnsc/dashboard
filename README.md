@@ -7,10 +7,9 @@ in a browser and it runs, and Vercel deploys it as-is with no build step.
 ```
 index.html    markup for all four tabs
 middleware.js the front door — Vercel checks the password before sending anything
-config.js     optional Supabase URL and anon key (safe to publish)
+api/board.js  the shared store, running on Vercel's servers
 db.js         storage: this browser alone, or shared, same interface either way
 boot.js       start-up
-supabase-schema.sql   optional, run once in the Supabase SQL editor
 logo.png      the IA mark — brand mark in the header and the favicon
 styles.css    design tokens + all styling (black ground, steel-blue accent)
 data.js       record shape and shared vocabulary (outcomes, funnels, rates)
@@ -188,24 +187,33 @@ Nothing is installed on your machine and the site still has no build step.
 
 ## Sharing data with the team
 
-**Optional.** Without it, the board works immediately and saves everything in whichever
-browser you are using — fine for you alone, but your team's calls stay on their machines.
+Without this, every browser keeps its own copy: your team logs calls on their machines
+and those calls never reach your dashboard. With it, everyone reads and writes the same
+rows.
 
-To put everyone on the same rows:
+**Two clicks, no copying anything:**
 
-1. Create a free project at supabase.com
-2. **SQL Editor** → paste all of `supabase-schema.sql` → Run
-3. **Project Settings → API** → paste the **Project URL** and **anon public** key into
-   `config.js`, then push
+1. Vercel → your project → **Storage** → **Create Database** → choose **Neon (Postgres)**
+2. **Connect to Project**, then redeploy
 
-That is the whole setup. No accounts to create, no roles to assign — who may open the
-board was already settled at the door.
+That is the whole setup. Vercel adds the connection details to the project itself, and
+`api/board.js` creates its own tables the first time it runs. There is no SQL to paste
+and no keys to copy.
 
-Once connected, open boards refresh themselves within a second of anyone logging a call.
+Until a database is connected the API answers `connected: false` and the board quietly
+saves locally instead, so nothing is broken in the meantime — just not shared.
 
-Those two values in `config.js` are meant to be public, but they are only reachable by
-someone already past the password, since the middleware gates every file including that
-one.
+### How it fits together
+
+```
+browser  ──►  /api/board  ──►  Postgres
+                    ▲
+             middleware.js — password checked here first
+```
+
+The connection string stays on the server. Only someone already past the password can
+reach the API, because the middleware guards `/api` like everything else. The page keeps
+up by asking for fresh rows every 15 seconds and whenever you return to the tab.
 
 
 ## Add Team

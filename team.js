@@ -6,12 +6,12 @@
    lives in the shared database, so it is the same roster for
    everyone.
 
-   The secret key is NOT here. It is the password of the shared sales
-   account inside Supabase, stored hashed and checked on their server.
-   Nothing in this file — or any file in this repo — knows what it is.
+   The secret key is NOT here. Vercel checks it before this page is
+   ever sent, so nothing in this file — or any file in this repo —
+   knows what it is.
    ============================================================ */
 
-const DEFAULT_TEAM_URL = 'https://sales.inevitableacq.com' + TEAM_ACCESS_PATH;
+const DEFAULT_TEAM_URL = 'https://sales.inevitableacq.com/sales-team';
 
 function savedRoster() {
   return CACHE.team;
@@ -112,8 +112,8 @@ function paintKeyPanel() {
   const settings = CACHE.settings || {};
   $('#teamUrl').value = settings.teamUrl || DEFAULT_TEAM_URL;
 
-  /* There is nothing to display: the key is a password held by Supabase,
-     and the whole point is that this page cannot read it. */
+  /* There is nothing to display: the key is checked by Vercel before
+     this page is sent, so the page cannot read it. */
   keyInput.value = '';
   $('#teamUrl').readOnly = !isOwner();
   $('#keyOwnerOnly').classList.toggle('hidden', !isOwner());
