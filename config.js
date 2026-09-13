@@ -19,4 +19,4 @@ const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_PUBLIC_KEY_HERE';
 
 /* Visiting this path shows the team key screen instead of yours.
    vercel.json rewrites it to the app. */
-const TEAM_ACCESS_PATH = '/sales-access';
+const TEAM_ACCESS_PATH = '/sales-team';

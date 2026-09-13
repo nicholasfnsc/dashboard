@@ -12,7 +12,7 @@ import { next } from '@vercel/edge';
    Variables. It is never in this repo and never sent to a browser.
 
    Two doors, two secrets:
-     /sales-access   the sales team, using TEAM_KEY
+     /sales-team     the sales team, using TEAM_KEY
      everything else you, using OWNER_PASSWORD
 
    To switch the whole thing off: delete this file and redeploy.
@@ -54,14 +54,14 @@ function same(a, b) {
 
 export default async function middleware(request) {
   const url = new URL(request.url);
-  const isTeamDoor = url.pathname.replace(/\/+$/, '') === '/sales-access';
+  const isTeamDoor = url.pathname.replace(/\/+$/, '') === '/sales-team';
 
   /* Signing out just drops the cookies and shows the door again. */
   if (url.searchParams.has('signout')) {
     return new Response(null, {
       status: 303,
       headers: new Headers([
-        ['location', isTeamDoor ? '/sales-access' : '/'],
+        ['location', isTeamDoor ? '/sales-team' : '/'],
         ['set-cookie', COOKIE + '=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
         ['set-cookie', ROLE_COOKIE + '=; Path=/; Secure; SameSite=Lax; Max-Age=0']
       ])

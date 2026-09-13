@@ -170,7 +170,7 @@ Two doors, two secrets, both held by Vercel:
 | Address | Who | Environment variable |
 |---|---|---|
 | `sales.inevitableacq.com` | you | `OWNER_PASSWORD` |
-| `sales.inevitableacq.com/sales-access` | the sales team | `TEAM_KEY` |
+| `sales.inevitableacq.com/sales-team` | the sales team | `TEAM_KEY` |
 
 Set them in **Vercel → Settings → Environment Variables**, then redeploy. Until
 `OWNER_PASSWORD` exists the board refuses to open at all, so it can never be public by
@@ -235,7 +235,7 @@ locked visitor never catches a frame of the figures.
 **Preview the login screen** locks this browser so the gate can be tried end to end. The
 gate shows the key and an exit route while the key is held in this browser, so previewing
 can never strand the owner. The team login page URL is editable and saved; it defaults to
-`https://sales.inevitableacq.com/sales-access`, and `vercel.json` rewrites that path to
+`https://sales.inevitableacq.com/sales-team`, and `vercel.json` rewrites that path to
 `index.html` so the link resolves.
 
 The key is checked by Vercel before this page is sent, so it is never part of the site

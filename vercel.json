@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/sales-access", "destination": "/index.html" }
+    { "source": "/sales-team", "destination": "/index.html" }
   ]
 }
