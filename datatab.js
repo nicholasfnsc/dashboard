@@ -113,9 +113,7 @@ function renderDataTab() {
     del.addEventListener('click', async () => {
       const who = r.clientName || 'this call';
       if (!window.confirm('Delete the logged call for ' + who + ' on ' + r.callDate +
-          '?
-
-This removes it for the whole team. You can undo it.')) return;
+          '?\n\nThis removes it for the whole team. You can undo it.')) return;
 
       pushUndo({ kind: 'restoreCall', label: 'Deleted the call for ' + who, row: r });
 

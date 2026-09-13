@@ -123,9 +123,7 @@ function renderHub() {
     rekey.type = 'button';
     rekey.addEventListener('click', async () => {
       const next = window.prompt(
-        'New key for "' + b.name + '".
-
-3 to 12 letters or digits. Anyone using the old key '
+        'New key for "' + b.name + '".\n\n3 to 12 letters or digits. Anyone using the old key '
         + 'is locked out straight away, so send the new one to whoever should still have it.', b.key);
       if (next === null) return;
       const wanted = next.trim().toUpperCase();
