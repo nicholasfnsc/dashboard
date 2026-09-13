@@ -1,32 +1,67 @@
-# IA Dashboard
+# Inevitable Acquisition Portal
 
-Sales & commission dashboard for the team. **Dashboard**, **Post Call Form**, **Data** and
-**Add Team** are the four tabs. Zero-build static site — open `index.html`
-in a browser and it runs, and Vercel deploys it as-is with no build step.
+`portal.inevitableacq.com` — the home of every offer and every sales team.
+
+## The one rule
+
+**You either have an account or you have a code.** An account (owner or admin) gets the
+Main Hub and the offers it is allowed. A code gets one offer's board and nothing else.
+
+| Who | Goes to | Enters | Sees |
+|---|---|---|---|
+| Owner | `portal.inevitableacq.com` | email + password | Main Hub, every offer, admins |
+| Admin | `portal.inevitableacq.com` | email + password | Main Hub, only their offers |
+| Rep | `portal.inevitableacq.com/sales-team` | the offer's code | that offer's board only |
+
+Every board has the same tabs: Dashboard, Post Call Form, Data, Add Team (owner and admins
+only) and Onboarding. Offers differ only by name and data — one board, rendered per offer.
+
+## Where things live
 
 ```
-index.html    markup for all four tabs
-middleware.js the front door — Vercel checks the password before sending anything
-api/board.js  the shared store, running on Vercel's servers
-db.js         storage: this browser alone, or shared, same interface either way
-boot.js       start-up
-logo.png      the IA mark — brand mark in the header and the favicon
-styles.css    design tokens + all styling (black ground, steel-blue accent)
-data.js       record shape and shared vocabulary (outcomes, funnels, rates)
-app.js        metric definitions, filtering, charts, drag-to-reorder, pinning
-form.js       Post Call Form — conditional fields, validation, submission, editing
-datatab.js    Data tab — the call log, with edit and delete per row
-team.js       Add Team — roster, secret key, and the key gate
+index.html        every screen: sign-in, code page, hub, board
+config.js         Supabase address and publishable key (both public by design)
+db.js             every read and write to Supabase
+boot.js           decides which screen each person gets
+hub.js            Main Hub: offer cards, new offer, admins and invites
+app.js            dashboard metrics, charts, filters, undo
+form.js           Post Call Form
+datatab.js        Data tab
+team.js           Add Team: roster, team login page, code, new code
+onboarding.js     Onboarding: the offer's name and Directory links
+data.js           outcomes, funnels, commission rates
+api/enter.js      team code -> that offer's team account
+api/boards.js     create an offer, make a new code, archive
+api/people.js     invite admins, change their offers, remove them
+supabase/schema.sql   tables and access rules
 ```
 
-## Run it locally
+## Security
 
-Double-click `index.html`. That's it — no Node, no install.
+Access is enforced by Row Level Security in the database, not by the page. A request for
+an offer's data that the person may not see comes back empty wherever it comes from.
 
-## Deploy to Vercel
+- **Sign-ups are off** in Supabase. Admins exist only because the owner invited them.
+- **A code is the password of that offer's team account.** Supabase checks it.
+- **Making a new code** creates a fresh team account and deletes the old one, signing
+  every rep on that offer out at once. Calls belong to the offer, so none are touched.
+- **The secret key** lives only in Vercel as `SUPABASE_SERVICE_ROLE_KEY`, read by the
+  functions in `api/`. It is never in this repository and never reaches a browser.
+- **Nothing is deleted.** Offers are archived; the database refuses to delete an offer
+  that holds calls; removing a rep switches them off and keeps their history.
 
-Push this folder to a GitHub repo, then import it in Vercel as a project with
-**Framework Preset: Other** and no build command. The output directory is the repo root.
+## Deploying
+
+Deploy from this folder with `vercel deploy --prod`. There is no build step.
+
+Database changes: edit `supabase/schema.sql` and run it in the Supabase SQL Editor. It is
+written to be safe to run again.
+
+## Before inviting admins
+
+In Supabase → **Authentication → URL Configuration**, set **Site URL** to
+`https://portal.inevitableacq.com` and add `https://portal.inevitableacq.com/**` under
+**Redirect URLs**. Otherwise invitation links point somewhere else.
 
 ## The data model
 
@@ -130,9 +165,8 @@ Always required: Date, Closer, Setter, Client Full Name. Closed also requires Pa
 Method and a Revenue Generated above zero; Disqualified requires both of its selects;
 Remainder requires a cash amount above zero.
 
-Submissions are written to `localStorage` under `ia-dash:calls` and picked up by the
-Dashboard immediately. With no roster yet, the form points at the Add Team tab instead of
-offering two empty dropdowns.
+Submissions are saved to the `calls` table in Supabase against the offer's board and picked
+up by every open board within 15 seconds. Each call records who logged it.
 
 ### Known gap
 
@@ -157,85 +191,3 @@ overwrites the row in place, keeping its `id` and original `loggedAt`, and stamp
 `editedAt`. **Delete** asks first and cannot be undone.
 
 Deleting a row asks first and is undoable from the top strip.
-
-## Locking the board
-
-`middleware.js` runs on Vercel's servers and checks the password **before a single file
-is sent**. Someone without it never receives the dashboard — not the HTML, not the
-scripts, not one number.
-
-Set `OWNER_PASSWORD` in **Vercel → Settings → Environment Variables**, then redeploy.
-One password, shared with whoever should see the board. Until it exists the board refuses
-to open at all, so it can never be public by accident.
-
-The password is never in this repo and never sent to a browser. The sign-in page posts
-what was typed; Vercel compares it server-side and answers with a cookie holding only a
-hash. Changing the password invalidates every cookie issued under the old one.
-
-To take the door off and make the site public: delete `middleware.js` and redeploy.
-
-## Sharing data with the team
-
-Without it, every browser keeps its own copy and nobody sees anyone else's calls. With
-it, everyone reads and writes the same rows.
-
-1. Vercel → your project → **Storage** → **Create Database** → **Neon (Postgres)**
-2. **Connect to Project**, then redeploy
-
-No SQL to paste and no keys to copy — `api/board.js` creates its own tables on first use.
-Until a database is connected the board quietly saves locally instead, so nothing is
-broken in the meantime.
-
-The page keeps up by asking for fresh rows every 15 seconds and whenever you return to
-the tab.
-
-
-## Add Team
-
-The roster here is the single source for the Closer and Setter dropdowns everywhere else,
-and for who the Commission Tracking panels pay. Stored in `localStorage` under
-`ia-dash:team` as `{ name, role, rate }`; new closers get `CLOSER_RATE`, setters
-`SETTER_RATE`.
-
-Removing someone takes them out of the dropdowns and out of Commission Tracking and
-**never touches a call they already logged** — fire someone and the history stays exactly
-as it was. If you later edit one of their rows, the form keeps their name and marks it
-"no longer on the team" rather than blanking it. A removal is undoable.
-
-### The secret key
-
-Five random uppercase letters (I and O are excluded; they read as 1 and 0). Generated on
-first load and stored under `ia-dash:teamKey`.
-
-**Only the owner can rotate it.** The browser that first created the key is stamped
-`ia-dash:owner`; anyone who arrives later and types the key in is a team member and never
-gets that flag, so the "Generate a new key" button does not render for them.
-
-An inline script at the top of the page checks the lock *before* the board paints, so a
-locked visitor never catches a frame of the figures.
-
-**Preview the login screen** locks this browser so the gate can be tried end to end. The
-gate shows the key and an exit route while the key is held in this browser, so previewing
-can never strand the owner. The team login page URL is editable and saved; it defaults to
-`https://sales.inevitableacq.com/sales-team`, and `vercel.json` rewrites that path to
-`index.html` so the link resolves.
-
-The key is checked by Vercel before this page is sent, so it is never part of the site
-and cannot be read from it. See "Locking the board" above.
-
-## Interactions already wired
-
-- **Filters** — date range, funnel, outcome, closer, setter; active ones turn blue.
-- **Pin a metric** — click a card's icon chip. Pinned cards get the blue treatment.
-- **Reorder** — drag any card by its grip. Order and pins persist in `localStorage`.
-- **Charts** — hover any donut segment, bar, or commission bar for exact figures.
-- **Undo** — a small button in the top strip, appearing only when there is something to
-  undo. Covers deleting a call, editing a call, and removing a team member. History is
-  kept as small deltas under `ia-dash:undo` (last 25), so it survives a reload.
-
-## Next
-
-1. A **Date Booked** field on the form, so Calls On Calendar measures calls set rather
-   than calls held (see "Known gap" above).
-2. Per-person logins, if you ever want the board to know who logged each row. The
-   `logged_by` column is already recorded against every call, waiting for it.
