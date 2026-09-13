@@ -1,4 +1,4 @@
-import { next } from '@vercel/edge';
+import { next, rewrite } from '@vercel/edge';
 
 /* ============================================================
    middleware.js — the front door
@@ -87,7 +87,7 @@ export default async function middleware(request) {
   const cookie = readCookie(request, COOKIE);
   if (cookie) {
     for (const secret of accepted) {
-      if (same(cookie, await stamp(secret, 'v1'))) return next();
+      if (same(cookie, await stamp(secret, 'v1'))) return open(request, isTeamDoor);
     }
   }
 
@@ -121,6 +121,14 @@ export default async function middleware(request) {
   }
 
   return doorPage(isTeamDoor, false);
+}
+
+/* /sales-team has no file of its own — it is the same board, reached by
+   a different door. Rewriting here keeps the address in the bar while
+   serving the app, and does not depend on where rewrites land in the
+   routing order. */
+function open(request, isTeamDoor) {
+  return isTeamDoor ? rewrite(new URL('/', request.url)) : next();
 }
 
 function doorPage(isTeamDoor, wrong) {
