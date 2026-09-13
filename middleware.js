@@ -116,6 +116,7 @@ export default async function middleware(request) {
       }
     }
 
+    await new Promise((done) => setTimeout(done, 1000));
     return doorPage(isTeamDoor, true);
   }
 
@@ -177,7 +178,7 @@ function page(title, sub, form, status) {
   }
   input.spaced {
     font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-    letter-spacing: .55em; text-indent: .55em; text-transform: uppercase; font-size: 18px;
+    letter-spacing: .55em; text-indent: .55em; font-size: 18px;
   }
   input::placeholder { color: #3a3e47; }
   input:focus { outline: none; border-color: #5289c9; background: #15171b; }
