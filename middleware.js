@@ -54,17 +54,6 @@ function same(a, b) {
   return diff === 0;
 }
 
-/* Board keys are checked against the database, since boards are made
-   without a deploy. The endpoint answers only true or false. */
-async function keyIsReal(request, key) {
-  const check = new URL('/api/board?verify=' + encodeURIComponent(key), request.url);
-  const answer = await fetch(check.toString(), { headers: { 'x-ia-check': '1' } });
-  if (!answer.ok) throw new Error('Key check failed with ' + answer.status);
-  const body = await answer.json();
-  if (body && body.connected === false) throw new Error('No database connected');
-  return !!(body && body.valid === true);
-}
-
 async function submitted(request) {
   try {
     const body = await request.formData();
@@ -141,33 +130,7 @@ export default async function middleware(request) {
     return rewrite(new URL('/', request.url));
   }
 
-  if (request.method === 'POST') {
-    const entered = (await submitted(request)).toUpperCase();
-
-    let valid = false;
-    try {
-      valid = entered ? await keyIsReal(request, entered) : false;
-    } catch (err) {
-      return page('Not ready yet',
-        'The board could not be checked just now. If this keeps happening, the database may not be connected — '
-        + 'open the hub and confirm the board exists.', null, 503);
-    }
-
-    if (valid) {
-      return new Response(null, {
-        status: 303,
-        headers: new Headers([
-          ['location', '/sales-team/' + entered],
-          ['set-cookie', BOARD_COOKIE + '=' + (await stamp(entered, 'board')) + '; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS],
-          ['set-cookie', ROLE_COOKIE + '=team; Path=/; Secure; SameSite=Lax; Max-Age=' + THIRTY_DAYS]
-        ])
-      });
-    }
-    await new Promise((done) => setTimeout(done, 1000));
-    return teamPage(true);
-  }
-
-  return teamPage(false);
+  return teamPage(url.searchParams.get('e'));
 }
 
 const ownerPage = (wrong) => page('Sign in', 'This board is private.', {
@@ -175,16 +138,26 @@ const ownerPage = (wrong) => page('Sign in', 'This board is private.', {
   wrongText: "That password doesn't match."
 });
 
-const teamPage = (wrong) => page('Enter your secret key',
+/* api/enter.js sends back why it refused, so the screen can say something
+   true rather than blaming the key for a problem behind it. */
+const WHY = {
+  nokey: "That key doesn't match any board. Check it with whoever shared the board.",
+  empty: 'Enter the key you were given.',
+  nodb:  'The board could not be checked just now. Tell the account owner — this is not your key.'
+};
+
+const teamPage = (reason) => page('Enter your secret key',
   'Ask whoever shared their Sales Team Board with you for their team secret key.', {
-    placeholder: 'SECRET KEY', spaced: true, button: 'Go', wrong,
-    wrongText: "That key doesn't match. Check it with whoever shared the board."
+    placeholder: 'SECRET KEY', spaced: true, button: 'Go',
+    action: '/api/enter',
+    wrong: !!(reason && WHY[reason]),
+    wrongText: WHY[reason] || ''
   });
 
 /* A self-contained page: no stylesheet, no script, nothing fetched. */
 function page(title, sub, form, status) {
   const field = form
-    ? `<form method="POST">
+    ? `<form method="POST"${form.action ? ' action="' + form.action + '"' : ''}>
          <label class="sr" for="secret">${form.placeholder}</label>
          <input id="secret" name="secret" type="${form.spaced ? 'text' : 'password'}"
                 placeholder="${form.placeholder}" autocomplete="${form.spaced ? 'off' : 'current-password'}"
