@@ -264,8 +264,12 @@ function bindTip(node, html) {
    ============================================================ */
 const UNDO_LIMIT = 25;
 
+/* Each offer keeps its own history, so an undo can never write into a
+   different offer from the one it came from. */
+const undoKey = () => 'undo:' + (CACHE.boardId || 'hub');
+
 function undoStack() {
-  const s = store.read('undo', []);
+  const s = store.read(undoKey(), []);
   return Array.isArray(s) ? s : [];
 }
 
@@ -275,7 +279,7 @@ function pushUndo(entry) {
   const s = undoStack();
   s.push(entry);
   while (s.length > UNDO_LIMIT) s.shift();
-  store.write('undo', s);
+  store.write(undoKey(), s);
   paintUndo();
 }
 
@@ -291,7 +295,7 @@ async function applyUndo() {
   const s = undoStack();
   const entry = s.pop();
   if (!entry) return;
-  store.write('undo', s);
+  store.write(undoKey(), s);
   paintUndo();
 
   try {
@@ -729,6 +733,7 @@ function showTab(name) {
     p.classList.toggle('hidden', p.dataset.panel !== name);
   });
   if (name === 'data' && typeof renderDataTab === 'function') renderDataTab();
+  if (name === 'onboarding' && typeof renderOnboarding === 'function') renderOnboarding();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -736,7 +741,6 @@ function initTabs() {
   document.querySelectorAll('.tab').forEach((t) => {
     t.addEventListener('click', () => showTab(t.dataset.tab));
   });
-  $('#goDashboard').addEventListener('click', () => showTab('dashboard'));
 }
 
 /* ---------- main render ---------- */
@@ -767,7 +771,6 @@ function initApp() {
   initTabs();
   initFilters();
   $('#undoBtn').addEventListener('click', applyUndo);
-  $('#signOutBtn').addEventListener('click', signOut);
   paintUndo();
   render();
 }

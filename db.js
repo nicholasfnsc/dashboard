@@ -1,168 +1,301 @@
 /* ============================================================
-   db.js — where the rows live
+   db.js — talking to Supabase
    ------------------------------------------------------------
-   The page asks /api/board for everything and posts changes back.
-   That API runs on Vercel's servers, so every device is reading and
-   writing the same rows — which is what makes one team see one set
-   of numbers.
-
-   If no database is connected yet, the API says so and everything
-   falls back to this browser alone. The board still works; it just
-   isn't shared until you connect one (Vercel → Storage).
+   Everything the portal reads and writes goes through here. The
+   database decides what each person may see: this file just asks,
+   and whatever comes back is already limited to their offers.
 
    Reads stay synchronous for the rest of the app: rows sit in CACHE
-   and are refreshed after every change, on a timer, and whenever you
-   come back to the tab.
+   and are refreshed after every change, every 15 seconds, and when
+   you come back to the tab.
    ============================================================ */
 
-const CACHE = { calls: [], team: [], settings: {}, role: 'owner', shared: false };
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
 
-/* The middleware sets this after a correct password. It decides which
-   controls are shown, not what the server will allow. */
-function readRoleCookie() {
-  const hit = (document.cookie || '').split(';')
-    .map((c) => c.trim())
-    .find((c) => c.indexOf('ia_role=') === 0);
-  return hit ? hit.slice('ia_role='.length) : 'owner';
-}
-
-const isShared = () => CACHE.shared;
-
-/* ---------- this browser only, when nothing is connected ---------- */
-const local = {
-  read(key, fallback) {
-    try {
-      const raw = localStorage.getItem('ia-dash:' + key);
-      return raw === null ? fallback : JSON.parse(raw);
-    } catch (e) { return fallback; }
-  },
-  write(key, value) {
-    try { localStorage.setItem('ia-dash:' + key, JSON.stringify(value)); } catch (e) { /* private mode */ }
-  }
+const CACHE = {
+  me: null,            // { id, email, name, isOwner, kind, memberships }
+  boards: [],          // offers this person can reach
+  boardId: '',
+  board: null,         // { id, name, directory }
+  role: null,          // on this offer: 'owner' | 'admin' | 'rep'
+  code: '',            // this offer's code — managers only
+  calls: [],
+  team: [],            // active closers and setters on this offer
+  allCalls: [],        // hub only: { boardId, record }
+  rosterCounts: {}     // hub only: boardId -> active people
 };
 
-function loadLocal() {
-  CACHE.calls = local.read('calls', []) || [];
-  CACHE.team = local.read('team', []) || [];
-  CACHE.settings = local.read('settings', {}) || {};
-}
-
-/* ---------- talking to the server ---------- */
-async function ask(payload) {
-  const options = payload
-    ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }
-    : { method: 'GET' };
-
-  const response = await fetch('/api/board', options);
-  if (!response.ok) throw new Error('Board API returned ' + response.status);
-
-  const type = response.headers.get('content-type') || '';
-  if (type.indexOf('application/json') === -1) throw new Error('Not signed in');
-
-  return response.json();
-}
-
-function absorb(board) {
-  CACHE.shared = board.connected === true;
-  if (!CACHE.shared) { loadLocal(); return; }
-  CACHE.calls = board.calls || [];
-  CACHE.team = board.team || [];
-  CACHE.settings = board.settings || {};
-}
-
-async function loadAll() {
-  CACHE.role = readRoleCookie();
-  try {
-    absorb(await ask(null));
-  } catch (err) {
-    console.error('Falling back to this browser only', err);
-    CACHE.shared = false;
-    loadLocal();
+/* Supabase hands back at most 1,000 rows per request, so large tables
+   are read a page at a time. */
+async function readAll(build) {
+  const size = 1000;
+  let from = 0;
+  let rows = [];
+  for (;;) {
+    const { data, error } = await build().range(from, from + size - 1);
+    if (error) throw error;
+    rows = rows.concat(data || []);
+    if (!data || data.length < size) return rows;
+    from += size;
   }
 }
 
-/* One path for every change: try the server, fall back to local. */
-async function change(payload, localUpdate) {
-  if (!CACHE.shared) { localUpdate(); return; }
-  absorb(await ask(payload));
+/* ---------- who is signed in ---------- */
+async function currentSession() {
+  const { data } = await sb.auth.getSession();
+  return data ? data.session : null;
 }
 
+async function loadMe() {
+  const session = await currentSession();
+  if (!session) { CACHE.me = null; return null; }
+
+  const [profile, memberships] = await Promise.all([
+    sb.from('profiles').select('is_owner, kind, email, full_name').eq('id', session.user.id).maybeSingle(),
+    sb.from('memberships').select('board_id, role').eq('user_id', session.user.id)
+  ]);
+
+  const p = profile.data || {};
+  CACHE.me = {
+    id: session.user.id,
+    email: session.user.email,
+    name: p.full_name || '',
+    isOwner: p.is_owner === true,
+    kind: p.kind || 'person',
+    memberships: memberships.data || []
+  };
+  return CACHE.me;
+}
+
+function roleOn(boardId) {
+  if (!CACHE.me) return null;
+  if (CACHE.me.isOwner) return 'owner';
+  const hit = CACHE.me.memberships.find((m) => m.board_id === boardId);
+  return hit ? hit.role : null;
+}
+
+const canManage = () => CACHE.role === 'owner' || CACHE.role === 'admin';
+
+async function signInWithEmail(email, password) {
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  return error ? error.message : null;
+}
+
+async function signInWithCode(code) {
+  const answer = await fetch('/api/enter', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code })
+  });
+  const found = await answer.json().catch(() => ({}));
+  if (!answer.ok) return { error: found.error || "That code doesn't match any team." };
+
+  const { error } = await sb.auth.signInWithPassword({ email: found.email, password: code.trim().toUpperCase() });
+  if (error) return { error: "That code doesn't match any team." };
+  return { boardId: found.boardId };
+}
+
+async function setMyPassword(password) {
+  const { error } = await sb.auth.updateUser({ password });
+  return error ? error.message : null;
+}
+
+async function signOut() {
+  const wasTeam = CACHE.me && CACHE.me.kind === 'team';
+  await sb.auth.signOut();
+  location.href = wasTeam ? TEAM_LOGIN_PATH : '/';
+}
+
+/* ---------- server actions that need the secret key ---------- */
+async function serverAction(path, payload) {
+  const session = await currentSession();
+  const answer = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + (session ? session.access_token : '')
+    },
+    body: JSON.stringify(payload)
+  });
+  const result = await answer.json().catch(() => ({}));
+  if (!answer.ok) throw new Error(result.error || 'That did not work.');
+  return result;
+}
+
+/* ---------- offers ---------- */
+async function loadBoards() {
+  const { data, error } = await sb.from('boards')
+    .select('id, name, directory, created_at')
+    .is('archived_at', null)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  CACHE.boards = data || [];
+}
+
+async function loadHub() {
+  await loadBoards();
+  const [calls, roster] = await Promise.all([
+    readAll(() => sb.from('calls').select('board_id, data').order('created_at', { ascending: true })),
+    readAll(() => sb.from('roster').select('board_id').eq('active', true))
+  ]);
+  CACHE.allCalls = calls.map((r) => ({ boardId: r.board_id, record: r.data }));
+  CACHE.rosterCounts = {};
+  roster.forEach((r) => { CACHE.rosterCounts[r.board_id] = (CACHE.rosterCounts[r.board_id] || 0) + 1; });
+}
+
+async function loadBoard(boardId) {
+  CACHE.boardId = boardId;
+  CACHE.role = roleOn(boardId);
+
+  const [board, roster, calls] = await Promise.all([
+    sb.from('boards').select('id, name, directory').eq('id', boardId).maybeSingle(),
+    sb.from('roster').select('name, role, rate, active').eq('board_id', boardId).order('created_at'),
+    readAll(() => sb.from('calls').select('data').eq('board_id', boardId).order('created_at', { ascending: true }))
+  ]);
+  if (board.error) throw board.error;
+
+  CACHE.board = board.data;
+  CACHE.team = (roster.data || []).filter((p) => p.active)
+    .map((p) => ({ name: p.name, role: p.role, rate: Number(p.rate) }));
+  CACHE.calls = calls.map((r) => r.data);
+
+  CACHE.code = '';
+  if (canManage()) {
+    const { data } = await sb.from('board_codes').select('code').eq('board_id', boardId).maybeSingle();
+    CACHE.code = data ? data.code : '';
+  }
+}
+
+async function createBoard() {
+  const result = await serverAction('/api/boards', { action: 'create' });
+  await loadMe();
+  return result;
+}
+
+async function rotateCode(boardId) {
+  const result = await serverAction('/api/boards', { action: 'rotate', boardId });
+  if (boardId === CACHE.boardId) CACHE.code = result.code;
+  return result.code;
+}
+
+async function archiveBoard(boardId) {
+  return serverAction('/api/boards', { action: 'archive', boardId });
+}
+
+async function renameBoard(name) {
+  const { error } = await sb.from('boards').update({ name }).eq('id', CACHE.boardId);
+  if (error) throw error;
+  CACHE.board.name = name;
+}
+
+async function saveDirectory(directory) {
+  const { error } = await sb.from('boards').update({ directory }).eq('id', CACHE.boardId);
+  if (error) throw error;
+  CACHE.board.directory = directory;
+}
+
+/* ---------- calls ---------- */
+async function saveCall(record) {
+  const { error } = await sb.from('calls').upsert({
+    id: record.id,
+    board_id: CACHE.boardId,
+    call_date: record.callDate || null,
+    outcome: record.outcome,
+    logged_by: record.loggedBy || null,
+    data: record
+  }, { onConflict: 'id' });
+  if (error) throw error;
+
+  const rows = CACHE.calls.slice();
+  const at = rows.findIndex((r) => r.id === record.id);
+  if (at === -1) rows.push(record); else rows[at] = record;
+  CACHE.calls = rows;
+}
+
+async function deleteCall(id) {
+  const { error } = await sb.from('calls').delete().eq('id', id).eq('board_id', CACHE.boardId);
+  if (error) throw error;
+  CACHE.calls = CACHE.calls.filter((r) => r.id !== id);
+}
+
+const restoreCall = (record) => saveCall(record);
+
+/* ---------- roster ---------- */
+async function reloadRoster() {
+  const { data, error } = await sb.from('roster')
+    .select('name, role, rate, active').eq('board_id', CACHE.boardId).order('created_at');
+  if (error) throw error;
+  CACHE.team = (data || []).filter((p) => p.active)
+    .map((p) => ({ name: p.name, role: p.role, rate: Number(p.rate) }));
+}
+
+async function addMember(person) {
+  const { error } = await sb.from('roster').upsert({
+    board_id: CACHE.boardId, name: person.name, role: person.role, rate: person.rate, active: true
+  }, { onConflict: 'board_id,name,role' });
+  if (error) throw error;
+  await reloadRoster();
+}
+
+/* Switched off, never deleted — their history still adds up. */
+async function removeMember(person) {
+  const { error } = await sb.from('roster').update({ active: false })
+    .eq('board_id', CACHE.boardId).eq('name', person.name).eq('role', person.role);
+  if (error) throw error;
+  await reloadRoster();
+}
+
+async function replaceTeam(people) {
+  const keep = new Set(people.map((p) => p.role + '|' + p.name));
+  for (const p of CACHE.team) {
+    if (!keep.has(p.role + '|' + p.name)) await removeMember(p);
+  }
+  for (const p of people) await addMember(p);
+}
+
+/* ---------- admins (owner) ---------- */
+const listAdmins = () => serverAction('/api/people', { action: 'list' });
+const inviteAdmin = (name, email, boardIds) => serverAction('/api/people', { action: 'invite', name, email, boardIds });
+const setAdminAccess = (userId, boardIds) => serverAction('/api/people', { action: 'access', userId, boardIds });
+const removeAdmin = (userId) => serverAction('/api/people', { action: 'remove', userId });
+
 /* ---------- keeping up with everyone else ---------- */
-/* No live socket to maintain: a quiet check every 15 seconds, plus one
-   the moment you come back to the tab, is enough for a sales board and
-   is far less to go wrong. */
 function watchChanges(onChange) {
   let busy = false;
+  let last = '';
+
+  async function signature() {
+    const query = sb.from('calls').select('id, updated_at').order('updated_at', { ascending: false }).limit(1);
+    const scoped = CACHE.boardId ? query.eq('board_id', CACHE.boardId) : query;
+    const [{ data: latest }, { count }] = await Promise.all([
+      scoped,
+      (CACHE.boardId
+        ? sb.from('calls').select('id', { count: 'exact', head: true }).eq('board_id', CACHE.boardId)
+        : sb.from('calls').select('id', { count: 'exact', head: true }))
+    ]);
+    return String(count) + '|' + (latest && latest[0] ? latest[0].updated_at : '');
+  }
 
   async function poll() {
-    if (!CACHE.shared || busy || document.hidden) return;
+    if (busy || document.hidden) return;
     busy = true;
     try {
-      const before = JSON.stringify([CACHE.calls.length, CACHE.team.length]);
-      absorb(await ask(null));
-      if (JSON.stringify([CACHE.calls.length, CACHE.team.length]) !== before) onChange();
+      const now = await signature();
+      if (last && now !== last) {
+        if (CACHE.boardId) await loadBoard(CACHE.boardId); else await loadHub();
+        onChange();
+      }
+      last = now;
     } catch (err) {
-      /* a blip; the next tick will catch up */
+      /* a blip; the next tick catches up */
     } finally {
       busy = false;
     }
   }
 
+  poll();
   setInterval(poll, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
-}
-
-function signOut() {
-  location.href = location.pathname + '?signout=1';
-}
-
-/* ---------- calls ---------- */
-async function saveCall(record) {
-  await change({ action: 'saveCall', record: record }, () => {
-    const rows = CACHE.calls.slice();
-    const at = rows.findIndex((r) => r.id === record.id);
-    if (at === -1) rows.push(record); else rows[at] = record;
-    CACHE.calls = rows;
-    local.write('calls', rows);
-  });
-}
-
-async function deleteCall(id) {
-  await change({ action: 'deleteCall', id: id }, () => {
-    CACHE.calls = CACHE.calls.filter((r) => r.id !== id);
-    local.write('calls', CACHE.calls);
-  });
-}
-
-/* Undo restores a row that may or may not still exist — save covers both. */
-const restoreCall = (record) => saveCall(record);
-
-/* ---------- roster ---------- */
-async function addMember(person) {
-  await change({ action: 'addMember', person: person }, () => {
-    CACHE.team = CACHE.team.concat(person);
-    local.write('team', CACHE.team);
-  });
-}
-
-async function removeMember(person) {
-  await change({ action: 'removeMember', person: person }, () => {
-    CACHE.team = CACHE.team.filter((x) => !(x.name === person.name && x.role === person.role));
-    local.write('team', CACHE.team);
-  });
-}
-
-async function replaceTeam(people) {
-  await change({ action: 'replaceTeam', people: people }, () => {
-    CACHE.team = people.slice();
-    local.write('team', CACHE.team);
-  });
-}
-
-/* ---------- settings ---------- */
-async function saveSetting(key, value) {
-  CACHE.settings[key] = value;
-  await change({ action: 'saveSetting', key: key, value: value }, () => {
-    local.write('settings', CACHE.settings);
-  });
 }

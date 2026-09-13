@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Performance Dashboard</title>
-<meta name="description" content="Sales and commission KPIs for the team — cash collected, show rate, close rate and payout owed.">
+<title>Inevitable Acquisition Portal</title>
+<meta name="description" content="Offers, sales teams and performance for Inevitable Acquisition.">
+<meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#050506">
 <link rel="icon" href="/logo.png" type="image/png">
 <link rel="apple-touch-icon" href="/logo.png">
@@ -15,10 +16,66 @@
 </head>
 <body>
 <!--PAGE-START-->
-<header class="topstrip">
+
+<!-- ================= SIGN-IN SCREENS ================= -->
+<div class="gate" id="viewLoading">
+  <p class="gate-sub">Loading…</p>
+</div>
+
+<div class="gate hidden" id="viewSignIn">
+  <form class="gate-box gate-form" id="signInForm">
+    <span class="brand gate-brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
+    <h1 class="gate-title">Sign in</h1>
+    <p class="gate-sub">Owners and admins sign in with email.</p>
+    <label class="hidden" for="signInEmail">Email</label>
+    <input type="email" id="signInEmail" placeholder="Email" autocomplete="username">
+    <label class="hidden" for="signInPassword">Password</label>
+    <input type="password" id="signInPassword" placeholder="Password" autocomplete="current-password">
+    <button type="submit" class="btn-gate">Sign in</button>
+    <p class="gate-error hidden" id="signInError"></p>
+    <p class="gate-foot">On a sales team? <a href="/sales-team">Enter your team code</a></p>
+  </form>
+</div>
+
+<div class="gate hidden" id="viewCode">
+  <form class="gate-box gate-form" id="codeForm">
+    <span class="brand gate-brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
+    <h1 class="gate-title">Enter your team code</h1>
+    <p class="gate-sub">Ask whoever added you to the team for your code.</p>
+    <label class="hidden" for="codeInput">Team code</label>
+    <input type="text" id="codeInput" class="code-input" placeholder="CODE" autocomplete="off"
+           spellcheck="false" maxlength="12" autocapitalize="characters">
+    <button type="submit" class="btn-gate">Go</button>
+    <p class="gate-error hidden" id="codeError"></p>
+  </form>
+</div>
+
+<div class="gate hidden" id="viewWelcome">
+  <form class="gate-box gate-form" id="welcomeForm">
+    <span class="brand gate-brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
+    <h1 class="gate-title">Welcome</h1>
+    <p class="gate-sub">Choose a password for your account.</p>
+    <label class="hidden" for="welcomePassword">New password</label>
+    <input type="password" id="welcomePassword" placeholder="New password (8+ characters)" autocomplete="new-password">
+    <button type="submit" class="btn-gate">Save and continue</button>
+    <p class="gate-error hidden" id="welcomeError"></p>
+  </form>
+</div>
+
+<div class="gate gate-overlay hidden" id="viewWho">
+  <div class="gate-box">
+    <h1 class="gate-title">Who are you?</h1>
+    <p class="gate-sub">Pick your name so your calls are logged to you.</p>
+    <div class="who-list" id="whoList"></div>
+    <p class="gate-foot" id="whoEmpty">Not on the list? <button type="button" class="link-btn" id="whoSkip">Continue without a name</button></p>
+  </div>
+</div>
+
+<header class="topstrip hidden" id="topStrip">
   <div class="topstrip-in">
     <span class="brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
-    <button type="button" class="crumb" id="goDashboard">&larr; Dashboard</button>
+    <a class="crumb hidden" id="toHub" href="/">&larr; Main hub</a>
+    <button type="button" class="crumb hidden" id="whoLabel"></button>
     <button type="button" class="crumb" id="signOutBtn">Sign out</button>
     <button type="button" class="undo-btn hidden" id="undoBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -33,22 +90,85 @@
 
 <div class="app-toast" id="appToast" role="status" aria-live="polite"></div>
 
-<div class="shell">
+<!-- ================= MAIN HUB (owner and admins) ================= -->
+<div class="shell hidden" id="hubShell">
+  <div class="dash-head">
+    <div>
+      <p class="eyebrow">Inevitable Acquisition</p>
+      <h1 class="dash-title">Main Hub</h1>
+    </div>
+    <div class="filters hub-filters">
+      <span class="fpill">
+        <label class="hidden" for="hubRange">Date range</label>
+        <select id="hubRange">
+          <option value="ytd">This year so far</option>
+          <option value="mtd">This month</option>
+          <option value="lastMonth">Last month</option>
+          <option value="30d">Last 30 days</option>
+          <option value="all">All time</option>
+        </select>
+      </span>
+    </div>
+  </div>
+
+  <div class="hub-totals" id="hubTotals"></div>
+
+  <div class="section">
+    <div class="section-head section-head-row">
+      <div>
+        <h2>Sales team boards</h2>
+        <p>One board per offer. Name each one on its Onboarding tab.</p>
+      </div>
+      <button type="button" class="btn-primary hidden" id="createBoardBtn">+ New offer</button>
+    </div>
+    <div class="hub-grid" id="hubBoards"></div>
+  </div>
+
+  <div class="section hidden" id="peopleSection">
+    <div class="section-head">
+      <h2>Admins</h2>
+      <p>People with their own sign-in. Tick the offers each one can open.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-body">
+        <div id="adminList"></div>
+
+        <form class="invite-form" id="inviteForm">
+          <h4>Invite an admin</h4>
+          <div class="invite-row">
+            <label class="hidden" for="inviteName">Name</label>
+            <input type="text" id="inviteName" placeholder="Name" autocomplete="off">
+            <label class="hidden" for="inviteEmail">Email</label>
+            <input type="email" id="inviteEmail" placeholder="Email" autocomplete="off">
+          </div>
+          <div class="check-row" id="inviteBoards"></div>
+          <button type="submit" class="btn-primary" id="inviteBtn">Send invite</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SALES TEAM BOARD ================= -->
+<div class="shell hidden" id="boardShell">
+
+  <nav class="offer-tabs hidden" id="offerTabs" aria-label="Offers"></nav>
 
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button class="tab" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
     <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
-    <button class="tab" role="tab" data-tab="team" aria-selected="false">Add Team</button>
+    <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
+    <button class="tab" role="tab" data-tab="onboarding" aria-selected="false">Onboarding</button>
   </nav>
 
   <!-- ================= DASHBOARD ================= -->
   <section data-panel="dashboard">
 
     <div class="dash-head">
-      <span class="brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
-      <div class="dash-head-right">
-        <p class="eyebrow">Sales &amp; commissions</p>
+      <div>
+        <p class="eyebrow" id="boardNameHead">Sales team board</p>
         <h1 class="dash-title">Performance Dashboard</h1>
       </div>
     </div>
@@ -350,30 +470,28 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h3>Team Secret Key</h3>
-          <p>Share this page and key with your sales team so they can log calls without a portal account.</p>
+          <h3>Team login</h3>
+          <p>Send someone the page and this offer's code. The code takes them straight into this board.</p>
         </div>
         <div class="panel-body team-body">
 
           <div class="key-field">
             <label class="field-label" for="teamUrl">Team login page</label>
             <div class="copy-row">
-              <input type="text" id="teamUrl" autocomplete="off" spellcheck="false">
+              <input type="text" id="teamUrl" readonly>
               <button type="button" class="btn-copy" data-copy="teamUrl">Copy</button>
             </div>
           </div>
 
           <div class="key-field">
-            <span class="field-label">Secret key</span>
-            <p class="key-note" id="keyOwnerOnly">
-              The key is checked by Vercel before this page is sent, so it is never
-              part of the site and cannot be read from it. Set or change it under
-              <b>Vercel &rarr; Settings &rarr; Environment Variables &rarr; TEAM_KEY</b>.
-            </p>
-            <p class="key-note hidden" id="keyTeamNote">
-              Ask the account owner for the key.
-            </p>
-            <input type="hidden" id="teamKey">
+            <label class="field-label" for="teamCode">Team code</label>
+            <div class="copy-row">
+              <input type="text" id="teamCode" class="key-input" readonly>
+              <button type="button" class="btn-copy" data-copy="teamCode">Copy</button>
+            </div>
+            <div class="key-actions">
+              <button type="button" class="link-btn" id="rotateCodeBtn">Make a new code</button>
+            </div>
           </div>
         </div>
       </div>
@@ -381,15 +499,40 @@
     </div>
   </section>
 
+  <!-- ================= ONBOARDING ================= -->
+  <section data-panel="onboarding" class="hidden">
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Directory</h3>
+        <p>Quick links for this offer — everyone on the team can find these in one place.</p>
+      </div>
+      <div class="panel-body">
+        <div class="dir-grid" id="directoryRows"></div>
+        <div class="dir-extra" id="directoryExtra"></div>
+        <form class="add-row dir-add" id="directoryAddForm">
+          <label class="hidden" for="dirNewLabel">Link name</label>
+          <input type="text" id="dirNewLabel" placeholder="Link name, e.g. Objection doc" autocomplete="off">
+          <label class="hidden" for="dirNewUrl">Link</label>
+          <input type="url" id="dirNewUrl" placeholder="https://…" autocomplete="off">
+          <button type="submit" class="btn-primary btn-add">Add link</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
 
 </div>
 <!--PAGE-END-->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
+<script src="/config.js"></script>
 <script src="/data.js"></script>
 <script src="/db.js"></script>
 <script src="/app.js"></script>
 <script src="/form.js"></script>
 <script src="/datatab.js"></script>
 <script src="/team.js"></script>
+<script src="/onboarding.js"></script>
+<script src="/hub.js"></script>
 <script src="/boot.js"></script>
 </body>
 </html>

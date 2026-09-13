@@ -1,38 +1,242 @@
 /* ============================================================
-   boot.js — start-up
+   boot.js — who gets which screen
    ------------------------------------------------------------
-   Access is settled before this file ever runs: middleware.js checks
-   the password on Vercel's servers, and a visitor without it never
-   receives this page at all. So there is no sign-in screen here —
-   by the time anything below executes, the person is already in.
+     /                  signed out → sign in with email
+                        owner or admin → Main Hub
+                        a team code → straight to their board
+     /sales-team        the team code page
+     /board/<id>        that offer's board, if you may see it
+
+   The one rule: an account gets the hub and the offers it is
+   allowed; a code gets one board and nothing else.
    ============================================================ */
 
 (function () {
-  async function start() {
-    try {
-      await loadAll();
-    } catch (err) {
-      console.error(err);
-      notify("Couldn't load the board. Check your connection and refresh.");
+  const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
+
+  function show(id) {
+    VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
+    const inApp = !id;
+    $('#topStrip').classList.toggle('hidden', !inApp);
+    if (!inApp) {
+      $('#hubShell').classList.add('hidden');
+      $('#boardShell').classList.add('hidden');
     }
+  }
+
+  function fail(boxId, message) {
+    const box = $('#' + boxId);
+    box.textContent = message;
+    box.classList.remove('hidden');
+  }
+
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const boardMatch = path.match(/^\/board\/([0-9a-f-]{36})$/i);
+  const params = new URLSearchParams(location.search);
+
+  /* ---------- the forms ---------- */
+  $('#signInForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#signInEmail').value.trim();
+    const password = $('#signInPassword').value;
+    if (!email || !password) return fail('signInError', 'Enter your email and password.');
+
+    const button = e.submitter || $('#signInForm button');
+    button.disabled = true;
+    const problem = await signInWithEmail(email, password);
+    button.disabled = false;
+    if (problem) return fail('signInError', "That email and password don't match.");
+    start();
+  });
+
+  $('#codeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const code = $('#codeInput').value.trim();
+    if (!code) return fail('codeError', 'Enter the code you were given.');
+
+    const button = $('#codeForm button');
+    button.disabled = true;
+    const result = await signInWithCode(code);
+    button.disabled = false;
+    if (result.error) return fail('codeError', result.error);
+    location.href = '/board/' + result.boardId;
+  });
+
+  $('#codeInput').addEventListener('input', (e) => {
+    e.target.value = e.target.value.toUpperCase();
+    $('#codeError').classList.add('hidden');
+  });
+
+  $('#welcomeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = $('#welcomePassword').value;
+    if (password.length < 8) return fail('welcomeError', 'Use at least 8 characters.');
+    const problem = await setMyPassword(password);
+    if (problem) return fail('welcomeError', problem);
+    history.replaceState(null, '', '/');
+    start();
+  });
+
+  $('#signOutBtn').addEventListener('click', signOut);
+
+  /* ---------- a rep picks who they are ---------- */
+  function askWho(force) {
+    if (CACHE.role !== 'rep') return;
+    const names = Array.from(new Set(CACHE.team.map((p) => p.name)));
+    const current = chosenName();
+    if (!force && current && names.indexOf(current) !== -1) return paintWho();
+
+    const list = $('#whoList');
+    list.textContent = '';
+    names.forEach((n) => {
+      const b = el('button', 'who-option');
+      b.type = 'button';
+      b.textContent = n;
+      b.addEventListener('click', () => {
+        setChosenName(n);
+        $('#viewWho').classList.add('hidden');
+        paintWho();
+        window.PostCallForm.prefillMe();
+      });
+      list.appendChild(b);
+    });
+    $('#viewWho').classList.remove('hidden');
+  }
+
+  function paintWho() {
+    const label = $('#whoLabel');
+    const name = chosenName();
+    label.classList.toggle('hidden', CACHE.role !== 'rep');
+    label.textContent = name ? name + ' · change' : 'Pick your name';
+  }
+
+  $('#whoSkip').addEventListener('click', () => {
+    setChosenName('');
+    $('#viewWho').classList.add('hidden');
+    paintWho();
+  });
+  $('#whoLabel').addEventListener('click', () => askWho(true));
+
+  /* ---------- the offer tabs, for owners and admins ---------- */
+  function paintOfferTabs() {
+    const nav = $('#offerTabs');
+    const reachable = CACHE.boards;
+    const visible = CACHE.role !== 'rep' && reachable.length > 0;
+    nav.classList.toggle('hidden', !visible);
+    if (!visible) return;
+
+    nav.textContent = '';
+    reachable.forEach((b) => {
+      const a = el('a', 'offer-tab');
+      a.href = '/board/' + b.id;
+      a.dataset.board = b.id;
+      a.textContent = b.name;
+      if (b.id === CACHE.boardId) a.setAttribute('aria-current', 'page');
+      nav.appendChild(a);
+    });
+  }
+
+  /* ---------- screens ---------- */
+  async function openHub() {
+    await loadHub();
+    show(null);
+    $('#hubShell').classList.remove('hidden');
+    $('#toHub').classList.add('hidden');
+    $('#undoBtn').classList.add('hidden');
+    document.title = 'Main Hub · Inevitable Acquisition';
+    initHub();
+    watchChanges(renderHub);
+  }
+
+  async function openBoard(boardId) {
+    await loadBoard(boardId);
+    if (!CACHE.board || !CACHE.role) {
+      /* Not theirs, or gone. Send them somewhere they belong. */
+      if (CACHE.me.kind === 'team') { await signOut(); return; }
+      location.replace('/');
+      return;
+    }
+
+    if (CACHE.role !== 'rep') await loadBoards();
+
+    show(null);
+    $('#boardShell').classList.remove('hidden');
+    $('#toHub').classList.toggle('hidden', CACHE.role === 'rep');
+    $('#teamTabBtn').classList.toggle('hidden', !canManage());
 
     initApp();
     initPostCallForm();
     initDataTab();
     initTeamTab();
+    initOnboarding();
+    paintOfferTabs();
 
-    /* In shared mode, anyone else logging a call refreshes this board. */
+    const wanted = params.get('tab');
+    if (wanted && document.querySelector('.tab[data-tab="' + wanted + '"]:not(.hidden)')) showTab(wanted);
+
+    askWho(false);
+    paintWho();
+
     watchChanges(() => {
       fillTeamSelects();
       render();
       renderDataTab();
       renderRoster();
+      renderOnboarding();
+      paintBoardName();
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    start();
+  async function start() {
+    show('viewLoading');
+
+    const invited = params.get('welcome') === '1' || /type=(invite|recovery)/.test(location.hash);
+    const me = await loadMe().catch(() => null);
+
+    if (path === '/sales-team') {
+      if (me && me.kind === 'team' && me.memberships[0]) {
+        location.replace('/board/' + me.memberships[0].board_id);
+        return;
+      }
+      show('viewCode');
+      $('#codeInput').focus();
+      return;
+    }
+
+    if (!me) {
+      show('viewSignIn');
+      $('#signInEmail').focus();
+      return;
+    }
+
+    if (invited && me.kind === 'person') {
+      show('viewWelcome');
+      $('#welcomePassword').focus();
+      return;
+    }
+
+    try {
+      if (me.kind === 'team') {
+        const home = me.memberships[0] && me.memberships[0].board_id;
+        if (!home) { await signOut(); return; }
+        if (!boardMatch || boardMatch[1] !== home) { location.replace('/board/' + home); return; }
+        await openBoard(home);
+        return;
+      }
+
+      if (boardMatch) {
+        await openBoard(boardMatch[1]);
+        return;
+      }
+
+      if (path !== '/') { location.replace('/'); return; }
+      await openHub();
+    } catch (err) {
+      console.error(err);
+      show(null);
+      notify("Couldn't load — check your connection and refresh.");
+    }
   }
+
+  start();
 })();

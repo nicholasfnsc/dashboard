@@ -525,3 +525,151 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ============================================================
+   Sign-in screens
+   ============================================================ */
+.gate {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--ground);
+  display: grid; place-items: center;
+  padding: 28px 20px; overflow-y: auto;
+}
+.gate-overlay { background: rgba(5, 5, 6, .92); backdrop-filter: blur(4px); }
+.gate-box { width: 100%; max-width: 420px; text-align: center; }
+.gate-form { display: flex; flex-direction: column; gap: 12px; }
+.gate-brand { justify-content: center; margin-bottom: 22px; opacity: .85; }
+.gate-title { margin: 0 0 4px; font-size: 26px; font-weight: 300; letter-spacing: -.015em; }
+.gate-sub { margin: 0 auto 14px; font-size: 13.5px; color: var(--muted); line-height: 1.6; max-width: 36ch; }
+.gate-form input {
+  width: 100%; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 11px;
+  padding: 15px 16px; font-size: 14px; text-align: center;
+}
+.gate-form input::placeholder { color: #3a3e47; }
+.gate-form input:hover { border-color: #2e323b; }
+.gate-form input:focus { outline: none; border-color: var(--accent-bright); background: var(--surface-2); }
+.code-input {
+  font-family: var(--f-mono); font-size: 20px !important;
+  letter-spacing: .45em; text-indent: .45em; text-transform: uppercase;
+}
+.code-input::placeholder { letter-spacing: .45em; }
+.btn-gate {
+  width: 100%; background: var(--accent); color: var(--on-accent);
+  border: 1px solid var(--accent); border-radius: 11px;
+  padding: 15px; font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background .14s, border-color .14s;
+}
+.btn-gate:hover { background: var(--chart-blue); border-color: var(--chart-blue); }
+.btn-gate:disabled { opacity: .55; cursor: default; }
+.gate-error { margin: 4px 0 0; font-size: 12.5px; color: #f87171; }
+.gate-foot { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); }
+.gate-foot a { color: var(--accent-ink); }
+
+.who-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.who-option {
+  width: 100%; text-align: left; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; padding: 13px 16px; font-size: 14px; cursor: pointer;
+}
+.who-option:hover { border-color: var(--accent-bright); background: var(--surface-2); }
+
+/* ============================================================
+   Offer tabs — owner and admins switch offers here
+   ============================================================ */
+.offer-tabs {
+  display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+}
+.offer-tab {
+  color: var(--ink-2); text-decoration: none; font-size: 12.5px;
+  padding: 6px 14px; border-radius: var(--r-pill); border: 1px solid transparent;
+}
+.offer-tab:hover { color: var(--ink); border-color: var(--line); }
+.offer-tab[aria-current="page"] {
+  color: var(--accent-ink); background: var(--accent-wash); border-color: var(--accent-deep);
+}
+
+/* ============================================================
+   Main Hub
+   ============================================================ */
+.hub-filters { margin-bottom: 0; }
+.section-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+.hub-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
+.hub-total {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  padding: 16px 18px; box-shadow: var(--shadow);
+}
+.hub-total-label, .hub-stat-label {
+  font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
+.hub-total-value {
+  margin-top: 8px; font-size: 26px; font-weight: 400; letter-spacing: -.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+.hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: var(--gap); }
+.hub-card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 16px;
+}
+.hub-card-head h3 {
+  margin: 0; font-size: 15px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hub-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 14px; }
+.hub-stat-value { margin-top: 4px; font-size: 17px; font-variant-numeric: tabular-nums; }
+.hub-meta { margin: 0; font-size: 11.5px; color: var(--muted); }
+.hub-actions { border-top: 1px solid var(--line-soft); padding-top: 14px; margin-top: auto; }
+.hub-open { display: inline-block; text-decoration: none; padding: 8px 16px; border-radius: 9px; font-size: 12.5px; }
+.hub-empty {
+  grid-column: 1 / -1; margin: 0; padding: 34px 20px; text-align: center;
+  color: var(--muted); font-size: 13px; border: 1px dashed var(--line); border-radius: var(--r-card);
+}
+
+/* ---------- admins ---------- */
+.admin-row {
+  display: grid; grid-template-columns: minmax(160px, 1fr) 2fr auto; align-items: center; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid var(--line-soft);
+}
+.admin-who { display: flex; flex-direction: column; min-width: 0; }
+.admin-name { font-size: 13.5px; color: var(--ink); }
+.admin-email { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.check-row { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.check input { accent-color: var(--accent-bright); }
+
+.invite-form { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; }
+.invite-form h4 { margin: 0; font-size: 13px; font-weight: 500; }
+.invite-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.invite-row input, .dir-input, .dir-add input {
+  flex: 1; min-width: 180px; width: 100%;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; font-size: 13px;
+}
+.invite-row input:focus, .dir-input:focus, .dir-add input:focus {
+  outline: none; border-color: var(--accent-bright); background: var(--surface-3);
+}
+.invite-form .btn-primary { align-self: flex-start; }
+
+/* ============================================================
+   Onboarding — Directory
+   ============================================================ */
+.dir-grid, .dir-extra { display: flex; flex-direction: column; }
+.dir-row {
+  display: grid; grid-template-columns: 180px 1fr auto; align-items: center; gap: 16px;
+  padding: 8px 0;
+}
+.dir-label { font-size: 13px; color: var(--ink-2); }
+.dir-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-text { font-size: 13.5px; color: var(--ink); }
+.dir-empty { color: var(--muted); }
+.dir-extra:not(:empty) { border-top: 1px solid var(--line-soft); margin-top: 8px; padding-top: 8px; }
+.dir-add { margin-top: 14px; }
+
+@media (max-width: 760px) {
+  .hub-totals { grid-template-columns: repeat(2, 1fr); }
+  .admin-row { grid-template-columns: 1fr; }
+  .dir-row { grid-template-columns: 1fr; gap: 6px; }
+}

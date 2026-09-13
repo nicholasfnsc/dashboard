@@ -1,27 +1,23 @@
 /* ============================================================
    team.js — Add Team tab
    ------------------------------------------------------------
-   The roster here fills the Closer and Setter dropdowns on the Post
-   Call Form and decides who the Commission Tracking panels pay. It
-   lives in the shared database, so it is the same roster for
-   everyone.
+   Who is on this offer's team, and how new people get in.
+   Owner and admins only; reps never see this tab.
 
-   The secret key is NOT here. Vercel checks it before this page is
-   ever sent, so nothing in this file — or any file in this repo —
-   knows what it is.
+   Removing someone switches them off rather than deleting them, so
+   every call they logged and every dollar of commission still adds
+   up. Making a new code signs the whole team out; they sign back in
+   with the new one. Neither touches a single call.
    ============================================================ */
-
-const DEFAULT_TEAM_URL = 'https://sales.inevitableacq.com/sales-team';
 
 function savedRoster() {
   return CACHE.team;
 }
 
-const isOwner = () => CACHE.role === 'owner';
-
 /* ---------- roster ---------- */
 function renderRoster() {
   const rows = savedRoster();
+  const manager = canManage();
 
   [['closer', 'closerList'], ['setter', 'setterList']].forEach((pair) => {
     const role = pair[0];
@@ -40,15 +36,15 @@ function renderRoster() {
 
       const name = document.createElement('span');
       name.className = 'roster-name';
-      name.textContent = p.name;              // user-entered — never as markup
+      name.textContent = p.name;              // typed by a person — never as markup
       line.appendChild(name);
 
-      if (isOwner()) {
+      if (manager) {
         const remove = el('button', 'link-btn danger', 'Remove');
         remove.type = 'button';
         remove.setAttribute('aria-label', 'Remove ' + p.name);
         remove.addEventListener('click', async () => {
-          if (!window.confirm('Remove ' + p.name + ' from the roster?\n\nTheir logged calls stay exactly as they are.')) return;
+          if (!window.confirm('Remove ' + p.name + ' from this team?\n\nTheir logged calls stay exactly as they are.')) return;
           pushUndo({ kind: 'restoreTeam', label: 'Removed ' + p.name, team: savedRoster().slice() });
           try {
             await removeMember(p);
@@ -67,12 +63,9 @@ function renderRoster() {
     });
   });
 
-  /* Only the owner changes the roster, so hide the controls otherwise
-     rather than letting the database refuse a click. */
-  const owner = isOwner();
   ['addCloserForm', 'addSetterForm'].forEach((id) => {
     const node = $('#' + id);
-    if (node) node.classList.toggle('hidden', !owner);
+    if (node) node.classList.toggle('hidden', !manager);
   });
 }
 
@@ -89,7 +82,7 @@ async function addPerson(role, inputId) {
 
   if (savedRoster().some((p) => p.name.toLowerCase() === name.toLowerCase() && p.role === role)) {
     input.value = '';
-    return;                                   // already on the roster in this role
+    return;                                   // already on this team in this role
   }
 
   input.value = '';
@@ -104,20 +97,12 @@ async function addPerson(role, inputId) {
   input.focus();
 }
 
-/* ---------- the team login panel ---------- */
+/* ---------- team login ---------- */
 function paintKeyPanel() {
-  const keyInput = $('#teamKey');
-  if (!keyInput) return;
-
-  const settings = CACHE.settings || {};
-  $('#teamUrl').value = settings.teamUrl || DEFAULT_TEAM_URL;
-
-  /* There is nothing to display: the key is checked by Vercel before
-     this page is sent, so the page cannot read it. */
-  keyInput.value = '';
-  $('#teamUrl').readOnly = !isOwner();
-  $('#keyOwnerOnly').classList.toggle('hidden', !isOwner());
-  $('#keyTeamNote').classList.toggle('hidden', isOwner());
+  const url = $('#teamUrl');
+  if (!url) return;
+  url.value = PORTAL_ORIGIN + TEAM_LOGIN_PATH;
+  $('#teamCode').value = CACHE.code || '';
 }
 
 async function copyFrom(inputId, button) {
@@ -133,6 +118,29 @@ async function copyFrom(inputId, button) {
   setTimeout(() => { button.textContent = original; }, 1600);
 }
 
+async function makeNewCode() {
+  const name = (CACHE.board && CACHE.board.name) || 'this offer';
+  const sure = window.confirm(
+    'Make a new code for ' + name + '?\n\n' +
+    'Everyone on this team is signed out straight away and needs the new code to get back in. ' +
+    'No calls or numbers are affected.');
+  if (!sure) return;
+
+  const button = $('#rotateCodeBtn');
+  button.disabled = true;
+  try {
+    await rotateCode(CACHE.boardId);
+  } catch (err) {
+    console.error(err);
+    notify(err.message || "Couldn't make a new code.");
+    return;
+  } finally {
+    button.disabled = false;
+  }
+  paintKeyPanel();
+  notify('New code: ' + CACHE.code + '. Send it to everyone who should still have access.');
+}
+
 function initTeamTab() {
   if (!$('#closerList')) return;
 
@@ -143,17 +151,7 @@ function initTeamTab() {
     b.addEventListener('click', () => copyFrom(b.dataset.copy, b));
   });
 
-  $('#teamUrl').addEventListener('change', async (e) => {
-    if (!isOwner()) return;
-    const url = (e.target.value || '').trim() || DEFAULT_TEAM_URL;
-    try {
-      await saveSetting('teamUrl', url);
-    } catch (err) {
-      console.error(err);
-      notify("Couldn't save that link — check your connection and try again.");
-    }
-    paintKeyPanel();
-  });
+  $('#rotateCodeBtn').addEventListener('click', makeNewCode);
 
   paintKeyPanel();
   renderRoster();

@@ -1,11 +1,10 @@
 {
-  "name": "ia-dashboard",
+  "name": "ia-portal",
   "private": true,
-  "version": "1.0.0",
-  "description": "Sales and commission dashboard for Inevitable Acquisition",
-  "comment": "The site has no build step. This file exists only so Vercel can install what middleware.js and api/board.js need. Nothing is installed on your machine.",
+  "version": "2.0.0",
+  "description": "Inevitable Acquisition portal: hub, offers and sales team boards",
+  "type": "module",
   "dependencies": {
-    "@vercel/edge": "^1.1.1",
-    "@vercel/postgres": "^0.10.0"
+    "@supabase/supabase-js": "2.116.0"
   }
 }
