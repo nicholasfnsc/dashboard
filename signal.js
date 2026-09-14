@@ -67,7 +67,7 @@ function freshDay(template, previous) {
     checklist: template.checklist.map((text) => ({ id: sid(), text, done: false })),
     breakers: [],
     goals: (prev && prev.goals && prev.goals.length ? prev.goals : template.goals).map((g) => ({ id: sid(), goal: g.goal, limit: g.limit })),
-    signals: [{ id: sid(), text: '', why: '', done: false }],
+    signals: [],
     subs: [],
     schedule: {},
     reflection: {},
@@ -85,7 +85,22 @@ function freshDay(template, previous) {
   if (prev && prev.breakers) {
     prev.breakers.filter((b) => b.keep).forEach((b) => content.breakers.push({ id: sid(), problem: b.problem, fix: b.fix, keep: true }));
   }
+
+  /* Anything not checked off wasn't done, so it comes along. Checked items stay behind. */
+  if (prev) {
+    upgradeSignalDay(prev);
+    const from = previous.day ? shortSignalDate(previous.day) : 'yesterday';
+    (prev.signals || []).filter((s) => !s.done && s.text && s.text.trim())
+      .forEach((s) => content.signals.push({ id: sid(), text: s.text, why: s.why || '', done: false, carried: from }));
+    (prev.subs || []).filter((x) => !x.done && x.text && x.text.trim())
+      .forEach((x) => content.subs.push({ id: sid(), text: x.text, done: false, carried: from }));
+  }
+  if (!content.signals.length) content.signals.push({ id: sid(), text: '', why: '', done: false });
   return content;
+}
+
+function shortSignalDate(iso) {
+  return asDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 /* Days written before sub-priority tasks had their own list. */
@@ -145,11 +160,22 @@ async function saveTemplateNow() {
 /* ============================================================
    Small building blocks
    ============================================================ */
+/* A box as tall as what's written in it — never cut off. Measured again
+   once it is on the page, when fonts finish loading, and on resize. */
+function fitArea(area) {
+  if (!area.isConnected || !area.offsetParent) return;
+  area.style.height = 'auto';
+  area.style.height = area.scrollHeight + 2 + 'px';
+}
+
 function autoGrow(area) {
-  const fit = () => { area.style.height = 'auto'; area.style.height = area.scrollHeight + 'px'; };
-  area.addEventListener('input', fit);
-  requestAnimationFrame(fit);
+  area.addEventListener('input', () => fitArea(area));
+  requestAnimationFrame(() => fitArea(area));
   return area;
+}
+
+function refitSignalBoxes() {
+  document.querySelectorAll('#signalShell textarea').forEach(fitArea);
 }
 
 function textBox(value, placeholder, onChange, opts) {
@@ -347,16 +373,14 @@ function renderSignal() {
       const top = el('div', 'ssignal-top');
       top.appendChild(el('span', 'ssignal-num', String(i + 1)));
       top.appendChild(checkBox(s.done, s.text || 'signal action', (on) => { s.done = on; row.classList.toggle('is-done', on); }));
-      top.appendChild(textBox(s.text, 'Signal action', (v) => { s.text = v; }, { label: 'Signal action', cls: 'sfield-signal' }));
+      top.appendChild(textBox(s.text, 'Signal action', (v) => {
+        s.text = v;
+        const title = document.querySelector('.swhy-item[data-id="' + s.id + '"] .swhy-name');
+        if (title) title.textContent = v.trim() || 'Signal action ' + (i + 1);
+      }, { label: 'Signal action', cls: 'sfield-signal' }));
       top.appendChild(removeButton('signal action', () => { c.signals = c.signals.filter((x) => x !== s); signalChanged(); renderSignal(); }));
+      if (s.carried) top.appendChild(el('span', 'scarried', 'from ' + s.carried));
       row.appendChild(top);
-
-      const detail = el('div', 'ssignal-detail');
-      const whyWrap = el('label', 'ssignal-field');
-      whyWrap.appendChild(el('span', 'slabel', 'Why it’s highest signal'));
-      whyWrap.appendChild(textBox(s.why, 'What it moves forward', (v) => { s.why = v; }, { label: 'Why it is highest signal', multiline: true }));
-      detail.appendChild(whyWrap);
-      row.appendChild(detail);
       list.appendChild(row);
     });
     body.appendChild(list);
@@ -369,6 +393,24 @@ function renderSignal() {
         focusLater('.ssignal[data-id="' + s.id + '"] .sfield-signal');
       }));
     }
+
+    /* why are these the highest signal? — full width, grows with the text */
+    const why = el('div', 'swhy');
+    why.appendChild(el('h3', 'swhy-title', 'Why are these the highest signal?'));
+    if (!c.signals.length) why.appendChild(el('p', 'sempty', 'Add a signal action above, then say why it’s the highest signal.'));
+    c.signals.forEach((s, i) => {
+      const item = el('label', 'swhy-item');
+      item.dataset.id = s.id;
+      const title = el('span', 'swhy-for');
+      title.appendChild(el('b', null, String(i + 1)));
+      const name = el('span', 'swhy-name');
+      name.textContent = s.text.trim() || 'Signal action ' + (i + 1);
+      title.appendChild(name);
+      item.appendChild(title);
+      item.appendChild(textBox(s.why, 'Why this moves you closest to your goals…', (v) => { s.why = v; }, { label: 'Why ' + (s.text || 'this') + ' is highest signal', multiline: true, cls: 'swhy-text' }));
+      why.appendChild(item);
+    });
+    body.appendChild(why);
     host.appendChild(card);
   }
 
@@ -385,6 +427,7 @@ function renderSignal() {
       row.dataset.id = item.id;
       row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => { item.done = on; row.classList.toggle('is-done', on); }));
       row.appendChild(textBox(item.text, 'Sub-priority task', (v) => { item.text = v; }, { label: 'Sub-priority task', cls: 'sfield-plain' }));
+      if (item.carried) row.appendChild(el('span', 'scarried', 'from ' + item.carried));
       row.appendChild(removeButton('task', () => { c.subs = c.subs.filter((x) => x !== item); signalChanged(); renderSignal(); }));
       list.appendChild(row);
     });
@@ -458,11 +501,48 @@ function renderSignal() {
   const planBtn = el('button', 'btn-primary', 'Plan tomorrow &rarr;');
   planBtn.type = 'button';
   planBtn.addEventListener('click', () => goToDay(shiftDay(SV.day, 1)));
-  plan.appendChild(el('p', 'axis-note', 'Tomorrow starts with your goals, a fresh checklist, and what broke your speed today.'));
-  plan.appendChild(planBtn);
+  const dupBtn = el('button', 'btn-export', 'Duplicate to tomorrow');
+  dupBtn.type = 'button';
+  dupBtn.addEventListener('click', duplicateToTomorrow);
+  plan.appendChild(el('p', 'axis-note', 'Tomorrow starts with your goals, a fresh checklist, what broke your speed today, and anything you didn’t check off.'));
+  const buttons = el('div', 'splan-buttons');
+  buttons.appendChild(dupBtn);
+  buttons.appendChild(planBtn);
+  plan.appendChild(buttons);
   host.appendChild(plan);
 
   paintSignalProgress();
+  requestAnimationFrame(refitSignalBoxes);
+}
+
+/* Copy every signal action (with its why) and sub-priority task to the
+   next day, unchecked — done or not. Nothing already there is lost. */
+async function duplicateToTomorrow() {
+  if (!SV.ready) { notify('Run supabase/signal.sql in Supabase first.'); return; }
+  const source = SV.content;
+  const signals = source.signals.filter((s) => s.text.trim());
+  const subs = source.subs.filter((x) => x.text.trim());
+  if (!signals.length && !subs.length) { notify('Nothing to copy yet — add a signal action first.'); return; }
+
+  const tomorrow = shiftDay(SV.day, 1);
+  try {
+    clearTimeout(SV.saveTimer);
+    if (SV.dirty) { await saveSignalDay(SV.day, SV.content); SV.dirty = false; }
+    const row = await loadSignalDay(tomorrow);
+    const target = upgradeSignalDay(row ? row.content : freshDay(SV.template, { day: SV.day, content: { goals: source.goals, reflection: source.reflection, breakers: source.breakers } }));
+    const from = shortSignalDate(SV.day);
+    const has = (list, text) => list.some((x) => x.text.trim().toLowerCase() === text.trim().toLowerCase());
+    target.signals = target.signals.filter((s) => s.text.trim() || s.why.trim());
+    signals.forEach((s) => { if (!has(target.signals, s.text)) target.signals.push({ id: sid(), text: s.text, why: s.why, done: false, carried: from }); });
+    subs.forEach((x) => { if (!has(target.subs, x.text)) target.subs.push({ id: sid(), text: x.text, done: false, carried: from }); });
+    await saveSignalDay(tomorrow, target);
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't copy to tomorrow — check your connection.");
+    return;
+  }
+  notify('Copied to ' + shortSignalDate(tomorrow) + '.');
+  goToDay(tomorrow);
 }
 
 function paintSignalProgress() {
@@ -627,6 +707,8 @@ async function initSignal() {
   $('#signalToday').addEventListener('click', () => goToDay(todayIso()));
   $('#signalCustomizeBtn').addEventListener('click', openSignalCustomize);
   $('#signalMonthPrev').addEventListener('click', () => moveSignalMonth(-1));
+  window.addEventListener('resize', () => { if (!$('#signalShell').classList.contains('hidden')) refitSignalBoxes(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitSignalBoxes);
   $('#signalMonthNext').addEventListener('click', () => moveSignalMonth(1));
   $('#signalCustomizeCancel').addEventListener('click', () => $('#signalCustomize').classList.add('hidden'));
   $('#signalCustomizeForm').addEventListener('submit', saveSignalCustomize);
