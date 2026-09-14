@@ -6,7 +6,7 @@
    conditional fields and validation can never drift apart.
    ============================================================ */
 
-const DATA_FILTER = { outcome: '' };
+const DATA_FILTER = { outcome: '', period: 'all' };
 
 /* Cells carry user-entered text, so set it as text, never as markup. */
 function cell(text, cls) {
@@ -44,19 +44,101 @@ function cashTypeFor(r) {
   return '';
 }
 
+/* A row belongs to a period if its call was in it, or money landed in it —
+   a balance paid this month counts this month, like on the dashboard. */
+function inPeriod(r, range) {
+  return (r.callDate && within(r.callDate, range)) || r.payments.some((p) => within(p.date, range));
+}
+
+function filteredCalls(all) {
+  const range = rangeFor(DATA_FILTER.period);
+  return all.filter((r) =>
+    (!DATA_FILTER.outcome || r.outcome === DATA_FILTER.outcome) &&
+    (DATA_FILTER.period === 'all' || inPeriod(r, range)));
+}
+
+/* ---------- export ----------
+   Exactly the rows on screen, one line per call, ready for a spreadsheet
+   or for reconciling commission at the end of the month. Cash is what
+   landed inside the chosen period — the same rule the dashboard uses —
+   and commission uses each person's current rate from Add Team. */
+function csvCell(value) {
+  let text = value == null ? '' : String(value);
+  /* A spreadsheet must never run a cell as a formula. Phone numbers and
+     amounts like "+1 555 0100" are left exactly as typed. */
+  if (/^[=@\t\r]/.test(text) || (/^[+\-]/.test(text) && !/^[+\-][\d\s().\-]*$/.test(text))) text = "'" + text;
+  return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+}
+
+function rateOf(name, role) {
+  const hit = CACHE.team.find((p) => p.name === name && p.role === role);
+  return hit ? hit.rate : null;
+}
+
+function exportCsv() {
+  const range = rangeFor(DATA_FILTER.period);
+  const rows = filteredCalls(loggedCalls().slice());
+  if (!rows.length) { notify('Nothing to export for this selection.'); return; }
+
+  const fixed = (n) => (Math.round(n * 100) / 100).toFixed(2);
+  const percent = (rate) => Math.round(rate * 10000) / 100 + '%';
+  const header = ['Call date', 'Booked date', 'Funnel', 'Call', 'Outcome', 'Closer', 'Setter',
+    'Client', 'Email', 'Phone', 'Fathom', 'Payment method', 'Revenue', 'Cash collected', 'Cash type',
+    'Payments', 'Closer rate', 'Closer commission', 'Setter rate', 'Setter commission',
+    'Disqualification', 'Was a call', 'Notes', 'Logged by'];
+
+  const lines = rows.map((r) => {
+    const paid = r.payments.filter((p) => DATA_FILTER.period === 'all' || within(p.date, range));
+    const cash = paid.reduce((s, p) => s + p.amount, 0);
+    const closerRate = r.closer ? rateOf(r.closer, 'closer') : null;
+    const setterRate = r.setter ? rateOf(r.setter, 'setter') : null;
+    const def = outcomeDef(r.outcome);
+    const closed = r.outcome === 'closed';
+    const dq = r.outcome === 'disqualified';
+    return [
+      r.callDate, r.bookedDate, labelFor(FUNNELS, r.funnel), r.callName, def ? def.label : r.outcome,
+      r.closer, r.setter, r.clientName, r.clientEmail, r.clientPhone, r.fathomUrl,
+      closed ? labelFor(PAYMENT_METHODS, r.paymentMethod) : '',
+      closed ? fixed(r.contractValue || 0) : '',
+      fixed(cash), cashTypeFor(r),
+      paid.map((p) => p.date + ' ' + fixed(p.amount) + (p.type ? ' ' + p.type : '')).join('; '),
+      closerRate == null ? '' : percent(closerRate),
+      closerRate == null ? '' : fixed(cash * closerRate),
+      setterRate == null ? '' : percent(setterRate),
+      setterRate == null ? '' : fixed(cash * setterRate),
+      dq ? labelFor(DQ_TYPES, r.dqType) : '',
+      dq ? (r.wasCall ? 'Yes' : 'No') : '',
+      r.notes, r.loggedBy
+    ].map(csvCell).join(',');
+  });
+
+  /* The byte-order mark makes Excel read accents and symbols correctly. */
+  const csv = '﻿' + [header.map(csvCell).join(',')].concat(lines).join('\r\n');
+  const offer = slugify((CACHE.board && CACHE.board.name) || 'offer');
+  const period = $('#dPeriod').selectedOptions[0].textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const d = new Date();
+  const stamp = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  link.download = offer + '-calls-' + period + '-' + stamp + '.csv';
+  document.body.appendChild(link);
+  link.click();
+  setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 1000);
+  notify('Exported ' + rows.length + (rows.length === 1 ? ' call.' : ' calls.'));
+}
+
 function renderDataTab() {
   const tbody = $('#dRows');
   if (!tbody) return;
   tbody.textContent = '';
 
   const all = loggedCalls().slice().reverse();
-  const rows = DATA_FILTER.outcome
-    ? all.filter((r) => r.outcome === DATA_FILTER.outcome)
-    : all;
+  const rows = filteredCalls(all);
 
   $('#dEmpty').classList.toggle('hidden', all.length > 0);
   $('#dCount').textContent = rows.length
-    ? rows.length + (rows.length === 1 ? ' row' : ' rows') + (DATA_FILTER.outcome ? ' of ' + all.length : '')
+    ? rows.length + (rows.length === 1 ? ' row' : ' rows') + (rows.length !== all.length ? ' of ' + all.length : '')
     : '';
 
   rows.forEach((r) => {
@@ -146,12 +228,24 @@ function initDataTab() {
     renderDataTab();
   });
 
-  $('#dReset').addEventListener('click', () => {
-    DATA_FILTER.outcome = '';
-    sel.value = '';
-    sel.parentElement.classList.remove('is-set');
+  const period = $('#dPeriod');
+  period.addEventListener('change', () => {
+    DATA_FILTER.period = period.value;
+    period.parentElement.classList.toggle('is-set', period.value !== 'all');
     renderDataTab();
   });
+
+  $('#dReset').addEventListener('click', () => {
+    DATA_FILTER.outcome = '';
+    DATA_FILTER.period = 'all';
+    sel.value = '';
+    period.value = 'all';
+    sel.parentElement.classList.remove('is-set');
+    period.parentElement.classList.remove('is-set');
+    renderDataTab();
+  });
+
+  $('#dExport').addEventListener('click', exportCsv);
 
   $('#dGoForm').addEventListener('click', () => showTab('postcall'));
 

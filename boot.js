@@ -1,27 +1,39 @@
 /* ============================================================
    boot.js — who gets which screen
    ------------------------------------------------------------
-     /                  signed out → sign in with email
-                        owner or admin → Main Hub
-                        a team code → straight to their board
-     /sales-team        the team code page
-     /board/<id>        that offer's board, if you may see it
+     /                          the portal: every section of the company
+     /sales-dashboard           every sales team board you can reach
+     /sales-dashboard/<offer>   that offer's board, if you may see it
+     /sales-team                the team code page
+     /board/<id>                old links — forwarded to the new address
 
-   The one rule: an account gets the hub and the offers it is
+   The one rule: an account gets the portal and the offers it is
    allowed; a code gets one board and nothing else.
    ============================================================ */
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
     const inApp = !id;
     $('#topStrip').classList.toggle('hidden', !inApp);
-    if (!inApp) {
-      $('#hubShell').classList.add('hidden');
-      $('#boardShell').classList.add('hidden');
-    }
+    if (!inApp) SHELLS.forEach((s) => $('#' + s).classList.add('hidden'));
+  }
+
+  function openShell(id) {
+    show(null);
+    SHELLS.forEach((s) => $('#' + s).classList.toggle('hidden', s !== id));
+  }
+
+  /* The link back up, top left: portal ← sales boards ← an offer. */
+  function crumb(label, href) {
+    const a = $('#toHub');
+    a.classList.toggle('hidden', !label);
+    if (!label) return;
+    a.textContent = '← ' + label;
+    a.href = href;
   }
 
   function fail(boxId, message) {
@@ -31,7 +43,8 @@
   }
 
   const path = location.pathname.replace(/\/+$/, '') || '/';
-  const boardMatch = path.match(/^\/board\/([0-9a-f-]{36})$/i);
+  const legacyBoard = path.match(/^\/board\/([0-9a-f-]{36})$/i);
+  const salesBoard = path.match(/^\/sales-dashboard\/([^/]+)$/i);
   const params = new URLSearchParams(location.search);
 
   /* ---------- the forms ---------- */
@@ -62,7 +75,7 @@
     /* A fresh code entry is a fresh person: forget whoever was picked on
        this device before, so "Who's logging in?" is always asked. */
     try { localStorage.removeItem('ia-who:' + result.boardId); } catch (err) { /* private window */ }
-    location.href = '/board/' + result.boardId;
+    location.href = SALES_PATH;                   // forwarded to their own board
   });
 
   $('#codeInput').addEventListener('input', (e) => {
@@ -92,7 +105,7 @@
     nav.textContent = '';
     reachable.forEach((b) => {
       const a = el('a', 'offer-tab');
-      a.href = '/board/' + b.id;
+      a.href = boardPath(b);
       a.dataset.board = b.id;
       a.textContent = b.name;
       if (b.id === CACHE.boardId) a.setAttribute('aria-current', 'page');
@@ -100,14 +113,32 @@
     });
   }
 
+  /* After a rename the address follows the name, without a reload. */
+  window.syncBoardAddress = function () {
+    const listed = CACHE.boards.find((b) => b.id === CACHE.boardId);
+    if (listed) listed.directory = CACHE.board.directory;
+    const wanted = boardPath(CACHE.board);
+    if (location.pathname !== wanted) history.replaceState(null, '', wanted + location.search + location.hash);
+    paintOfferTabs();
+  };
+
   /* ---------- screens ---------- */
+  async function openPortal() {
+    await loadHub();
+    openShell('portalShell');
+    crumb(null);
+    $('#undoBtn').classList.add('hidden');
+    document.title = 'Portal · Inevitable Acquisition';
+    initPortal();
+    initProfile();
+  }
+
   async function openHub() {
     await loadHub();
-    show(null);
-    $('#hubShell').classList.remove('hidden');
-    $('#toHub').classList.add('hidden');
+    openShell('hubShell');
+    crumb('Portal', '/');
     $('#undoBtn').classList.add('hidden');
-    document.title = 'Main Hub · Inevitable Acquisition';
+    document.title = 'Sales Team Boards · Inevitable Acquisition';
     initHub();
     initProfile();
     watchChanges(renderHub);
@@ -118,15 +149,16 @@
     if (!CACHE.board || !CACHE.role) {
       /* Not theirs, or gone. Send them somewhere they belong. */
       if (CACHE.me.kind === 'team') { await signOut(); return; }
-      location.replace('/');
+      location.replace(SALES_PATH);
       return;
     }
 
-    if (CACHE.role !== 'rep') await loadBoards();
+    /* Always show the offer's current address, whichever one was typed. */
+    const wanted = boardPath(CACHE.board);
+    if (location.pathname !== wanted) history.replaceState(null, '', wanted + location.search + location.hash);
 
-    show(null);
-    $('#boardShell').classList.remove('hidden');
-    $('#toHub').classList.toggle('hidden', CACHE.role === 'rep');
+    openShell('boardShell');
+    crumb(CACHE.role === 'rep' ? null : 'Sales boards', SALES_PATH);
     $('#teamTabBtn').classList.toggle('hidden', !canManage());
 
     initApp();
@@ -137,8 +169,8 @@
     paintOfferTabs();
     initProfile();
 
-    const wanted = params.get('tab');
-    if (wanted && document.querySelector('.tab[data-tab="' + wanted + '"]:not(.hidden)')) showTab(wanted);
+    const wantedTab = params.get('tab');
+    if (wantedTab && document.querySelector('.tab[data-tab="' + wantedTab + '"]:not(.hidden)')) showTab(wantedTab);
 
     watchChanges(() => {
       fillTeamSelects();
@@ -158,7 +190,7 @@
 
     if (path === '/sales-team') {
       if (me && me.kind === 'team' && me.memberships[0]) {
-        location.replace('/board/' + me.memberships[0].board_id);
+        location.replace(SALES_PATH);
         return;
       }
       show('viewCode');
@@ -179,21 +211,32 @@
     }
 
     try {
+      await loadBoards();
+
+      /* A code opens one board, whatever address it came in on. */
       if (me.kind === 'team') {
         const home = me.memberships[0] && me.memberships[0].board_id;
         if (!home) { await signOut(); return; }
-        if (!boardMatch || boardMatch[1] !== home) { location.replace('/board/' + home); return; }
         await openBoard(home);
         return;
       }
 
-      if (boardMatch) {
-        await openBoard(boardMatch[1]);
+      if (legacyBoard) {
+        const board = CACHE.boards.find((b) => b.id === legacyBoard[1].toLowerCase());
+        location.replace(board ? boardPath(board) + location.search : SALES_PATH);
         return;
       }
 
+      if (salesBoard) {
+        const board = findBoardBySlug(decodeURIComponent(salesBoard[1]));
+        if (!board) { location.replace(SALES_PATH); return; }
+        await openBoard(board.id);
+        return;
+      }
+
+      if (path === SALES_PATH) { await openHub(); return; }
       if (path !== '/') { location.replace('/'); return; }
-      await openHub();
+      await openPortal();
     } catch (err) {
       console.error(err);
       show(null);

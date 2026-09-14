@@ -1,17 +1,33 @@
 # Inevitable Acquisition Portal
 
-`portal.inevitableacq.com` — the home of every offer and every sales team.
+`portal.inevitableacq.com` — one sign-in for every section of the company. Today that is
+Sales Team Boards; new sections are added as cards on the portal page.
 
 ## The one rule
 
 **You either have an account or you have a code.** An account (owner or admin) gets the
-Main Hub and the offers it is allowed. A code gets one offer's board and nothing else.
+portal and the offers it is allowed. A code gets one offer's board and nothing else.
 
 | Who | Goes to | Enters | Sees |
 |---|---|---|---|
-| Owner | `portal.inevitableacq.com` | email + password | Main Hub, every offer, admins |
-| Admin | `portal.inevitableacq.com` | email + password | Main Hub, only their offers |
+| Owner | `portal.inevitableacq.com` | email + password | the portal, every offer, admins |
+| Admin | `portal.inevitableacq.com` | email + password | the portal, only their offers |
 | Rep | `portal.inevitableacq.com/sales-team` | the offer's code | that offer's board only |
+
+## Addresses
+
+| Address | What it is |
+|---|---|
+| `/` | the portal: one card per section |
+| `/sales-dashboard` | Sales Team Boards: totals, offer cards, admins |
+| `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
+| `/sales-team` | where reps enter their code |
+| `/board/<id>` | old links; forwarded to the new address |
+
+An offer's address follows its name. The server picks it so no two offers share one (a
+second "Alex" becomes `alex-2`), and every earlier address is remembered in
+`boards.directory.oldSlugs`, so links sent before a rename keep working. Addresses only
+point at an offer; calls are tied to the offer's id, so renaming never touches data.
 
 Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, and Add Team (owner
 and admins only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
@@ -19,20 +35,21 @@ and admins only). The offer's name is set at the top of Add Team. Offers differ 
 ## Where things live
 
 ```
-index.html        every screen: sign-in, code page, hub, board
+index.html        every screen: sign-in, code page, portal, sales boards, board
 config.js         Supabase address and publishable key (both public by design)
 db.js             every read and write to Supabase
 boot.js           decides which screen each person gets
-hub.js            Main Hub: offer cards, new offer, admins and invites
+portal.js         the portal page: one card per section
+hub.js            Sales Team Boards: offer cards, new offer, admins and invites
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
-team.js           Add Team: offer name, roster, team login page, code, new code
+team.js           Add Team: offer name, team with roles and commission, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 profile.js        the name at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
-api/boards.js     create an offer, make a new code, archive
+api/boards.js     create an offer, make a new code, archive, offer addresses
 api/people.js     invite admins, change their offers, remove them
 supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
@@ -144,9 +161,12 @@ range, `booked` = calendar rows whose `bookedDate` falls in range.
 | Commission | each person's rate × cash collected in range on their rows |
 
 House rates are **10% for closers, 5% for setters**, applied to cash actually collected
-in the period. They live as `CLOSER_RATE` / `SETTER_RATE` in `data.js`, with a per-person
-`rate` on each `TEAM` entry so someone can be put on a different deal — the Add Team tab
-will edit these.
+in the period. They live as `CLOSER_RATE` / `SETTER_RATE` in `data.js` and are what a new
+person starts on. Each person's own rate is edited on Add Team.
+
+On Add Team each person is a **Closer**, a **Setter** or **Full cycle**. Full cycle is stored
+as the same name in both roles, so they appear in both Post Call Form dropdowns and have a
+closing rate and a setting rate, each applied to the deals where they played that part.
 
 ## Post Call Form
 
@@ -179,7 +199,13 @@ separately.
 
 ## Data tab
 
-Lists every row logged through the form, newest first, filterable by outcome. The
+Lists every row logged through the form, newest first, filterable by period and outcome.
+A call belongs to a period if it happened in it or money from it landed in it.
+
+**Export CSV** downloads exactly the rows on screen: every form field, the payments, and
+each row's closer and setter commission at their current rates, using cash that landed
+inside the chosen period — the same figures as Commission Tracking. Cells that a
+spreadsheet would run as a formula are made plain text. The
 **Details** and **Cash Type** columns are derived, not stored:
 
 - **Details** answers whatever the outcome makes relevant — payment method and revenue

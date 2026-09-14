@@ -389,6 +389,14 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
    Data tab — the call log
    ============================================================ */
 .data-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 14px; }
+.btn-export {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: none; border: 1px solid var(--line); border-radius: var(--r-pill);
+  color: var(--ink-2); padding: 6px 14px 6px 11px; font-size: 12px;
+  cursor: pointer; transition: border-color .14s, color .14s;
+}
+.btn-export svg { width: 14px; height: 14px; }
+.btn-export:hover { border-color: var(--accent-deep); color: var(--accent-ink); }
 
 .table-scroll { overflow-x: auto; border-top: 1px solid var(--line-soft); }
 .data-table { border-collapse: collapse; width: 100%; min-width: 1180px; font-size: 12.5px; }
@@ -444,7 +452,7 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 /* ============================================================
    Add Team
    ============================================================ */
-.team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); align-items: start; }
+.team-grid { display: grid; grid-template-columns: 3fr 2fr; gap: var(--gap); align-items: start; }
 .team-body { gap: 24px; padding: 20px; }
 
 .roster-block { display: flex; flex-direction: column; gap: 10px; }
@@ -467,11 +475,45 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 .roster-list { display: flex; flex-direction: column; }
 .roster-empty { margin: 0; font-size: 12.5px; color: var(--muted); }
 .roster-row {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 124px 262px 56px; align-items: center; gap: 12px;
   padding: 9px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px;
 }
 .roster-row:last-child { border-bottom: 0; }
+.roster-row .link-btn { justify-self: end; }
+.roster-head {
+  padding: 0 0 7px; font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted);
+}
 .roster-name { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.role-select, .rate-field input {
+  background: var(--surface-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 9px; font-size: 12.5px;
+}
+.add-row .role-select { padding: 10px 12px; font-size: 13px; border-radius: 9px; flex: none; }
+.role-select { cursor: pointer; }
+.role-select:hover, .rate-field input:hover { border-color: #2e323b; }
+.role-select:focus, .rate-field input:focus { outline: none; border-color: var(--accent-bright); background: var(--surface-3); }
+.role-select:disabled, .rate-field input:disabled { opacity: .7; cursor: default; }
+
+.roster-rates { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+.rate-field { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11.5px; }
+.rate-field input { width: 58px; text-align: right; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+.rate-field input::-webkit-outer-spin-button, .rate-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.rate-unit { color: var(--ink-2); }
+.rate-kind { margin-left: 2px; }
+
+@media (max-width: 1060px) {
+  .roster-row { grid-template-columns: minmax(0, 1fr) 124px 56px; }
+  .roster-head span:nth-child(3) { display: none; }
+  .roster-rates { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 560px) {
+  .roster-row { grid-template-columns: 1fr auto; }
+  .roster-head { display: none; }
+  .roster-rates { grid-column: 1; grid-row: 2; }
+  .roster-row .link-btn { grid-column: 2; grid-row: 2; }
+}
 
 /* --- secret key --- */
 .key-field { display: flex; flex-direction: column; gap: 9px; }
@@ -584,7 +626,28 @@ svg.chart { display: block; width: 100%; height: auto; overflow: visible; }
 }
 
 /* ============================================================
-   Main Hub
+   Portal — one card per section of the company
+   ============================================================ */
+.portal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr)); gap: var(--gap); }
+.portal-card {
+  display: flex; flex-direction: column; gap: 14px; min-height: 190px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--shadow); padding: 20px 22px; color: inherit; text-decoration: none;
+  transition: border-color .16s, background .16s;
+}
+.portal-card:hover { border-color: var(--accent-deep); background: #10131a; }
+.portal-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.portal-card-title { margin: 0; font-size: 17px; font-weight: 400; letter-spacing: -.005em; }
+.portal-card-arrow { color: var(--muted); transition: transform .16s, color .16s; }
+.portal-card:hover .portal-card-arrow { color: var(--accent-ink); transform: translateX(3px); }
+.portal-card-blurb { margin: 0; color: var(--muted); font-size: 12.5px; max-width: 44ch; }
+.portal-card-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-soft);
+}
+
+/* ============================================================
+   Sales Team Boards
    ============================================================ */
 .hub-filters { margin-bottom: 0; }
 .section-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

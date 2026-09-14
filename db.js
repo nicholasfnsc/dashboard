@@ -216,9 +216,55 @@ async function renameBoard(name) {
   const { error } = await sb.from('boards').update({ name }).eq('id', CACHE.boardId);
   if (error) throw error;
   CACHE.board.name = name;
-  /* The team login in Supabase takes the new name too. Not critical, so a
-     failure here never undoes the rename. */
-  serverAction('/api/boards', { action: 'names', boardId: CACHE.boardId }).catch(() => {});
+  const listed = CACHE.boards.find((b) => b.id === CACHE.boardId);
+  if (listed) listed.name = name;
+
+  /* The team login in Supabase takes the new name, and the offer's address
+     follows it. Not critical, so a failure here never undoes the rename. */
+  try {
+    await serverAction('/api/boards', { action: 'names', boardId: CACHE.boardId });
+    await refreshBoardDirectory();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/* ---------- offer addresses ----------
+   /sales-dashboard/<slug>. The server picks the slug so no two offers
+   share one; old slugs keep opening the same offer after a rename. */
+const SALES_PATH = '/sales-dashboard';
+
+function slugify(name) {
+  return String(name || '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    .slice(0, 60).replace(/-+$/, '') || 'offer';
+}
+
+function boardPath(board) {
+  if (!board) return SALES_PATH;
+  const slug = (board.directory && board.directory.slug) || board.id;
+  return SALES_PATH + '/' + slug;
+}
+
+function findBoardBySlug(slug) {
+  const s = String(slug || '').toLowerCase();
+  const has = (b, key) => b.directory && (key === 'slug' ? b.directory.slug === s
+    : Array.isArray(b.directory.oldSlugs) && b.directory.oldSlugs.indexOf(s) !== -1);
+  return CACHE.boards.find((b) => b.id === s)
+    || CACHE.boards.find((b) => has(b, 'slug'))
+    || CACHE.boards.find((b) => has(b, 'old'))
+    || CACHE.boards.find((b) => slugify(b.name) === s)
+    || null;
+}
+
+async function refreshBoardDirectory() {
+  const { data, error } = await sb.from('boards').select('directory').eq('id', CACHE.boardId).maybeSingle();
+  if (error || !data) return;
+  CACHE.board.directory = data.directory || {};
+  const listed = CACHE.boards.find((b) => b.id === CACHE.boardId);
+  if (listed) listed.directory = CACHE.board.directory;
 }
 
 /* ---------- Rep Hub ---------- */
@@ -237,15 +283,16 @@ async function saveRepHubTemplate() {
   if (error) throw error;
 }
 
-/* "This offer only" values live on the offer itself. */
+/* "This offer only" values live on the offer itself. The offer is read
+   fresh first, so a change someone else just made — another value, or
+   the offer's address — is kept rather than written over. */
 async function saveOfferHubValue(itemId, value) {
-  const directory = Object.assign({}, CACHE.board.directory || {});
+  const { data, error: readError } = await sb.from('boards').select('directory').eq('id', CACHE.boardId).maybeSingle();
+  if (readError) throw readError;
+  const directory = Object.assign({}, (data && data.directory) || CACHE.board.directory || {});
   directory.repHub = Object.assign({}, directory.repHub || {});
   directory.repHub[itemId] = value;
-  await saveDirectory(directory);
-}
 
-async function saveDirectory(directory) {
   const { error } = await sb.from('boards').update({ directory }).eq('id', CACHE.boardId);
   if (error) throw error;
   CACHE.board.directory = directory;
@@ -297,6 +344,14 @@ async function addMember(person) {
 /* Switched off, never deleted — their history still adds up. */
 async function removeMember(person) {
   const { error } = await sb.from('roster').update({ active: false })
+    .eq('board_id', CACHE.boardId).eq('name', person.name).eq('role', person.role);
+  if (error) throw error;
+  await reloadRoster();
+}
+
+/* A person's commission in one role, as a fraction (0.1 = 10%). */
+async function setMemberRate(person, rate) {
+  const { error } = await sb.from('roster').update({ rate })
     .eq('board_id', CACHE.boardId).eq('name', person.name).eq('role', person.role);
   if (error) throw error;
   await reloadRoster();

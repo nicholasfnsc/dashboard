@@ -89,7 +89,7 @@
   <div class="topstrip-in">
     <div class="topstrip-side">
       <span class="brand"><img class="brand-mark" src="/logo.png" alt="">Inevitable Acquisition</span>
-      <a class="crumb hidden" id="toHub" href="/">&larr; Main hub</a>
+      <a class="crumb hidden" id="toHub" href="/">&larr; Portal</a>
     </div>
     <div class="topstrip-side">
       <button type="button" class="undo-btn hidden" id="undoBtn">
@@ -114,12 +114,23 @@
 
 <div class="app-toast" id="appToast" role="status" aria-live="polite"></div>
 
-<!-- ================= MAIN HUB (owner and admins) ================= -->
+<!-- ================= PORTAL (owner and admins) ================= -->
+<div class="shell hidden" id="portalShell">
+  <div class="dash-head">
+    <div>
+      <p class="eyebrow">Inevitable Acquisition Portal</p>
+      <h1 class="dash-title" id="portalGreeting">Welcome</h1>
+    </div>
+  </div>
+  <div class="portal-grid" id="portalSections"></div>
+</div>
+
+<!-- ================= SALES TEAM BOARDS (owner and admins) ================= -->
 <div class="shell hidden" id="hubShell">
   <div class="dash-head">
     <div>
       <p class="eyebrow">Inevitable Acquisition</p>
-      <h1 class="dash-title">Main Hub</h1>
+      <h1 class="dash-title">Sales Team Boards</h1>
     </div>
     <div class="filters hub-filters">
       <span class="fpill">
@@ -140,7 +151,7 @@
   <div class="section">
     <div class="section-head section-head-row">
       <div>
-        <h2>Sales team boards</h2>
+        <h2>Offers</h2>
         <p>One board per offer. Name each one on its Add Team tab.</p>
       </div>
       <button type="button" class="btn-primary hidden" id="createBoardBtn">+ New offer</button>
@@ -424,10 +435,27 @@
       </div>
 
       <div class="panel-tools data-tools">
+        <span class="fpill">
+          <label class="hidden" for="dPeriod">Period</label>
+          <select id="dPeriod">
+            <option value="all">All time</option>
+            <option value="mtd">This month</option>
+            <option value="lastMonth">Last month</option>
+            <option value="qtd">This quarter</option>
+            <option value="ytd">This year so far</option>
+          </select>
+        </span>
         <span class="fpill"><label class="hidden" for="dOutcome">Outcome</label><select id="dOutcome"></select></span>
         <button class="link-btn" id="dReset" type="button">Reset</button>
         <span class="filters-spacer"></span>
         <span class="axis-note" id="dCount"></span>
+        <button class="btn-export" id="dExport" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 4v11"></path><polyline points="7 10 12 15 17 10"></polyline><path d="M5 20h14"></path>
+          </svg>
+          Export CSV
+        </button>
       </div>
 
       <div class="table-scroll">
@@ -493,30 +521,24 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h3>Closers &amp; Setters</h3>
-          <p>Manage who shows up in the Post Call Form's Closer and Setter dropdowns.</p>
+          <h3>Team</h3>
+          <p>Who shows up in the Post Call Form, and the commission each person earns on cash collected.</p>
         </div>
         <div class="panel-body team-body">
 
-          <div class="roster-block">
-            <h4>Closers</h4>
-            <form class="add-row" id="addCloserForm">
-              <label class="hidden" for="newCloser">Closer name</label>
-              <input type="text" id="newCloser" placeholder="Add a closer name..." autocomplete="off">
-              <button type="submit" class="btn-primary btn-add">Add</button>
-            </form>
-            <div class="roster-list" id="closerList"></div>
-          </div>
+          <form class="add-row" id="addPersonForm">
+            <label class="hidden" for="newPerson">Name</label>
+            <input type="text" id="newPerson" placeholder="Add someone to the team..." autocomplete="off">
+            <label class="hidden" for="newPersonRole">Role</label>
+            <select id="newPersonRole" class="role-select">
+              <option value="closer">Closer</option>
+              <option value="setter">Setter</option>
+              <option value="full">Full cycle</option>
+            </select>
+            <button type="submit" class="btn-primary btn-add">Add</button>
+          </form>
 
-          <div class="roster-block">
-            <h4>Setters</h4>
-            <form class="add-row" id="addSetterForm">
-              <label class="hidden" for="newSetter">Setter name</label>
-              <input type="text" id="newSetter" placeholder="Add a setter name..." autocomplete="off">
-              <button type="submit" class="btn-primary btn-add">Add</button>
-            </form>
-            <div class="roster-list" id="setterList"></div>
-          </div>
+          <div class="roster-list" id="rosterList"></div>
 
         </div>
       </div>
@@ -566,6 +588,7 @@
 <script src="/team.js"></script>
 <script src="/rephub.js"></script>
 <script src="/hub.js"></script>
+<script src="/portal.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>

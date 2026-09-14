@@ -14,59 +14,167 @@ function savedRoster() {
   return CACHE.team;
 }
 
-/* ---------- roster ---------- */
-function renderRoster() {
-  const rows = savedRoster();
-  const manager = canManage();
+/* ---------- roster ----------
+   One line per person. A full-cycle rep is simply someone who is both a
+   closer and a setter, so they appear in both dropdowns and earn each
+   commission on the deals where they played that part. */
+const ROLE_CHOICES = [
+  { value: 'closer', label: 'Closer' },
+  { value: 'setter', label: 'Setter' },
+  { value: 'full',   label: 'Full cycle' }
+];
 
-  [['closer', 'closerList'], ['setter', 'setterList']].forEach((pair) => {
-    const role = pair[0];
-    const host = $('#' + pair[1]);
-    if (!host) return;
-    host.textContent = '';
+const rolesFor = (choice) => (choice === 'full' ? ['closer', 'setter'] : [choice]);
+const defaultRate = (role) => (role === 'closer' ? CLOSER_RATE : SETTER_RATE);
+const asPercent = (rate) => String(Math.round(Number(rate) * 10000) / 100);
 
-    const people = rows.filter((p) => p.role === role);
-    if (!people.length) {
-      host.appendChild(el('p', 'roster-empty', 'None added yet.'));
+/* Everyone on the roster, one entry per person, in the order they were added. */
+function rosterPeople() {
+  const people = [];
+  savedRoster().forEach((p) => {
+    let person = people.find((x) => x.name === p.name);
+    if (!person) { person = { name: p.name, rows: {} }; people.push(person); }
+    person.rows[p.role] = p;
+  });
+  people.forEach((person) => {
+    person.choice = person.rows.closer && person.rows.setter ? 'full' : person.rows.closer ? 'closer' : 'setter';
+  });
+  return people;
+}
+
+function roleLabel(choice) {
+  return ROLE_CHOICES.find((c) => c.value === choice).label;
+}
+
+function rateField(person, role) {
+  const row = person.rows[role];
+  const wrap = el('label', 'rate-field');
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.max = '100';
+  input.step = '0.5';
+  input.inputMode = 'decimal';
+  input.value = asPercent(row.rate);
+  input.setAttribute('aria-label', (role === 'closer' ? 'Closing' : 'Setting') + ' commission for ' + person.name);
+  wrap.appendChild(input);
+  wrap.appendChild(el('span', 'rate-unit', '%'));
+  wrap.appendChild(el('span', 'rate-kind', role === 'closer' ? 'closing' : 'setting'));
+
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+  input.addEventListener('change', async () => {
+    const percent = Number(input.value);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100 || input.value === '') {
+      input.value = asPercent(row.rate);
+      notify('Use a number between 0 and 100.');
       return;
     }
+    const rate = Math.round(percent * 100) / 10000;
+    if (rate === Number(row.rate)) return;
 
-    people.forEach((p) => {
-      const line = el('div', 'roster-row');
+    pushUndo({ kind: 'restoreTeam', label: 'Changed ' + person.name + "'s commission", team: savedRoster().slice() });
+    try {
+      await setMemberRate(row, rate);
+    } catch (err) {
+      console.error(err);
+      input.value = asPercent(row.rate);
+      notify("Couldn't save that — check your connection and try again.");
+      return;
+    }
+    afterRosterChange();
+    notify(person.name + ' now earns ' + asPercent(rate) + '% ' + (role === 'closer' ? 'on deals they close.' : 'on calls they set.'));
+  });
+  return wrap;
+}
 
-      const name = document.createElement('span');
-      name.className = 'roster-name';
-      name.textContent = p.name;              // typed by a person — never as markup
-      line.appendChild(name);
+async function changeRole(person, choice) {
+  const want = rolesFor(choice);
+  const have = Object.keys(person.rows);
+  pushUndo({ kind: 'restoreTeam', label: 'Changed ' + person.name + "'s role", team: savedRoster().slice() });
+  try {
+    for (const role of want) {
+      if (have.indexOf(role) === -1) await addMember({ name: person.name, role, rate: defaultRate(role) });
+    }
+    for (const role of have) {
+      if (want.indexOf(role) === -1) await removeMember(person.rows[role]);
+    }
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't change their role — check your connection and try again.");
+  }
+  afterRosterChange();
+  notify(person.name + ' is now ' + (choice === 'full' ? 'full cycle.' : 'a ' + roleLabel(choice).toLowerCase() + '.'));
+}
 
-      if (manager) {
-        const remove = el('button', 'link-btn danger', 'Remove');
-        remove.type = 'button';
-        remove.setAttribute('aria-label', 'Remove ' + p.name);
-        remove.addEventListener('click', async () => {
-          if (!window.confirm('Remove ' + p.name + ' from this team?\n\nTheir logged calls stay exactly as they are.')) return;
-          pushUndo({ kind: 'restoreTeam', label: 'Removed ' + p.name, team: savedRoster().slice() });
-          try {
-            await removeMember(p);
-          } catch (err) {
-            console.error(err);
-            notify("Couldn't remove them — check your connection and try again.");
-            return;
-          }
-          afterRosterChange();
-          notify('Removed ' + p.name + '. Their logged calls are untouched.');
-        });
-        line.appendChild(remove);
-      }
+function renderRoster() {
+  const host = $('#rosterList');
+  if (!host) return;
+  const manager = canManage();
+  host.textContent = '';
 
-      host.appendChild(line);
+  const people = rosterPeople();
+  if (!people.length) {
+    host.appendChild(el('p', 'roster-empty', 'Nobody added yet.'));
+  } else {
+    const head = el('div', 'roster-row roster-head');
+    ['Name', 'Role', 'Commission', ''].forEach((t) => head.appendChild(el('span', null, t)));
+    host.appendChild(head);
+  }
+
+  people.forEach((person) => {
+    const line = el('div', 'roster-row');
+
+    const name = document.createElement('span');
+    name.className = 'roster-name';
+    name.textContent = person.name;             // typed by a person — never as markup
+    line.appendChild(name);
+
+    const role = document.createElement('select');
+    role.className = 'role-select';
+    role.setAttribute('aria-label', 'Role for ' + person.name);
+    ROLE_CHOICES.forEach((c) => {
+      const option = el('option', null, c.label);
+      option.value = c.value;
+      role.appendChild(option);
     });
+    role.value = person.choice;
+    role.disabled = !manager;
+    role.addEventListener('change', () => changeRole(person, role.value));
+    line.appendChild(role);
+
+    const rates = el('div', 'roster-rates');
+    rolesFor(person.choice).forEach((r) => {
+      const field = rateField(person, r);
+      field.querySelector('input').disabled = !manager;
+      rates.appendChild(field);
+    });
+    line.appendChild(rates);
+
+    const remove = el('button', 'link-btn danger', 'Remove');
+    remove.type = 'button';
+    remove.setAttribute('aria-label', 'Remove ' + person.name);
+    remove.classList.toggle('hidden', !manager);
+    remove.addEventListener('click', async () => {
+      if (!window.confirm('Remove ' + person.name + ' from this team?\n\nTheir logged calls stay exactly as they are.')) return;
+      pushUndo({ kind: 'restoreTeam', label: 'Removed ' + person.name, team: savedRoster().slice() });
+      try {
+        for (const r of Object.keys(person.rows)) await removeMember(person.rows[r]);
+      } catch (err) {
+        console.error(err);
+        notify("Couldn't remove them — check your connection and try again.");
+        return;
+      }
+      afterRosterChange();
+      notify('Removed ' + person.name + '. Their logged calls are untouched.');
+    });
+    line.appendChild(remove);
+
+    host.appendChild(line);
   });
 
-  ['addCloserForm', 'addSetterForm'].forEach((id) => {
-    const node = $('#' + id);
-    if (node) node.classList.toggle('hidden', !manager);
-  });
+  const form = $('#addPersonForm');
+  if (form) form.classList.toggle('hidden', !manager);
 }
 
 function afterRosterChange() {
@@ -75,19 +183,23 @@ function afterRosterChange() {
   render();
 }
 
-async function addPerson(role, inputId) {
-  const input = $('#' + inputId);
+async function addPerson() {
+  const input = $('#newPerson');
+  const choice = $('#newPersonRole').value;
   const name = (input.value || '').trim().replace(/\s+/g, ' ');
   if (!name) { input.focus(); return; }
 
-  if (savedRoster().some((p) => p.name.toLowerCase() === name.toLowerCase() && p.role === role)) {
+  const existing = rosterPeople().find((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (existing) {
     input.value = '';
-    return;                                   // already on this team in this role
+    if (existing.choice !== choice) await changeRole(existing, choice);
+    return;
   }
 
   input.value = '';
+  pushUndo({ kind: 'restoreTeam', label: 'Added ' + name, team: savedRoster().slice() });
   try {
-    await addMember({ name: name, role: role, rate: role === 'closer' ? CLOSER_RATE : SETTER_RATE });
+    for (const role of rolesFor(choice)) await addMember({ name, role, rate: defaultRate(role) });
   } catch (err) {
     console.error(err);
     notify("Couldn't add them — check your connection and try again.");
@@ -171,6 +283,7 @@ async function saveOfferName() {
     return;
   }
   paintBoardName();
+  syncBoardAddress();
   notify('Offer renamed to ' + name + '.');
 }
 
@@ -180,10 +293,9 @@ function initTeamTab() {
   nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') nameInput.blur(); });
   paintBoardName();
 
-  if (!$('#closerList')) return;
+  if (!$('#rosterList')) return;
 
-  $('#addCloserForm').addEventListener('submit', (e) => { e.preventDefault(); addPerson('closer', 'newCloser'); });
-  $('#addSetterForm').addEventListener('submit', (e) => { e.preventDefault(); addPerson('setter', 'newSetter'); });
+  $('#addPersonForm').addEventListener('submit', (e) => { e.preventDefault(); addPerson(); });
 
   document.querySelectorAll('.btn-copy').forEach((b) => {
     b.addEventListener('click', () => copyFrom(b.dataset.copy, b));

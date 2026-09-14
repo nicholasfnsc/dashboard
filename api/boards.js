@@ -1,4 +1,4 @@
-import { adminClient, body, send, caller, newCode, makeTeamAccount, nameTeamAccount } from './_supabase.js';
+import { adminClient, body, send, caller, newCode, makeTeamAccount, nameTeamAccount, assignSlugs } from './_supabase.js';
 
 /* ============================================================
    api/boards.js — creating offers and changing their codes
@@ -11,7 +11,8 @@ import { adminClient, body, send, caller, newCode, makeTeamAccount, nameTeamAcco
      create   owner          a new untitled offer with a fresh code
      rotate   owner, admin   a new code; the old one stops working
      archive  owner          hides an offer; its data stays forever
-     names    owner, admin   names each team login after its offer
+     names    owner, admin   names each team login after its offer, and
+                             gives each offer its readable address
    ============================================================ */
 
 async function uniqueCode(db) {
@@ -52,7 +53,8 @@ export default async function handler(request, response) {
       const { error: codeError } = await db.from('board_codes').insert({ board_id: board.id, code });
       if (codeError) throw codeError;
 
-      return send(response, 200, { board: { id: board.id, name: board.name }, code });
+      const slug = (await assignSlugs(board.id))[board.id];
+      return send(response, 200, { board: { id: board.id, name: board.name, slug }, code });
     }
 
     /* ---------- a new code for an existing offer ---------- */
@@ -98,7 +100,15 @@ export default async function handler(request, response) {
         await nameTeamAccount(b.team_user_id, b.name);
         named++;
       }
-      return send(response, 200, { named });
+
+      /* ...and give each offer a readable address that follows its name. */
+      let slug = null;
+      if (input.boardId && who.manages(String(input.boardId))) {
+        slug = (await assignSlugs(String(input.boardId)))[String(input.boardId)];
+      } else if (!input.boardId && who.isOwner) {
+        await assignSlugs();
+      }
+      return send(response, 200, { named, slug });
     }
 
     return send(response, 400, { error: 'Unknown action.' });

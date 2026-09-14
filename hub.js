@@ -1,7 +1,7 @@
 /* ============================================================
-   hub.js — the Main Hub
+   hub.js — Sales Team Boards (/sales-dashboard)
    ------------------------------------------------------------
-   Owner and admins land here. Each sees the offers they can reach —
+   Opened from the portal. Owner and admins each see the offers they can reach —
    the owner every one, an admin only those they were given. The
    database decides that; this page shows whatever comes back.
 
@@ -79,7 +79,7 @@ function renderHub() {
 
     const actions = el('div', 'hub-actions');
     const open = el('a', 'btn-primary hub-open', 'Open board');
-    open.href = '/board/' + b.id;
+    open.href = boardPath(b);
     actions.appendChild(open);
     card.appendChild(actions);
 
@@ -197,7 +197,8 @@ function initHub() {
       try {
         const result = await createBoard();
         notify('Offer created. Its code is ' + result.code + '. Opening it now — name it at the top of Add Team.');
-        setTimeout(() => { location.href = '/board/' + result.board.id + '?tab=team'; }, 900);
+        const address = SALES_PATH + '/' + (result.board.slug || result.board.id);
+        setTimeout(() => { location.href = address + '?tab=team'; }, 900);
       } catch (err) {
         console.error(err);
         notify(err.message);

@@ -97,6 +97,60 @@ const teamMetadata = (boardName) => {
   return { display_name: label, full_name: label, name: label, team_login: true };
 };
 
+/* ---------- readable offer addresses ----------
+   portal.inevitableacq.com/sales-dashboard/<slug>. The slug follows the
+   offer's name and is stored on the offer, along with every slug it has
+   had, so a link sent before a rename still opens the same board.
+   Addresses only point at an offer — every call is tied to the offer's
+   id, so changing one never touches data. */
+export function slugify(name) {
+  return String(name || '')
+    .normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    .slice(0, 60).replace(/-+$/, '') || 'offer';
+}
+
+/* Gives every offer (or just `onlyId`) a slug no other offer uses.
+   Reads the directory fresh and changes only the slug fields, so
+   nothing else stored on the offer is ever overwritten. */
+export async function assignSlugs(onlyId) {
+  const db = adminClient();
+  const { data: boards, error } = await db.from('boards')
+    .select('id, name, directory, created_at').order('created_at', { ascending: true });
+  if (error) throw error;
+
+  const current = new Map();                      // slug -> board id
+  boards.forEach((b) => {
+    const slug = b.directory && b.directory.slug;
+    if (slug && !current.has(slug)) current.set(slug, b.id);
+  });
+
+  const result = {};
+  for (const b of boards) {
+    const directory = b.directory || {};
+    const base = slugify(b.name);
+    const mine = directory.slug;
+    const fits = (s) => !current.has(s) || current.get(s) === b.id;
+
+    let wanted = base;
+    if (mine && (mine === base || new RegExp('^' + base + '-\\d+$').test(mine)) && fits(mine)) wanted = mine;
+    for (let n = 2; !fits(wanted); n++) wanted = base + '-' + n;
+    result[b.id] = wanted;
+
+    if (wanted === mine || (onlyId && b.id !== onlyId)) continue;
+
+    const old = Array.isArray(directory.oldSlugs) ? directory.oldSlugs.slice() : [];
+    if (mine && old.indexOf(mine) === -1) old.push(mine);
+    const fresh = Object.assign({}, directory, { slug: wanted, oldSlugs: old.filter((s) => s !== wanted) });
+    const { error: saveError } = await db.from('boards').update({ directory: fresh }).eq('id', b.id);
+    if (saveError) throw saveError;
+    if (mine) current.delete(mine);
+    current.set(wanted, b.id);
+  }
+  return result;
+}
+
 /* Keeps an offer's team login named after the offer. */
 export async function nameTeamAccount(userId, boardName) {
   if (!userId) return;
