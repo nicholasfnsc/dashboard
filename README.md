@@ -20,6 +20,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 |---|---|
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
 | `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
+| `/projections/<offer>` | Funnel Revenue Projections: model VSL or Webinar from ad spend to profit |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
@@ -46,6 +47,7 @@ hub.js            Sales Team Boards: agency summary, offer cards, new offer
 access.js         Team & Access: invite admins, sections and offers for each
 metrics-model.js  Metrics Tracking: starting metric lists, and how every metric is worked out
 metrics.js        Metrics Tracking page: cards, funnel, charts, daily tables, editing
+projections.js    Funnel Revenue Projections: both funnel models, cascading boxes, industry standards
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
@@ -61,6 +63,7 @@ supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
 supabase/access.sql   admin sections and offers, and the access rules that use them
 supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
+supabase/projections.sql  saved projection per offer and funnel
 ```
 
 ## Metrics Tracking
@@ -78,6 +81,15 @@ totals for calculated metrics. Each metric can have a target and a direction (hi
 better). **Edit metrics** lets anyone with access rename, add, remove and reorder metrics and
 groups, and set the funnel stages; each offer keeps its own copy in `metric_settings`. The
 starting lists live in `metrics-model.js`.
+
+## Funnel Revenue Projections
+
+One model per offer, VSL or Webinar. Everything is worked out from a few inputs (ad spend,
+cost per click, each stage's rate, AOV). Editing a rate moves every count after it; editing a
+count works the rate beside it out backwards. Counts of people are rounded up. The industry
+standard under a rate turns green when the rate beats it, and is changed by clicking it. VSL
+profit, ROAS and earnings use Cash Collected; Webinar uses Total Revenue. The example numbers
+and standards live in `projections.js`.
 
 ## Team & Access
 

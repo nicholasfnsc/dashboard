@@ -1255,3 +1255,105 @@ a.portal-card:hover .portal-arrow { transform: translate(2px, -2px); }
   .mfunnel { grid-template-columns: 1fr; }
   .metrics-controls { width: 100%; }
 }
+
+/* ============================================================
+   Funnel Revenue Projections
+   ============================================================ */
+.proj-head { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 0 22px; }
+.proj-head .eyebrow { margin-bottom: 8px; }
+.proj-title { margin: 0; font-size: clamp(24px, 3.4vw, 32px); font-weight: 300; letter-spacing: -.015em; }
+.proj-head .hub-sub { margin-top: 6px; }
+.proj-head .metric-switch { margin-top: 16px; }
+.proj-head .metric-switch button { min-width: 88px; }
+.proj-status { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 11.5px; color: var(--muted); }
+.proj-status .link-btn { font-size: 11.5px; padding: 2px 4px; color: var(--muted); }
+.proj-status .link-btn:hover { color: var(--accent-ink); }
+
+.proj-sections { display: flex; flex-direction: column; gap: var(--gap); max-width: 780px; margin: 0 auto; }
+.pcard { padding: 0; }
+.pcard-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px 10px; }
+.pcard-title { margin: 0; font-size: 15px; font-weight: 500; }
+.pcard-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 22px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted);
+}
+.plive { font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-ink); }
+.plive::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: #22c55e; vertical-align: 1px; }
+
+.prow { padding: 14px 22px; border-top: 1px solid var(--line-soft); }
+.prow-input, .prow-derived { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.prow-label { font-size: 13px; color: var(--ink); }
+.prow-label.is-big { font-size: 14.5px; font-weight: 500; }
+.prow-side { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-left: auto; }
+.prow-pair { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.pcol { display: flex; flex-direction: column; gap: 6px; }
+.pcol-label { font-size: 12px; color: var(--ink-2); }
+.pswap { color: var(--muted); font-size: 16px; padding-bottom: 8px; }
+.prow-pair .pswap { align-self: center; padding: 18px 0 0; }
+.prow-refs { display: flex; flex-direction: column; gap: 6px; }
+.prefs { display: flex; align-items: flex-end; gap: 12px; }
+.prefs .pswap { align-self: center; padding-top: 18px; }
+.phint { font-size: 11px; color: var(--muted); }
+.prow-pair .pcol:first-child .phint { max-width: 220px; }
+
+.pbox {
+  display: inline-flex; align-items: center; gap: 4px; width: 130px; padding: 0 10px;
+  border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2);
+  transition: border-color .12s, background .12s;
+}
+.pbox input {
+  width: 100%; min-width: 0; background: none; border: 0; color: var(--ink); padding: 9px 0;
+  font-size: 14px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.pbox input:focus { outline: none; }
+.pbox-affix { font-size: 12px; color: var(--muted); }
+.pbox.is-input { border-color: var(--accent-deep); background: var(--accent-wash); }
+.pbox.is-input:hover { border-color: var(--accent); }
+.pbox.is-count { border-color: rgba(34, 197, 94, .3); background: rgba(34, 197, 94, .06); }
+.pbox.is-count input { color: #4ade80; }
+.pbox.is-count:hover { border-color: rgba(34, 197, 94, .55); }
+.pbox:focus-within { border-color: var(--accent-bright); background: var(--surface-3); }
+.pbox.is-readonly { background: transparent; border-color: var(--line-soft); }
+.pbox.is-readonly input { color: var(--ink-2); cursor: default; }
+.prow-input .pbox, .prow-derived .pbox { width: 150px; }
+
+.pstd {
+  align-self: flex-start; background: none; border: 0; padding: 0; cursor: pointer;
+  font-size: 11px; color: #d99a3a; text-align: left;
+}
+.pstd b { font-weight: 600; color: #e8b25e; }
+.pstd.is-ahead, .pstd.is-ahead b { color: #4ade80; }
+.pstd:hover { text-decoration: underline; }
+.pstd-empty { color: var(--muted); }
+.pstd-edit {
+  width: 90px; background: var(--surface-3); color: var(--ink); border: 1px solid var(--accent-bright);
+  border-radius: 6px; padding: 2px 6px; font-size: 11px;
+}
+
+.psummary {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px;
+  background: linear-gradient(160deg, var(--accent-wash), var(--surface) 70%);
+  border: 1px solid var(--accent-deep); border-radius: var(--r-card); padding: 22px 24px 20px;
+  box-shadow: var(--shadow);
+}
+.psum-col { display: flex; flex-direction: column; min-width: 0; }
+.psum-title {
+  margin: 0 0 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  font-family: var(--f-mono); font-size: 9.5px; font-weight: 400; letter-spacing: .16em; text-transform: uppercase; color: var(--muted);
+}
+.psum-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 6px 0; font-size: 12.5px; color: var(--ink-2); }
+.psum-row b { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.psum-row b.is-gain { color: #4ade80; }
+.psum-row b.is-loss { color: #f87171; }
+.psum-sub { flex-basis: 100%; text-align: right; font-size: 10.5px; color: var(--muted); margin-top: -4px; }
+.psum-hero { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 4px 0 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; color: var(--ink); }
+.psum-hero-value { font-size: 24px; font-weight: 400; color: #4ade80; font-variant-numeric: tabular-nums; }
+.psum-note { margin: 8px 0 0; font-size: 10.5px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .psummary { grid-template-columns: 1fr; gap: 18px; }
+  .prow { padding: 14px 16px; }
+  .pcard-head, .pcard-foot { padding-left: 16px; padding-right: 16px; }
+  .pbox { width: 118px; }
+  .prow-input .pbox, .prow-derived .pbox { width: 140px; }
+}

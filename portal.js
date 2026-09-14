@@ -25,8 +25,8 @@ const PORTAL_SECTIONS = [
     blurb: 'Every offer’s dashboard, post-call form, call data and rep hub.' },
   { id: 'metrics', title: 'Metrics Tracking',           icon: 'metrics', href: () => METRICS_PATH,
     blurb: 'Every funnel metric for each offer, synced with the sales boards.' },
-  { id: 'funnel',  title: 'Funnel Revenue Projections', icon: 'funnel',
-    blurb: 'Projected revenue at every stage of the funnel.' },
+  { id: 'funnel',  title: 'Funnel Revenue Projections', icon: 'funnel',  href: () => PROJECTIONS_PATH,
+    blurb: 'Model any offer’s funnel from ad spend to revenue and profit.' },
   { id: 'content', title: 'Weekly Content Hub',         icon: 'content',
     blurb: 'The weekly content plan, board and content bank.' }
 ];

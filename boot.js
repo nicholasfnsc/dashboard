@@ -5,6 +5,7 @@
      /sales-dashboard           every sales team board you can reach
      /sales-dashboard/<offer>   that offer's board, if you may see it
      /metrics/<offer>           Metrics Tracking for that offer
+     /projections/<offer>       Funnel Revenue Projections for that offer
      /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
@@ -15,7 +16,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -48,6 +49,7 @@
   const legacyBoard = path.match(/^\/board\/([0-9a-f-]{36})$/i);
   const salesBoard = path.match(/^\/sales-dashboard\/([^/]+)$/i);
   const metricsBoard = path.match(/^\/metrics(?:\/([^/]+))?$/i);
+  const projectionsBoard = path.match(/^\/projections(?:\/([^/]+))?$/i);
   const params = new URLSearchParams(location.search);
 
   /* ---------- the forms ---------- */
@@ -144,6 +146,17 @@
     crumb('Portal', '/');
     $('#undoBtn').classList.add('hidden');
     initMetrics();
+    initProfile();
+  }
+
+  async function openProjections(boardId) {
+    await loadProjections(boardId);
+    if (!CACHE.board) { location.replace('/'); return; }
+    CACHE.role = null;
+    openShell('projectionsShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    initProjections();
     initProfile();
   }
 
@@ -266,6 +279,17 @@
           return;
         }
         await openMetrics(board.id);
+        return;
+      }
+
+      if (projectionsBoard) {
+        if (!canUse('funnel')) { location.replace('/'); return; }
+        const board = projectionsBoard[1] ? findBoardBySlug(decodeURIComponent(projectionsBoard[1])) : CACHE.boards[0];
+        if (!board) {
+          location.replace(projectionsBoard[1] && CACHE.boards.length ? PROJECTIONS_PATH : '/');
+          return;
+        }
+        await openProjections(board.id);
         return;
       }
 

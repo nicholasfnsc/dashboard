@@ -275,6 +275,28 @@
   </div>
 </div>
 
+<!-- ================= FUNNEL REVENUE PROJECTIONS ================= -->
+<div class="shell hidden" id="projectionsShell">
+  <nav class="offer-tabs hidden" id="projOffers" aria-label="Offers"></nav>
+
+  <div class="proj-head">
+    <p class="eyebrow" id="projOffer"></p>
+    <h1 class="proj-title">Funnel Revenue Projections</h1>
+    <p class="hub-sub">Model your funnel from ad spend to revenue. Edit any box and watch it cascade.</p>
+    <div class="metric-switch" id="projFunnel" role="group" aria-label="Funnel type"></div>
+    <div class="proj-status">
+      <span id="projSaved"></span>
+      <button type="button" class="link-btn" id="projReset">Reset to example numbers</button>
+    </div>
+  </div>
+
+  <p class="access-warning hidden" id="projNotReady">
+    One setup step first: run <b>supabase/projections.sql</b> in Supabase → SQL Editor. Until then you can play with the numbers, but they won't be saved.
+  </p>
+
+  <div class="proj-sections" id="projSections"></div>
+</div>
+
 <!-- ================= TEAM & ACCESS (owner only) ================= -->
 <div class="shell hidden" id="accessShell">
   <div class="dash-head">
@@ -730,6 +752,7 @@
 <script src="/access.js"></script>
 <script src="/metrics-model.js"></script>
 <script src="/metrics.js"></script>
+<script src="/projections.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>
