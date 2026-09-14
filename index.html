@@ -290,6 +290,64 @@
   <div class="proj-sections" id="projSections"></div>
 </div>
 
+<!-- ================= SIGNAL LIST (private to each person) ================= -->
+<div class="shell hidden" id="signalShell">
+  <div class="signal-wrap">
+    <div class="signal-top">
+      <div class="signal-nav">
+        <button type="button" class="week-btn" id="signalPrev" aria-label="Previous day">&#8249;</button>
+        <div class="signal-date-block">
+          <p class="eyebrow" id="signalYear"></p>
+          <h1 class="signal-date" id="signalDate"></h1>
+        </div>
+        <button type="button" class="week-btn" id="signalNext" aria-label="Next day">&#8250;</button>
+      </div>
+      <div class="signal-tools">
+        <button type="button" class="link-btn hidden" id="signalToday">Back to today</button>
+        <button type="button" class="btn-export" id="signalCustomizeBtn">Customize</button>
+      </div>
+    </div>
+
+    <div class="signal-week" id="signalWeek"></div>
+
+    <div class="signal-quotes" id="signalQuotes"></div>
+
+    <div class="signal-status">
+      <span id="signalProgress"></span>
+      <span id="signalSaved"></span>
+    </div>
+
+    <p class="access-warning hidden" id="signalNotReady">
+      One setup step first: run <b>supabase/signal.sql</b> in Supabase → SQL Editor. Until then nothing you type here is saved.
+    </p>
+
+    <div class="signal-body" id="signalBody"></div>
+  </div>
+</div>
+
+<div class="gate gate-overlay hidden" id="signalCustomize" role="dialog" aria-labelledby="signalCustomizeTitle">
+  <form class="gate-box gate-form signal-customize" id="signalCustomizeForm">
+    <h1 class="gate-title" id="signalCustomizeTitle">Customize</h1>
+    <p class="gate-sub">What every new day starts with. Your days already written stay as they are.</p>
+    <label class="field-label" for="sQuotes">Quotes <small>(a blank line between each)</small></label>
+    <textarea id="sQuotes" rows="5"></textarea>
+    <label class="field-label" for="sFocus">Focus line</label>
+    <textarea id="sFocus" rows="2"></textarea>
+    <label class="field-label" for="sChecklist">Morning checklist <small>(one per line)</small></label>
+    <textarea id="sChecklist" rows="6"></textarea>
+    <label class="field-label" for="sQuestions">Evening reflection questions <small>(one per line)</small></label>
+    <textarea id="sQuestions" rows="4"></textarea>
+    <div class="signal-times">
+      <label class="field-label" for="sDayStart">Day starts</label>
+      <select id="sDayStart" class="role-select"></select>
+      <label class="field-label" for="sDayEnd">Day ends</label>
+      <select id="sDayEnd" class="role-select"></select>
+    </div>
+    <button type="submit" class="btn-gate">Save defaults</button>
+    <button type="button" class="link-btn" id="signalCustomizeCancel">Cancel</button>
+  </form>
+</div>
+
 <!-- ================= TEAM & ACCESS (owner only) ================= -->
 <div class="shell hidden" id="accessShell">
   <div class="dash-head">
@@ -746,6 +804,7 @@
 <script src="/metrics-model.js"></script>
 <script src="/metrics.js"></script>
 <script src="/projections.js"></script>
+<script src="/signal.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>

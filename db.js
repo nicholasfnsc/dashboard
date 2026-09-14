@@ -450,6 +450,49 @@ async function metricsSignature() {
   return [top(c1), c2.count, top(e1), e2.count, top(s1)].join('|');
 }
 
+/* ---------- Signal List ----------
+   Private to the person signed in: the database only ever returns
+   their own days and defaults. */
+async function loadSignalTemplate() {
+  const { data, error } = await sb.from('signal_settings').select('template').eq('user_id', CACHE.me.id).maybeSingle();
+  return { ready: !error, template: data ? data.template : null };
+}
+
+async function saveSignalTemplate(template) {
+  const { error } = await sb.from('signal_settings').upsert({
+    user_id: CACHE.me.id, template, updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+}
+
+async function loadSignalDay(day) {
+  const { data, error } = await sb.from('signal_days').select('content, updated_at').eq('user_id', CACHE.me.id).eq('day', day).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+/* The most recent day before this one that has anything in it. */
+async function loadSignalDayBefore(day) {
+  const { data, error } = await sb.from('signal_days').select('day, content')
+    .eq('user_id', CACHE.me.id).lt('day', day).order('day', { ascending: false }).limit(1);
+  if (error) throw error;
+  return data && data[0] ? data[0] : null;
+}
+
+async function loadSignalWeek(from, to) {
+  const { data, error } = await sb.from('signal_days').select('day, content')
+    .eq('user_id', CACHE.me.id).gte('day', from).lte('day', to);
+  if (error) throw error;
+  return data || [];
+}
+
+async function saveSignalDay(day, content) {
+  const { error } = await sb.from('signal_days').upsert({
+    user_id: CACHE.me.id, day, content, updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+}
+
 /* ---------- calls ---------- */
 async function saveCall(record) {
   const { error } = await sb.from('calls').upsert({

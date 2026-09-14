@@ -21,6 +21,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
 | `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
 | `/projections` | Funnel Revenue Projections: a VSL or Webinar calculator from ad spend to profit |
+| `/signal-list` | your own Signal List, one page per day (private) |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
@@ -48,6 +49,7 @@ access.js         Team & Access: invite admins, sections and offers for each
 metrics-model.js  Metrics Tracking: starting metric lists, and how every metric is worked out
 metrics.js        Metrics Tracking page: cards, funnel, charts, daily tables, editing
 projections.js    Funnel Revenue Projections: both funnel models, cascading boxes, industry standards
+signal.js         Signal List: daily page, carry-over to tomorrow, defaults
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
@@ -63,6 +65,7 @@ supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
 supabase/access.sql   admin sections and offers, and the access rules that use them
 supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
+supabase/signal.sql   Signal List days and defaults, private to each person
 ```
 
 ## Metrics Tracking
@@ -90,6 +93,16 @@ count works the rate beside it out backwards. Counts of people are rounded up. T
 standard under a rate turns green when the rate beats it, and is changed by clicking it. VSL
 profit, ROAS and earnings use Cash Collected; Webinar uses Total Revenue. The example numbers
 and standards live in `projections.js`.
+
+## Signal List
+
+One page per day, private to the person signed in (the database never returns anyone else's,
+including to the owner). Quotes, morning checklist, what broke your speed yesterday, focus line,
+goals and limiting factors, highest signal actions with sub-task and why, a 30-minute schedule,
+evening reflection and journal. Everything saves as you type. **Plan tomorrow** opens the next
+day with goals carried over, a fresh checklist, and today's "what broke my speed" and "what can I
+do better" as tomorrow's things to watch. **Customize** sets the quotes, focus line, checklist,
+reflection questions and day length; "Make this my usual day" saves the schedule as the default.
 
 ## Team & Access
 

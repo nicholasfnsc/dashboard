@@ -6,6 +6,7 @@
      /sales-dashboard/<offer>   that offer's board, if you may see it
      /metrics/<offer>           Metrics Tracking for that offer
      /projections               Funnel Revenue Projections (a calculator, no offer data)
+     /signal-list               your own Signal List, one page per day
      /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
@@ -16,7 +17,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell', 'signalShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -149,6 +150,14 @@
     initProfile();
   }
 
+  async function openSignal() {
+    openShell('signalShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    initProfile();
+    await initSignal();
+  }
+
   function openProjections() {
     openShell('projectionsShell');
     crumb('Portal', '/');
@@ -276,6 +285,12 @@
           return;
         }
         await openMetrics(board.id);
+        return;
+      }
+
+      if (path === SIGNAL_PATH) {
+        if (!canUse('signal')) { location.replace('/'); return; }
+        await openSignal();
         return;
       }
 

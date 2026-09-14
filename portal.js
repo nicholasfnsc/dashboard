@@ -95,12 +95,27 @@ function renderPortal() {
     }));
   }
 
-  /* Signal List */
+  /* Signal List — today's signal actions, private to whoever is signed in */
   if (canUse('signal')) {
-    host.appendChild(portalCard({
-      title: 'Signal List', icon: 'signal',
-      body: el('p', 'portal-card-blurb', 'Nothing flagged right now.')
-    }));
+    const blurb = el('div', 'portal-signal');
+    blurb.appendChild(el('p', 'portal-card-blurb', 'Today’s signal actions'));
+    host.appendChild(portalCard({ title: 'Signal List', icon: 'signal', href: SIGNAL_PATH, body: blurb, foot: 'Open today' }));
+    signalSummaryForToday().then((actions) => {
+      blurb.textContent = '';
+      if (!actions || !actions.length) {
+        blurb.appendChild(el('p', 'portal-card-blurb', 'Nothing planned for today yet. Set your signal actions.'));
+        return;
+      }
+      const list = el('ul', 'portal-signal-list');
+      actions.slice(0, 4).forEach((s) => {
+        const li = el('li', s.done ? 'is-done' : '');
+        li.textContent = s.text;
+        list.appendChild(li);
+      });
+      blurb.appendChild(list);
+      const done = actions.filter((s) => s.done).length;
+      blurb.appendChild(el('p', 'portal-signal-count', done + ' of ' + actions.length + ' done'));
+    });
   }
 
   PORTAL_SECTIONS.filter((s) => canUse(s.id)).forEach((s) => {
