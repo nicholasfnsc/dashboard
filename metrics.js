@@ -729,7 +729,7 @@ function editorRow(config, g, m) {
   const remove = el('button', 'link-btn danger', 'Remove');
   remove.type = 'button';
   remove.addEventListener('click', () => {
-    if (!window.confirm('Remove “' + m.name + '”?\n\nNumbers already typed in are kept.')) return;
+    if (!window.confirm('Remove “' + m.name + '”?\n\nIts typed-in numbers stay stored but stop showing. To change the name, rename it instead.')) return;
     saveConfigSoon((c) => {
       c.groups.forEach((grp) => { grp.metrics = grp.metrics.filter((x) => x.id !== m.id); });
     }, true);
