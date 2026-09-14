@@ -67,6 +67,15 @@
   <form class="gate-box gate-form" id="profileForm">
     <h1 class="gate-title" id="profileHeading">Your profile</h1>
     <p class="gate-sub" id="profileEmail"></p>
+    <div class="photo-row">
+      <span class="avatar avatar-lg" id="profilePhotoPreview"></span>
+      <div class="photo-actions">
+        <label class="btn-photo" for="profilePhotoInput">Upload photo</label>
+        <input type="file" id="profilePhotoInput" accept="image/*" class="hidden">
+        <button type="button" class="link-btn danger hidden" id="profilePhotoRemove">Remove</button>
+        <span class="photo-note" id="profilePhotoNote">Square photos look best.</span>
+      </div>
+    </div>
     <label class="field-label" for="profileNameInput">Name</label>
     <input type="text" id="profileNameInput" placeholder="Your name" autocomplete="name">
     <label class="field-label" for="profileTitleInput">Role</label>
@@ -116,11 +125,9 @@
 
 <!-- ================= PORTAL (owner and admins) ================= -->
 <div class="shell hidden" id="portalShell">
-  <div class="dash-head">
-    <div>
-      <p class="eyebrow">Inevitable Acquisition Portal</p>
-      <h1 class="dash-title" id="portalGreeting">Welcome</h1>
-    </div>
+  <div class="portal-head">
+    <p class="eyebrow" id="portalDate"></p>
+    <h1 class="portal-greeting" id="portalGreeting">Welcome back.</h1>
   </div>
   <div class="portal-grid" id="portalSections"></div>
 </div>

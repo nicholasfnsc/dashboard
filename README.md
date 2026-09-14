@@ -18,7 +18,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 
 | Address | What it is |
 |---|---|
-| `/` | the portal: one card per section |
+| `/` | the portal: total revenue generated, Signal List, and one card per section |
 | `/sales-dashboard` | Sales Team Boards: totals, offer cards, admins |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
 | `/sales-team` | where reps enter their code |
@@ -39,18 +39,19 @@ index.html        every screen: sign-in, code page, portal, sales boards, board
 config.js         Supabase address and publishable key (both public by design)
 db.js             every read and write to Supabase
 boot.js           decides which screen each person gets
-portal.js         the portal page: one card per section
+portal.js         the portal page: greeting, total revenue, Signal List, section cards
 hub.js            Sales Team Boards: offer cards, new offer, admins and invites
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
 team.js           Add Team: offer name, team with roles and commission, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
-profile.js        the name at the top right, and the rep name picker
+profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
 api/boards.js     create an offer, make a new code, archive, offer addresses
 api/people.js     invite admins, change their offers, remove them
+api/profile.js    save or remove your own profile picture (Storage bucket "avatars")
 supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
 ```

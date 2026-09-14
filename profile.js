@@ -1,8 +1,9 @@
 /* ============================================================
    profile.js — the name at the top right
    ------------------------------------------------------------
-   Owner and admins: their own name and role, which they can edit.
-   What they can SEE is set by the owner and cannot be changed here.
+   Owner and admins: their own name, role and picture, which they
+   can edit. What they can SEE is set by the owner and cannot be
+   changed here.
 
    Reps: they share their team's account, so they pick which person
    on the roster they are. That choice is remembered on their own
@@ -27,9 +28,24 @@ function initials(text) {
   return ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
 
+/* A round picture if there is one, otherwise initials. */
+function paintAvatar(node, name, url) {
+  node.textContent = '';
+  node.classList.toggle('has-photo', !!url);
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '';
+    img.onerror = () => { node.classList.remove('has-photo'); node.textContent = initials(name); };
+    node.appendChild(img);
+  } else {
+    node.textContent = initials(name);
+  }
+}
+
 function repRoles(name) {
   const roles = CACHE.team.filter((p) => p.name === name).map((p) => p.role);
-  if (roles.indexOf('closer') !== -1 && roles.indexOf('setter') !== -1) return 'Closer & Setter';
+  if (roles.indexOf('closer') !== -1 && roles.indexOf('setter') !== -1) return 'Full cycle';
   return roles.indexOf('closer') !== -1 ? 'Closer' : roles.indexOf('setter') !== -1 ? 'Setter' : '';
 }
 
@@ -39,6 +55,7 @@ function paintProfile() {
 
   let name;
   let title;
+  let photo = '';
 
   if (CACHE.me.kind === 'team') {
     const rep = chosenRep();
@@ -49,10 +66,11 @@ function paintProfile() {
   } else {
     name = CACHE.me.name || CACHE.me.email;
     title = CACHE.me.title || (CACHE.me.isOwner ? 'Owner' : 'Admin');
-    chip.title = 'Edit your name and role';
+    photo = CACHE.me.avatar;
+    chip.title = 'Edit your profile';
   }
 
-  $('#profileAvatar').textContent = initials(name === 'Pick your name' ? '?' : name);
+  paintAvatar($('#profileAvatar'), name === 'Pick your name' ? '?' : name, photo);
   $('#profileName').textContent = name;
   $('#profileTitle').textContent = title;
   chip.classList.remove('hidden');
@@ -87,11 +105,19 @@ function askWho(force) {
 }
 
 /* ---------- owner and admins: edit your own profile ---------- */
+function paintPhotoEditor() {
+  paintAvatar($('#profilePhotoPreview'), $('#profileNameInput').value || CACHE.me.name || CACHE.me.email, CACHE.me.avatar);
+  $('#profilePhotoRemove').classList.toggle('hidden', !CACHE.me.avatar);
+  document.querySelector('label[for="profilePhotoInput"]').textContent = CACHE.me.avatar ? 'Change photo' : 'Upload photo';
+}
+
 function openProfileEditor() {
   $('#profileEmail').textContent = CACHE.me.email;
   $('#profileNameInput').value = CACHE.me.name || '';
   $('#profileTitleInput').value = CACHE.me.title || '';
   $('#profileError').classList.add('hidden');
+  $('#profilePhotoNote').textContent = 'Square photos look best.';
+  paintPhotoEditor();
   $('#viewProfile').classList.remove('hidden');
   $('#profileNameInput').focus();
 }
@@ -103,6 +129,38 @@ function initProfile() {
   });
 
   $('#profileCancel').addEventListener('click', () => $('#viewProfile').classList.add('hidden'));
+
+  const note = $('#profilePhotoNote');
+  $('#profilePhotoInput').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    note.textContent = 'Uploading…';
+    try {
+      await setMyAvatar(file);
+    } catch (err) {
+      console.error(err);
+      note.textContent = err.message || "Couldn't upload that picture.";
+      return;
+    }
+    note.textContent = 'Photo saved.';
+    paintPhotoEditor();
+    paintProfile();
+  });
+
+  $('#profilePhotoRemove').addEventListener('click', async () => {
+    note.textContent = 'Removing…';
+    try {
+      await removeMyAvatar();
+    } catch (err) {
+      console.error(err);
+      note.textContent = "Couldn't remove it — try again.";
+      return;
+    }
+    note.textContent = 'Photo removed.';
+    paintPhotoEditor();
+    paintProfile();
+  });
 
   $('#profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -121,6 +179,7 @@ function initProfile() {
     }
     $('#viewProfile').classList.add('hidden');
     paintProfile();
+    if (typeof renderPortal === 'function' && !$('#portalShell').classList.contains('hidden')) renderPortal();
     notify('Profile saved.');
   });
 

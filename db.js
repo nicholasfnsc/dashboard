@@ -66,6 +66,7 @@ async function loadMe() {
        their own without being able to touch anything that grants access. */
     name: meta.full_name || p.full_name || '',
     title: meta.title || '',
+    avatar: meta.avatar_url || '',
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
     memberships: memberships.data || [],
@@ -124,6 +125,43 @@ async function updateMyProfile(name, title) {
   CACHE.me.name = name;
   CACHE.me.title = title;
   return null;
+}
+
+/* Profile picture: cropped to a square and shrunk here, stored by the
+   server, and its address kept on the account. */
+function squareJpeg(file, size) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      canvas.getContext('2d').drawImage(img,
+        (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.86));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not a picture we can read.')); };
+    img.src = url;
+  });
+}
+
+async function setMyAvatar(file) {
+  const image = await squareJpeg(file, 320);
+  const { url } = await serverAction('/api/profile', { action: 'avatar', image });
+  const { error } = await sb.auth.updateUser({ data: { avatar_url: url } });
+  if (error) throw error;
+  CACHE.me.avatar = url;
+  return url;
+}
+
+async function removeMyAvatar() {
+  await serverAction('/api/profile', { action: 'remove' });
+  const { error } = await sb.auth.updateUser({ data: { avatar_url: '' } });
+  if (error) throw error;
+  CACHE.me.avatar = '';
 }
 
 async function signOut() {
