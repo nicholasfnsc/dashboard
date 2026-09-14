@@ -23,8 +23,8 @@ const PORTAL_ICONS = {
 const PORTAL_SECTIONS = [
   { id: 'sales',   title: 'Sales Team Boards',          icon: 'sales',   href: () => SALES_PATH,
     blurb: 'Every offer’s dashboard, post-call form, call data and rep hub.' },
-  { id: 'metrics', title: 'Metrics Tracking',           icon: 'metrics',
-    blurb: 'Key performance metrics across the whole business.' },
+  { id: 'metrics', title: 'Metrics Tracking',           icon: 'metrics', href: () => METRICS_PATH,
+    blurb: 'Every funnel metric for each offer, synced with the sales boards.' },
   { id: 'funnel',  title: 'Funnel Revenue Projections', icon: 'funnel',
     blurb: 'Projected revenue at every stage of the funnel.' },
   { id: 'content', title: 'Weekly Content Hub',         icon: 'content',

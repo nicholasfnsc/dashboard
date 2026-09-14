@@ -4,6 +4,7 @@
      /                          the portal: every section of the company
      /sales-dashboard           every sales team board you can reach
      /sales-dashboard/<offer>   that offer's board, if you may see it
+     /metrics/<offer>           Metrics Tracking for that offer
      /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
@@ -14,7 +15,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -46,6 +47,7 @@
   const path = location.pathname.replace(/\/+$/, '') || '/';
   const legacyBoard = path.match(/^\/board\/([0-9a-f-]{36})$/i);
   const salesBoard = path.match(/^\/sales-dashboard\/([^/]+)$/i);
+  const metricsBoard = path.match(/^\/metrics(?:\/([^/]+))?$/i);
   const params = new URLSearchParams(location.search);
 
   /* ---------- the forms ---------- */
@@ -131,6 +133,17 @@
     $('#undoBtn').classList.add('hidden');
     document.title = 'Portal · Inevitable Acquisition';
     initPortal();
+    initProfile();
+  }
+
+  async function openMetrics(boardId) {
+    await loadMetrics(boardId);
+    if (!CACHE.board) { location.replace('/'); return; }
+    CACHE.role = null;
+    openShell('metricsShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    initMetrics();
     initProfile();
   }
 
@@ -242,6 +255,17 @@
         const board = findBoardBySlug(decodeURIComponent(salesBoard[1]));
         if (!board) { location.replace(SALES_PATH); return; }
         await openBoard(board.id);
+        return;
+      }
+
+      if (metricsBoard) {
+        if (!canUse('metrics')) { location.replace('/'); return; }
+        const board = metricsBoard[1] ? findBoardBySlug(decodeURIComponent(metricsBoard[1])) : CACHE.boards[0];
+        if (!board) {
+          location.replace(metricsBoard[1] && CACHE.boards.length ? METRICS_PATH : '/');
+          return;
+        }
+        await openMetrics(board.id);
         return;
       }
 

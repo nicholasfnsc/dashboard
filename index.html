@@ -199,6 +199,82 @@
 
 </div>
 
+<!-- ================= METRICS TRACKING ================= -->
+<div class="shell hidden" id="metricsShell">
+  <nav class="offer-tabs hidden" id="metricsOffers" aria-label="Offers"></nav>
+
+  <div class="dash-head metrics-head">
+    <div>
+      <p class="eyebrow">Metrics Tracking</p>
+      <h1 class="dash-title" id="metricsTitle">Offer</h1>
+    </div>
+    <div class="metrics-controls">
+      <div class="metric-switch" id="metricsFunnel" role="group" aria-label="Funnel type"></div>
+      <div class="week-picker">
+        <button type="button" class="week-btn" id="weekPrev" aria-label="Previous week">&#8249;</button>
+        <span class="week-label" id="weekLabel"></span>
+        <button type="button" class="week-btn" id="weekNext" aria-label="Next week">&#8250;</button>
+        <button type="button" class="link-btn" id="weekToday">This week</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="access-warning hidden" id="metricsNotReady">
+    One setup step first: run <b>supabase/metrics.sql</b> in Supabase → SQL Editor. Until then numbers can't be typed in or saved.
+  </p>
+
+  <div class="range-pills metrics-group-tabs" id="metricsGroupTabs" role="group" aria-label="Metric group"></div>
+  <div class="metrics-kpis" id="metricsKpis"></div>
+
+  <div class="panel metrics-funnel">
+    <div class="panel-head">
+      <h3>Funnel</h3>
+      <p>Each stage this week, and how many made it from the stage before.</p>
+    </div>
+    <div class="panel-body mfunnel" id="metricsFunnelBody"></div>
+  </div>
+
+  <div class="panel-grid metrics-charts">
+    <div class="panel">
+      <div class="panel-head"><h3>Metric trend</h3><p>One metric over time, against its target</p></div>
+      <div class="panel-tools mtrend-tools">
+        <span class="fpill"><label class="hidden" for="trendMetric">Metric</label><select id="trendMetric"></select></span>
+        <div class="metric-switch" id="trendSpan" role="group" aria-label="Span">
+          <button type="button" data-span="week">This week</button>
+          <button type="button" data-span="weeks">12 weeks</button>
+        </div>
+      </div>
+      <div class="panel-body" id="trendChart"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Stage health</h3><p>Share of each group's metrics on target, day by day</p></div>
+      <div class="panel-body" id="stageHealthChart"></div>
+    </div>
+  </div>
+
+  <div class="panel-grid metrics-charts">
+    <div class="panel">
+      <div class="panel-head"><h3>Call outcomes</h3><p>This week's calls by result</p></div>
+      <div class="panel-body" id="metricOutcomesBody"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Cash collected by day</h3><p>Money that came in this week</p></div>
+      <div class="panel-body" id="metricCashBody"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head section-head-row">
+      <div>
+        <h2>Funnel detail</h2>
+        <p id="metricsDetailHint"></p>
+      </div>
+      <button type="button" class="btn-export" id="metricsEdit">Edit metrics</button>
+    </div>
+    <div class="metrics-detail" id="metricsDetail"></div>
+  </div>
+</div>
+
 <!-- ================= TEAM & ACCESS (owner only) ================= -->
 <div class="shell hidden" id="accessShell">
   <div class="dash-head">
@@ -392,13 +468,21 @@
 
         <div class="field-grid">
           <p class="field">
+            <label for="pcDate" id="pcDateLabel">Call Date</label>
+            <span class="field-help" id="pcDateHelp">The day the call happened.</span>
+            <input type="date" id="pcDate">
+          </p>
+          <p class="field" id="pcBookedField">
+            <label for="pcBooked">Date Booked</label>
+            <span class="field-help">The day it was put on the calendar. Leave empty if it's the same day.</span>
+            <input type="date" id="pcBooked">
+          </p>
+
+          <p class="field">
             <label for="pcCall">Call</label>
             <input type="text" id="pcCall" placeholder="e.g. Call 1" autocomplete="off">
           </p>
-          <p class="field">
-            <label for="pcDate">Date</label>
-            <input type="date" id="pcDate">
-          </p>
+          <p class="field"></p>
 
           <p class="field">
             <label for="pcCloser">Closer</label>
@@ -644,6 +728,8 @@
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
 <script src="/access.js"></script>
+<script src="/metrics-model.js"></script>
+<script src="/metrics.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>

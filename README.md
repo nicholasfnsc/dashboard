@@ -19,6 +19,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 | Address | What it is |
 |---|---|
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
+| `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
@@ -43,6 +44,8 @@ boot.js           decides which screen each person gets
 portal.js         the portal page: greeting, total revenue, Signal List, section cards
 hub.js            Sales Team Boards: agency summary, offer cards, new offer
 access.js         Team & Access: invite admins, sections and offers for each
+metrics-model.js  Metrics Tracking: starting metric lists, and how every metric is worked out
+metrics.js        Metrics Tracking page: cards, funnel, charts, daily tables, editing
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
@@ -57,7 +60,24 @@ api/profile.js    save or remove your own profile picture (Storage bucket "avata
 supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
 supabase/access.sql   admin sections and offers, and the access rules that use them
+supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
 ```
+
+## Metrics Tracking
+
+One board per offer, with a VSL / Webinar switch and weeks from Monday to Sunday. Every metric is
+one of three kinds:
+
+- **Typed in** each day (ad spend, clicks, attendees…), saved in `metric_entries`.
+- **From the sales board**: read live from that offer's calls logged under the same funnel, using
+  the day a call was held and the day money came in. Nothing is copied.
+- **Calculated**: one metric divided by another (cost per lead, show rate, ROAS), ×100 for percents.
+
+Week values add up typed counts and money, average typed rates and scores, and divide the week's
+totals for calculated metrics. Each metric can have a target and a direction (higher or lower is
+better). **Edit metrics** lets anyone with access rename, add, remove and reorder metrics and
+groups, and set the funnel stages; each offer keeps its own copy in `metric_settings`. The
+starting lists live in `metrics-model.js`.
 
 ## Team & Access
 
@@ -205,12 +225,10 @@ Remainder requires a cash amount above zero.
 Submissions are saved to the `calls` table in Supabase against the offer's board and picked
 up by every open board within 15 seconds. Each call records who logged it.
 
-### Known gap
+### Dates
 
-The form captures one date, so for logged rows `bookedDate` and `callDate` are the same
-day. That makes **Calls On Calendar** equal to calls held rather than calls set. Adding a
-"Date Booked" field to the form fixes it; the metric code already reads the two
-separately.
+The form asks for the Call Date and an optional **Date Booked**. Left empty, booked is the
+same day as the call. Calls logged before Date Booked existed have both on the call date.
 
 ## Data tab
 

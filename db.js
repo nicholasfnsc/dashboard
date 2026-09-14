@@ -370,6 +370,86 @@ async function saveOfferHubValue(itemId, value) {
   CACHE.board.directory = directory;
 }
 
+/* ---------- Metrics Tracking ----------
+   Per offer and funnel: the metric list (config) and the typed-in
+   numbers. Sales numbers are read from the calls, never stored twice. */
+async function loadMetrics(boardId) {
+  const [board, calls, settings, entries] = await Promise.all([
+    sb.from('boards').select('id, name, directory').eq('id', boardId).maybeSingle(),
+    readAll(() => sb.from('calls').select('data').eq('board_id', boardId).order('created_at', { ascending: true })),
+    sb.from('metric_settings').select('funnel, config').eq('board_id', boardId),
+    readAll(() => sb.from('metric_entries').select('funnel, metric_id, day, value').eq('board_id', boardId).order('day'))
+      .catch((err) => ({ error: err }))
+  ]);
+  if (board.error) throw board.error;
+
+  const ready = !settings.error && !entries.error;
+  const configs = {};
+  (settings.data || []).forEach((row) => { configs[row.funnel] = row.config; });
+
+  const values = { vsl: new Map(), webinar: new Map() };
+  (Array.isArray(entries) ? entries : []).forEach((row) => {
+    if (values[row.funnel]) values[row.funnel].set(row.metric_id + '|' + row.day, Number(row.value));
+  });
+
+  CACHE.boardId = boardId;
+  CACHE.board = board.data;
+  CACHE.calls = calls.map((r) => r.data);
+  CACHE.metrics = { ready, configs, values };
+}
+
+function metricConfig(funnel) {
+  const saved = CACHE.metrics.configs[funnel];
+  return saved && Array.isArray(saved.groups) ? saved : templateFor(funnel);
+}
+
+/* Change an offer's metric list. The saved copy is read fresh first, so
+   two people editing at once never undo each other's changes. */
+async function updateMetricConfig(funnel, change) {
+  const { data, error: readError } = await sb.from('metric_settings')
+    .select('config').eq('board_id', CACHE.boardId).eq('funnel', funnel).maybeSingle();
+  if (readError) throw readError;
+  const config = data && data.config && Array.isArray(data.config.groups) ? data.config : templateFor(funnel);
+  change(config);
+  const { error } = await sb.from('metric_settings').upsert({
+    board_id: CACHE.boardId, funnel, config, updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  CACHE.metrics.configs[funnel] = config;
+  return config;
+}
+
+/* One typed-in number. An empty box removes it. */
+async function saveMetricEntry(funnel, metricId, day, value) {
+  const key = metricId + '|' + day;
+  if (value == null) {
+    const { error } = await sb.from('metric_entries').delete()
+      .eq('board_id', CACHE.boardId).eq('funnel', funnel).eq('metric_id', metricId).eq('day', day);
+    if (error) throw error;
+    CACHE.metrics.values[funnel].delete(key);
+    return;
+  }
+  const { error } = await sb.from('metric_entries').upsert({
+    board_id: CACHE.boardId, funnel, metric_id: metricId, day, value,
+    updated_by: currentLogger(), updated_at: new Date().toISOString()
+  });
+  if (error) throw error;
+  CACHE.metrics.values[funnel].set(key, value);
+}
+
+/* A cheap fingerprint of everything on a metrics board, to notice
+   changes made by someone else. */
+async function metricsSignature() {
+  const b = CACHE.boardId;
+  const latest = (table, col) => sb.from(table).select(col).eq('board_id', b).order(col, { ascending: false }).limit(1);
+  const count = (table) => sb.from(table).select('board_id', { count: 'exact', head: true }).eq('board_id', b);
+  const [c1, c2, e1, e2, s1] = await Promise.all([
+    latest('calls', 'updated_at'), count('calls'), latest('metric_entries', 'updated_at'), count('metric_entries'), latest('metric_settings', 'updated_at')
+  ]);
+  const top = (r) => (r.data && r.data[0] ? r.data[0].updated_at : '');
+  return [top(c1), c2.count, top(e1), e2.count, top(s1)].join('|');
+}
+
 /* ---------- calls ---------- */
 async function saveCall(record) {
   const { error } = await sb.from('calls').upsert({

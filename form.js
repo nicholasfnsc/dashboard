@@ -54,6 +54,11 @@ function initPostCallForm() {
     groups.dq.classList.toggle('hidden', key !== 'disqualified');
     groups.remainder.classList.toggle('hidden', key !== 'remainder');
 
+    /* A balance payment was never on the calendar, so it has no booked day. */
+    $('#pcBookedField').classList.toggle('hidden', key === 'remainder');
+    $('#pcDateLabel').textContent = key === 'remainder' ? 'Date Paid' : 'Call Date';
+    $('#pcDateHelp').textContent = key === 'remainder' ? 'The day the payment came in.' : 'The day the call happened.';
+
     const prompt = OUTCOME_PROMPT[key];
     groups.notes.classList.toggle('hidden', !prompt);
     if (prompt) $('#pcNotesLabel').textContent = prompt;
@@ -106,7 +111,12 @@ function initPostCallForm() {
     clearErrors();
     const errors = [];
 
-    const date       = need('pcDate', 'Date', errors);
+    const date       = need('pcDate', pcState.outcome === 'remainder' ? 'Date Paid' : 'Call Date', errors);
+    const booked     = ($('#pcBooked').value || '').trim();
+    if (booked && date && booked > date && pcState.outcome !== 'remainder') {
+      $('#pcBooked').classList.add('invalid');
+      errors.push('Date Booked can’t be after the Call Date');
+    }
     const closer     = need('pcCloser', 'Closer', errors);
     const setter     = need('pcSetter', 'Setter', errors);
     const clientName = need('pcName', 'Client Full Name', errors);
@@ -116,10 +126,9 @@ function initPostCallForm() {
       funnel: pcState.funnel,
       outcome: pcState.outcome,
       callName: ($('#pcCall').value || '').trim(),
-      /* The form captures one date. Until it captures when the call was
-         set as well, booked and held are the same day for logged rows —
-         see the note in README.md. */
-      bookedDate: date,
+      /* Booked is when it went on the calendar; left empty, it is the
+         same day as the call. */
+      bookedDate: pcState.outcome !== 'remainder' && booked ? booked : date,
       callDate: date,
       closer, setter,
       clientName,
@@ -238,6 +247,7 @@ function initPostCallForm() {
 
     $('#pcCall').value = row.callName || '';
     $('#pcDate').value = row.callDate || '';
+    $('#pcBooked').value = row.bookedDate && row.bookedDate !== row.callDate ? row.bookedDate : '';
     /* Someone may have left the team since this call was logged — keep
        their name on the row rather than silently blanking it. */
     setSelectValue($('#pcCloser'), row.closer);
@@ -283,6 +293,7 @@ function initPostCallForm() {
   });
 
   function resetForm() {
+    $('#pcBooked').value = '';
     ['pcCall', 'pcName', 'pcEmail', 'pcPhone', 'pcFathom', 'pcCash', 'pcRevenue', 'pcRemainder', 'pcNotes']
       .forEach((id) => { $('#' + id).value = id === 'pcCash' || id === 'pcRevenue' || id === 'pcRemainder' ? '0' : ''; });
     $('#pcPaymentMethod').value = '';
