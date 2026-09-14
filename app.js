@@ -105,6 +105,8 @@ function rangeFor(key) {
     case 'today': break;
     case '7d':  start.setDate(end.getDate() - 6); break;
     case '30d': start.setDate(end.getDate() - 29); break;
+    case '90d': start.setDate(end.getDate() - 89); break;
+    case '365d': start.setDate(end.getDate() - 364); break;
     case 'mtd': start.setDate(1); break;
     case 'lastMonth': {
       const s = new Date(end.getFullYear(), end.getMonth() - 1, 1);

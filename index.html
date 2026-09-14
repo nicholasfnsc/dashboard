@@ -129,30 +129,61 @@
 <div class="shell hidden" id="hubShell">
   <div class="dash-head">
     <div>
-      <p class="eyebrow">Inevitable Acquisition</p>
+      <p class="eyebrow" id="hubWho">Inevitable Acquisition</p>
       <h1 class="dash-title">Sales Team Boards</h1>
+      <p class="hub-sub">Every offer at a glance. Open a board to see one offer in full.</p>
     </div>
-    <div class="filters hub-filters">
+  </div>
+
+  <!-- agency summary -->
+  <div class="panel agency">
+    <div class="agency-hero">
+      <div class="agency-value" id="agencyValue">$0.00</div>
+      <div class="agency-label" id="agencyLabel">Total agency revenue · all time</div>
+      <div class="agency-versus" id="agencyVersus"></div>
+      <div class="metric-switch" role="group" aria-label="Show revenue or cash collected">
+        <button type="button" data-metric="revenue" aria-pressed="true">Revenue</button>
+        <button type="button" data-metric="cash" aria-pressed="false">Cash collected</button>
+      </div>
+    </div>
+
+    <div class="agency-strip" id="agencyStrip"></div>
+
+    <div class="agency-tools">
+      <div class="range-pills" id="agencyRanges" role="group" aria-label="Period"></div>
+      <div class="date-range">
+        <label class="hidden" for="agencyFrom">From</label>
+        <input type="date" id="agencyFrom">
+        <span>to</span>
+        <label class="hidden" for="agencyTo">To</label>
+        <input type="date" id="agencyTo">
+      </div>
+    </div>
+
+    <div class="agency-chart" id="agencyChart"></div>
+
+    <div class="agency-foot">
+      <div>
+        <h3 id="agencyFootTitle">Agency revenue</h3>
+        <p id="agencyFootSub">Daily total for the selected period</p>
+      </div>
+      <div class="agency-foot-total" id="agencyFootTotal">$0.00</div>
       <span class="fpill">
-        <label class="hidden" for="hubRange">Date range</label>
-        <select id="hubRange">
-          <option value="ytd">This year so far</option>
-          <option value="mtd">This month</option>
-          <option value="lastMonth">Last month</option>
-          <option value="30d">Last 30 days</option>
-          <option value="all">All time</option>
+        <label class="hidden" for="agencyGrain">Group by</label>
+        <select id="agencyGrain">
+          <option value="day">Daily</option>
+          <option value="week">Weekly</option>
+          <option value="month">Monthly</option>
         </select>
       </span>
     </div>
   </div>
 
-  <div class="hub-totals" id="hubTotals"></div>
-
   <div class="section">
     <div class="section-head section-head-row">
       <div>
         <h2>Offers</h2>
-        <p>One board per offer. Name each one on its Add Team tab.</p>
+        <p id="hubOffersSub">Pick an offer to see its full dashboard and data.</p>
       </div>
       <button type="button" class="btn-primary hidden" id="createBoardBtn">+ New offer</button>
     </div>
