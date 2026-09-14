@@ -1518,3 +1518,51 @@ a.portal-card:hover .portal-arrow { transform: translate(2px, -2px); }
   .signal-week { gap: 3px; }
   .signal-times { grid-template-columns: auto 1fr; }
 }
+
+/* ---------- Signal List: calendar ---------- */
+.signal-calendar { padding: 14px 18px 12px; margin-bottom: 24px; }
+.scal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.scal-month { font-size: 14px; font-weight: 500; color: var(--ink); }
+.scal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.scal-name { text-align: center; padding-bottom: 4px; font-family: var(--f-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.scal-blank { height: 1px; }
+.scal-day {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 42px;
+  background: none; border: 1px solid transparent; border-radius: 10px; color: var(--ink-2); cursor: pointer;
+  transition: background .14s, border-color .14s, color .14s;
+}
+.scal-day:hover { background: var(--surface-2); color: var(--ink); }
+.scal-day.is-future { color: #4d525c; }
+.scal-day.is-today { border-color: var(--line); }
+.scal-day.is-today .scal-num { color: var(--accent-ink); font-weight: 500; }
+.scal-day.is-current { background: var(--accent-wash); border-color: var(--accent-deep); color: var(--ink); }
+.scal-num { font-size: 13px; font-variant-numeric: tabular-nums; }
+.scal-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.scal-dot.is-planned { background: #4d525c; }
+.scal-dot.is-part { background: #e8a33f; }
+.scal-dot.is-full { background: #22c55e; }
+.scal-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 11px; color: var(--muted); }
+.scal-key { display: inline-flex; align-items: center; gap: 6px; }
+.scal-key .scal-dot { margin-left: 6px; }
+
+/* ---------- Signal List: quotes you can edit ---------- */
+.squote-row { position: relative; display: flex; align-items: flex-start; gap: 8px; }
+textarea.squote {
+  flex: 1; width: 100%; min-width: 0; resize: none; overflow: hidden; display: block;
+  background: transparent; border: 0; border-left: 2px solid var(--accent-deep); border-radius: 0;
+  padding: 2px 0 2px 16px; font-family: var(--f-ui); color: var(--ink-2);
+  transition: border-color .14s, color .14s;
+}
+textarea.squote:hover { color: var(--ink); }
+textarea.squote:focus { outline: none; border-left-color: var(--accent-bright); color: var(--ink); font-style: normal; }
+textarea.squote::placeholder { color: #3f434c; }
+.squote-row:hover .sremove { opacity: 1; }
+.signal-quotes .sadd { align-self: flex-start; margin-top: 0; padding-left: 18px; }
+
+.scard-subs .scard-title { color: var(--ink-2); }
+.scard-count { margin-left: auto; }
+
+@media (max-width: 640px) {
+  .scal-day { height: 38px; }
+  .signal-calendar { padding: 12px 10px 10px; }
+}

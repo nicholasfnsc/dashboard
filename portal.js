@@ -95,8 +95,8 @@ function renderPortal() {
     }));
   }
 
-  /* Signal List — today's signal actions, private to whoever is signed in */
-  if (canUse('signal')) {
+  /* Signal List — the owner's own, with today's signal actions */
+  if (CACHE.me.isOwner) {
     const blurb = el('div', 'portal-signal');
     blurb.appendChild(el('p', 'portal-card-blurb', 'Today’s signal actions'));
     host.appendChild(portalCard({ title: 'Signal List', icon: 'signal', href: SIGNAL_PATH, body: blurb, foot: 'Open today' }));

@@ -308,7 +308,18 @@
       </div>
     </div>
 
-    <div class="signal-week" id="signalWeek"></div>
+    <div class="panel signal-calendar">
+      <div class="scal-head">
+        <button type="button" class="week-btn" id="signalMonthPrev" aria-label="Previous month">&#8249;</button>
+        <span class="scal-month" id="signalMonth"></span>
+        <button type="button" class="week-btn" id="signalMonthNext" aria-label="Next month">&#8250;</button>
+      </div>
+      <div class="scal-grid" id="signalCalendar"></div>
+      <div class="scal-foot">
+        <span id="signalMonthSummary"></span>
+        <span class="scal-key"><i class="scal-dot is-full"></i>all done <i class="scal-dot is-part"></i>some <i class="scal-dot is-planned"></i>started</span>
+      </div>
+    </div>
 
     <div class="signal-quotes" id="signalQuotes"></div>
 
@@ -328,9 +339,7 @@
 <div class="gate gate-overlay hidden" id="signalCustomize" role="dialog" aria-labelledby="signalCustomizeTitle">
   <form class="gate-box gate-form signal-customize" id="signalCustomizeForm">
     <h1 class="gate-title" id="signalCustomizeTitle">Customize</h1>
-    <p class="gate-sub">What every new day starts with. Your days already written stay as they are.</p>
-    <label class="field-label" for="sQuotes">Quotes <small>(a blank line between each)</small></label>
-    <textarea id="sQuotes" rows="5"></textarea>
+    <p class="gate-sub">What every new day starts with. Your days already written stay as they are. Quotes are edited right on the page.</p>
     <label class="field-label" for="sFocus">Focus line</label>
     <textarea id="sFocus" rows="2"></textarea>
     <label class="field-label" for="sChecklist">Morning checklist <small>(one per line)</small></label>

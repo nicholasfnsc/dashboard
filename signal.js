@@ -1,12 +1,12 @@
 /* ============================================================
    signal.js — Signal List (/signal-list)
    ------------------------------------------------------------
-   One page per day, private to the person signed in:
+   The owner's own daily page — nobody else has one:
 
-     quotes · morning checklist · what broke your speed yesterday ·
-     focus · goals & limiting factors · highest signal actions
-     (and why) · daily speed check in 30-minute slots · evening
-     reflection · journal
+     calendar · quotes · morning checklist · what broke your speed
+     yesterday · focus · goals & limiting factors · highest signal
+     actions (and why) · sub-priority tasks · daily speed check in
+     30-minute slots · evening reflection · journal
 
    "Plan tomorrow" opens the next day already set up: goals carried
    over, the checklist reset, and what broke your speed today listed
@@ -41,7 +41,7 @@ const SIGNAL_DEFAULTS = {
   ]
 };
 
-const SV = { day: '', content: null, template: null, ready: true, saveTimer: 0, dirty: false, loading: false };
+const SV = { day: '', month: null, content: null, template: null, ready: true, saveTimer: 0, templateTimer: 0, dirty: false, loading: false };
 
 const sid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
 const todayIso = () => isoDay(new Date());
@@ -67,7 +67,8 @@ function freshDay(template, previous) {
     checklist: template.checklist.map((text) => ({ id: sid(), text, done: false })),
     breakers: [],
     goals: (prev && prev.goals && prev.goals.length ? prev.goals : template.goals).map((g) => ({ id: sid(), goal: g.goal, limit: g.limit })),
-    signals: [{ id: sid(), text: '', sub: '', why: '', done: false }],
+    signals: [{ id: sid(), text: '', why: '', done: false }],
+    subs: [],
     schedule: {},
     reflection: {},
     journal: ''
@@ -87,6 +88,15 @@ function freshDay(template, previous) {
   return content;
 }
 
+/* Days written before sub-priority tasks had their own list. */
+function upgradeSignalDay(c) {
+  if (!Array.isArray(c.subs)) {
+    c.subs = (c.signals || []).filter((s) => s.sub && s.sub.trim()).map((s) => ({ id: sid(), text: s.sub, done: false }));
+  }
+  (c.signals || []).forEach((s) => { delete s.sub; });
+  return c;
+}
+
 /* ============================================================
    Saving
    ============================================================ */
@@ -101,6 +111,7 @@ function signalChanged() {
       await saveSignalDay(day, SV.content);
       SV.dirty = false;
       if (day === SV.day) $('#signalSaved').textContent = 'Saved';
+      paintSignalCalendar();
     } catch (err) {
       console.error(err);
       $('#signalSaved').textContent = "Couldn't save — check your connection";
@@ -108,6 +119,15 @@ function signalChanged() {
     paintSignalProgress();
   }, 700);
   paintSignalProgress();
+}
+
+/* Quotes are part of the defaults, so typing in one saves the defaults. */
+function templateChanged() {
+  clearTimeout(SV.templateTimer);
+  $('#signalSaved').textContent = 'Saving…';
+  SV.templateTimer = setTimeout(async () => {
+    if (await saveTemplateNow()) $('#signalSaved').textContent = 'Saved';
+  }, 700);
 }
 
 async function saveTemplateNow() {
@@ -207,13 +227,31 @@ function renderSignal() {
   $('#signalToday').classList.toggle('hidden', SV.day === todayIso());
   $('#signalNotReady').classList.toggle('hidden', SV.ready);
 
+  /* ---------- quotes: click to change, add or remove ---------- */
   const quotes = $('#signalQuotes');
   quotes.textContent = '';
-  t.quotes.filter(Boolean).forEach((q) => {
-    const block = el('blockquote', 'squote');
-    block.textContent = q;
-    quotes.appendChild(block);
+  t.quotes.forEach((q, i) => {
+    const row = el('div', 'squote-row');
+    const area = document.createElement('textarea');
+    area.className = 'squote';
+    area.rows = 1;
+    area.value = q;
+    area.placeholder = 'Write a quote…';
+    area.dataset.quote = String(i);
+    area.setAttribute('aria-label', 'Quote ' + (i + 1));
+    area.addEventListener('input', () => { t.quotes[i] = area.value; templateChanged(); });
+    area.addEventListener('blur', () => {
+      if (!area.value.trim() && t.quotes.length > 1) { t.quotes.splice(i, 1); templateChanged(); renderSignal(); }
+    });
+    row.appendChild(autoGrow(area));
+    row.appendChild(removeButton('quote', () => { t.quotes.splice(i, 1); templateChanged(); renderSignal(); }));
+    quotes.appendChild(row);
   });
+  quotes.appendChild(addButton('Add quote', () => {
+    t.quotes.push('');
+    renderSignal();
+    focusLater('.squote[data-quote="' + (t.quotes.length - 1) + '"]');
+  }));
 
   /* ---------- morning checklist ---------- */
   {
@@ -314,10 +352,6 @@ function renderSignal() {
       row.appendChild(top);
 
       const detail = el('div', 'ssignal-detail');
-      const subWrap = el('label', 'ssignal-field');
-      subWrap.appendChild(el('span', 'slabel', 'Sub'));
-      subWrap.appendChild(textBox(s.sub, 'The sub-task that supports it', (v) => { s.sub = v; }, { label: 'Sub-task' }));
-      detail.appendChild(subWrap);
       const whyWrap = el('label', 'ssignal-field');
       whyWrap.appendChild(el('span', 'slabel', 'Why it’s highest signal'));
       whyWrap.appendChild(textBox(s.why, 'What it moves forward', (v) => { s.why = v; }, { label: 'Why it is highest signal', multiline: true }));
@@ -328,13 +362,40 @@ function renderSignal() {
     body.appendChild(list);
     if (c.signals.length < 6) {
       body.appendChild(addButton('Add signal action', () => {
-        const s = { id: sid(), text: '', sub: '', why: '', done: false };
+        const s = { id: sid(), text: '', why: '', done: false };
         c.signals.push(s);
         signalChanged();
         renderSignal();
         focusLater('.ssignal[data-id="' + s.id + '"] .sfield-signal');
       }));
     }
+    host.appendChild(card);
+  }
+
+  /* ---------- sub-priority tasks: after the signals are done ---------- */
+  {
+    const { card, body, head } = signalCard('Sub-priority tasks', 'once the signals are done', 'scard-subs');
+    const count = el('span', 'scard-sub scard-count');
+    count.id = 'signalSubCount';
+    head.appendChild(count);
+    const list = el('div', 'slist');
+    if (!c.subs.length) list.appendChild(el('p', 'sempty', 'Nothing here yet. These are for after your signal actions.'));
+    c.subs.forEach((item) => {
+      const row = el('div', 'srow scheck-row ssub-row' + (item.done ? ' is-done' : ''));
+      row.dataset.id = item.id;
+      row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => { item.done = on; row.classList.toggle('is-done', on); }));
+      row.appendChild(textBox(item.text, 'Sub-priority task', (v) => { item.text = v; }, { label: 'Sub-priority task', cls: 'sfield-plain' }));
+      row.appendChild(removeButton('task', () => { c.subs = c.subs.filter((x) => x !== item); signalChanged(); renderSignal(); }));
+      list.appendChild(row);
+    });
+    body.appendChild(list);
+    body.appendChild(addButton('Add sub-priority task', () => {
+      const item = { id: sid(), text: '', done: false };
+      c.subs.push(item);
+      signalChanged();
+      renderSignal();
+      focusLater('.ssub-row[data-id="' + item.id + '"] textarea');
+    }));
     host.appendChild(card);
   }
 
@@ -415,39 +476,69 @@ function paintSignalProgress() {
   const count = $('#signalActionCount');
   if (count) count.textContent = actions.length ? actionsDone + ' / ' + actions.length + ' done' : '3–4 a day';
   $('#signalProgress').textContent = 'Morning ' + morningDone + '/' + c.checklist.length + '  ·  Signal actions ' + actionsDone + '/' + actions.length;
+  const subCount = $('#signalSubCount');
+  if (subCount) {
+    const subs = (c.subs || []).filter((x) => x.text.trim());
+    subCount.textContent = subs.length ? subs.filter((x) => x.done).length + ' / ' + subs.length : '';
+  }
   const auto = $('#signalReflectAuto');
   if (auto) auto.textContent = actions.length ? actionsDone + ' of ' + actions.length + ' checked off' : '';
 }
 
-/* ---------- the week strip ---------- */
-async function paintSignalWeek() {
-  const host = $('#signalWeek');
-  const monday = mondayOf(asDate(SV.day));
-  const days = weekDays(monday).map(isoDay);
+/* ---------- the calendar ----------
+   A month at a time. Every day you wrote something has a dot —
+   green when every signal action got done, amber when some did,
+   grey when it was started. Click any day to open it. */
+async function paintSignalCalendar() {
+  const first = SV.month || new Date(asDate(SV.day).getFullYear(), asDate(SV.day).getMonth(), 1);
+  SV.month = first;
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  $('#signalMonth').textContent = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
   let rows = [];
-  try { rows = SV.ready ? await loadSignalWeek(days[0], days[6]) : []; } catch (err) { rows = []; }
+  try { rows = SV.ready ? await loadSignalWeek(isoDay(first), isoDay(last)) : []; } catch (err) { rows = []; }
   const byDay = {};
   rows.forEach((r) => { byDay[r.day] = r.content; });
-  if (SV.content) byDay[SV.day] = SV.content;
+  if (SV.content && SV.dirty) byDay[SV.day] = SV.content;
 
-  host.textContent = '';
-  days.forEach((iso, i) => {
+  const grid = $('#signalCalendar');
+  grid.textContent = '';
+  DAY_NAMES.forEach((n) => grid.appendChild(el('span', 'scal-name', n.slice(0, 2))));
+  for (let i = 0; i < (first.getDay() + 6) % 7; i++) grid.appendChild(el('span', 'scal-blank'));
+
+  let written = 0;
+  let allDone = 0;
+  for (let d = 1; d <= last.getDate(); d++) {
+    const iso = isoDay(new Date(first.getFullYear(), first.getMonth(), d));
     const content = byDay[iso];
-    const b = el('button', 'sweek-day' + (iso === SV.day ? ' is-current' : '') + (iso === todayIso() ? ' is-today' : ''));
+    const b = el('button', 'scal-day' + (iso === SV.day ? ' is-current' : '') + (iso === todayIso() ? ' is-today' : '') + (iso > todayIso() ? ' is-future' : ''));
     b.type = 'button';
-    b.appendChild(el('span', 'sweek-name', DAY_NAMES[i]));
-    b.appendChild(el('span', 'sweek-num', String(asDate(iso).getDate())));
-    const dot = el('span', 'sweek-dot');
+    b.appendChild(el('span', 'scal-num', String(d)));
+    const dot = el('span', 'scal-dot');
+    let label = asDate(iso).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     if (content) {
+      written++;
       const actions = (content.signals || []).filter((s) => s.text && s.text.trim());
       const done = actions.filter((s) => s.done).length;
+      if (actions.length && done === actions.length) allDone++;
       dot.classList.add(actions.length && done === actions.length ? 'is-full' : done ? 'is-part' : 'is-planned');
-      dot.title = actions.length ? done + ' of ' + actions.length + ' signal actions done' : 'Started';
+      label += actions.length ? ' — ' + done + ' of ' + actions.length + ' signal actions done' : ' — started';
     }
+    b.title = label;
+    b.setAttribute('aria-label', label);
     b.appendChild(dot);
     b.addEventListener('click', () => goToDay(iso));
-    host.appendChild(b);
-  });
+    grid.appendChild(b);
+  }
+  $('#signalMonthSummary').textContent = written
+    ? written + (written === 1 ? ' day' : ' days') + ' written · ' + allDone + ' with every signal action done'
+    : 'Nothing written this month yet';
+}
+
+function moveSignalMonth(n) {
+  const m = SV.month || new Date();
+  SV.month = new Date(m.getFullYear(), m.getMonth() + n, 1);
+  paintSignalCalendar();
 }
 
 /* ============================================================
@@ -455,21 +546,19 @@ async function paintSignalWeek() {
    ============================================================ */
 function openSignalCustomize() {
   const t = SV.template;
-  $('#sQuotes').value = t.quotes.join('\n\n');
   $('#sFocus').value = t.focus || '';
   $('#sChecklist').value = t.checklist.join('\n');
   $('#sQuestions').value = t.questions.join('\n');
   $('#sDayStart').value = t.dayStart;
   $('#sDayEnd').value = t.dayEnd;
   $('#signalCustomize').classList.remove('hidden');
-  $('#sQuotes').focus();
+  $('#sFocus').focus();
 }
 
 async function saveSignalCustomize(e) {
   e.preventDefault();
   const lines = (v) => v.split('\n').map((x) => x.trim()).filter(Boolean);
   const t = SV.template;
-  t.quotes = $('#sQuotes').value.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
   t.focus = $('#sFocus').value.trim();
   t.checklist = lines($('#sChecklist').value);
   t.questions = lines($('#sQuestions').value);
@@ -477,7 +566,7 @@ async function saveSignalCustomize(e) {
   if (!(await saveTemplateNow())) return;
   $('#signalCustomize').classList.add('hidden');
   renderSignal();
-  notify('Defaults saved. Quotes, focus, questions and times apply now; the checklist applies to new days.');
+  notify('Defaults saved. Focus, questions and times apply now; the checklist applies to new days.');
 }
 
 function fillTimeSelect(sel) {
@@ -510,10 +599,14 @@ async function goToDay(iso) {
       row = await loadSignalDay(iso);
       if (!row) previous = await loadSignalDayBefore(iso);
     }
-    SV.content = row ? row.content : freshDay(SV.template, previous);
+    SV.content = upgradeSignalDay(row ? row.content : freshDay(SV.template, previous));
+    const shown = asDate(iso);
+    if (!SV.month || SV.month.getMonth() !== shown.getMonth() || SV.month.getFullYear() !== shown.getFullYear()) {
+      SV.month = new Date(shown.getFullYear(), shown.getMonth(), 1);
+    }
     $('#signalSaved').textContent = row ? 'Saved' : 'New day — starts saving when you type';
     renderSignal();
-    paintSignalWeek();
+    paintSignalCalendar();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (err) {
     console.error(err);
@@ -533,6 +626,8 @@ async function initSignal() {
   $('#signalNext').addEventListener('click', () => goToDay(shiftDay(SV.day, 1)));
   $('#signalToday').addEventListener('click', () => goToDay(todayIso()));
   $('#signalCustomizeBtn').addEventListener('click', openSignalCustomize);
+  $('#signalMonthPrev').addEventListener('click', () => moveSignalMonth(-1));
+  $('#signalMonthNext').addEventListener('click', () => moveSignalMonth(1));
   $('#signalCustomizeCancel').addEventListener('click', () => $('#signalCustomize').classList.add('hidden'));
   $('#signalCustomizeForm').addEventListener('submit', saveSignalCustomize);
   fillTimeSelect($('#sDayStart'));
@@ -545,7 +640,7 @@ async function initSignal() {
     if (typing) return;
     try {
       const row = await loadSignalDay(SV.day);
-      if (row && JSON.stringify(row.content) !== JSON.stringify(SV.content)) { SV.content = row.content; renderSignal(); paintSignalWeek(); }
+      if (row && JSON.stringify(row.content) !== JSON.stringify(SV.content)) { SV.content = upgradeSignalDay(row.content); renderSignal(); paintSignalCalendar(); }
     } catch (err) { /* next time */ }
   });
 

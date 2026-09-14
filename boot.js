@@ -6,7 +6,7 @@
      /sales-dashboard/<offer>   that offer's board, if you may see it
      /metrics/<offer>           Metrics Tracking for that offer
      /projections               Funnel Revenue Projections (a calculator, no offer data)
-     /signal-list               your own Signal List, one page per day
+     /signal-list               the owner's Signal List, one page per day
      /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
@@ -289,7 +289,7 @@
       }
 
       if (path === SIGNAL_PATH) {
-        if (!canUse('signal')) { location.replace('/'); return; }
+        if (!me.isOwner) { location.replace('/'); return; }
         await openSignal();
         return;
       }

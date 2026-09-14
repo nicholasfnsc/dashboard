@@ -97,13 +97,13 @@ async function loadMe() {
 }
 
 /* The parts of the portal, in the order the owner ticks them. */
-const PORTAL_SECTION_KEYS = ['sales', 'metrics', 'funnel', 'content', 'signal'];
+/* Signal List is the owner's alone, so it is never offered to admins. */
+const PORTAL_SECTION_KEYS = ['sales', 'metrics', 'funnel', 'content'];
 const PORTAL_SECTION_NAMES = {
   sales: 'Sales Team Boards',
   metrics: 'Metrics Tracking',
   funnel: 'Funnel Revenue Projections',
-  content: 'Weekly Content Hub',
-  signal: 'Signal List'
+  content: 'Weekly Content Hub'
 };
 
 const canUse = (section) => !!CACHE.me && CACHE.me.kind === 'person' &&
@@ -451,8 +451,8 @@ async function metricsSignature() {
 }
 
 /* ---------- Signal List ----------
-   Private to the person signed in: the database only ever returns
-   their own days and defaults. */
+   The owner's own. The database only ever returns the signed-in
+   person's days and defaults. */
 async function loadSignalTemplate() {
   const { data, error } = await sb.from('signal_settings').select('template').eq('user_id', CACHE.me.id).maybeSingle();
   return { ready: !error, template: data ? data.template : null };

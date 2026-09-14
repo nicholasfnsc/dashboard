@@ -101,7 +101,7 @@ export function accessFrom(access, memberships) {
   return { sections: isAdmin ? ['sales'] : [], allOffers: false };
 }
 
-export const SECTIONS = ['sales', 'metrics', 'funnel', 'content', 'signal'];
+export const SECTIONS = ['sales', 'metrics', 'funnel', 'content'];
 
 /* What the login is called in Supabase → Authentication → Users, so the
    team logins say which offer they open instead of being blank. */

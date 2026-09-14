@@ -96,13 +96,14 @@ and standards live in `projections.js`.
 
 ## Signal List
 
-One page per day, private to the person signed in (the database never returns anyone else's,
-including to the owner). Quotes, morning checklist, what broke your speed yesterday, focus line,
-goals and limiting factors, highest signal actions with sub-task and why, a 30-minute schedule,
-evening reflection and journal. Everything saves as you type. **Plan tomorrow** opens the next
-day with goals carried over, a fresh checklist, and today's "what broke my speed" and "what can I
-do better" as tomorrow's things to watch. **Customize** sets the quotes, focus line, checklist,
-reflection questions and day length; "Make this my usual day" saves the schedule as the default.
+The owner's own daily page; it is never offered to admins. A month calendar at the top shows every
+day written (green: all signal actions done, amber: some, grey: started); click any day to open
+everything written that day. Quotes are edited right at the top. Each day has the morning
+checklist, what broke your speed yesterday, the focus line, goals and limiting factors, highest
+signal actions (with why), sub-priority tasks for after the signals, a 30-minute schedule,
+evening reflection and journal. Everything saves as you type. **Plan tomorrow** carries goals over,
+resets the checklist, and turns today's reflection into tomorrow's watch list. **Customize** sets
+the focus line, checklist, questions and day length.
 
 ## Team & Access
 
