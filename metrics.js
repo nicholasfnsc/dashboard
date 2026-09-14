@@ -620,7 +620,7 @@ function renderEditor(ctx) {
     const removeGroup = el('button', 'link-btn danger', 'Remove group');
     removeGroup.type = 'button';
     removeGroup.addEventListener('click', () => {
-      if (!window.confirm('Remove the group “' + g.name + '” and its ' + g.metrics.length + ' metrics?\n\nNumbers already typed in are kept, so adding a metric back brings them back.')) return;
+      if (!window.confirm('Remove the group “' + g.name + '” and its ' + g.metrics.length + ' metrics?\n\nTheir typed-in numbers stay stored but stop showing. To change a name, rename instead.')) return;
       saveConfigSoon((c) => { c.groups = c.groups.filter((x) => x.id !== g.id); }, true);
     });
     head.appendChild(removeGroup);
