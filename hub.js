@@ -11,8 +11,6 @@
    board can never disagree.
    ============================================================ */
 
-let hubAdmins = [];
-
 /* What the summary is showing. Revenue is the contract value of deals
    closed on a day; cash is money that landed on a day — the same two
    definitions every board uses. */
@@ -385,7 +383,6 @@ function renderHub() {
     host.appendChild(card);
   });
 
-  paintInviteBoards();
 }
 
 function initAgency() {
@@ -429,103 +426,6 @@ function initAgency() {
   });
 }
 
-/* ---------- admins (owner only) ---------- */
-function boardCheckboxes(host, chosenIds, idPrefix, onChange) {
-  host.textContent = '';
-  CACHE.boards.forEach((b) => {
-    const label = document.createElement('label');
-    label.className = 'check';
-    const box = document.createElement('input');
-    box.type = 'checkbox';
-    box.id = idPrefix + b.id;
-    box.value = b.id;
-    box.checked = chosenIds.indexOf(b.id) !== -1;
-    if (onChange) box.addEventListener('change', onChange);
-    label.appendChild(box);
-    label.appendChild(document.createTextNode(' ' + b.name));
-    host.appendChild(label);
-  });
-  if (!CACHE.boards.length) host.appendChild(el('span', 'axis-note', 'Create an offer first.'));
-}
-
-const checkedIn = (host) =>
-  Array.prototype.map.call(host.querySelectorAll('input:checked'), (b) => b.value);
-
-function paintInviteBoards() {
-  const host = $('#inviteBoards');
-  if (host && !host.dataset.touched) boardCheckboxes(host, [], 'invite-', () => { host.dataset.touched = '1'; });
-}
-
-function renderAdmins() {
-  const host = $('#adminList');
-  host.textContent = '';
-
-  if (!hubAdmins.length) {
-    host.appendChild(el('p', 'roster-empty', 'No admins yet.'));
-    return;
-  }
-
-  hubAdmins.forEach((a) => {
-    const rowEl = el('div', 'admin-row');
-
-    const who = el('div', 'admin-who');
-    const name = el('span', 'admin-name');
-    name.textContent = a.name || a.email;
-    who.appendChild(name);
-
-    const detail = el('span', 'admin-email');
-    detail.textContent = [a.title, a.name ? a.email : ''].filter(Boolean).join(' · ');
-    if (detail.textContent) who.appendChild(detail);
-
-    if (!a.joined) who.appendChild(el('span', 'admin-pending', 'Invite not accepted yet'));
-    rowEl.appendChild(who);
-
-    const boards = el('div', 'check-row');
-    boardCheckboxes(boards, a.boardIds, 'admin-' + a.id + '-', async () => {
-      const ids = checkedIn(boards);
-      try {
-        await setAdminAccess(a.id, ids);
-        a.boardIds = ids;
-        notify('Access updated for ' + (a.name || a.email) + '.');
-      } catch (err) {
-        console.error(err);
-        notify(err.message);
-      }
-    });
-    rowEl.appendChild(boards);
-
-    const remove = el('button', 'link-btn danger', 'Remove');
-    remove.type = 'button';
-    remove.addEventListener('click', async () => {
-      if (!window.confirm('Remove ' + (a.name || a.email) + '?\n\nTheir sign-in is deleted. Nothing they logged is touched.')) return;
-      try {
-        await removeAdmin(a.id);
-      } catch (err) {
-        console.error(err);
-        notify(err.message);
-        return;
-      }
-      hubAdmins = hubAdmins.filter((x) => x.id !== a.id);
-      renderAdmins();
-      notify('Removed ' + (a.name || a.email) + '.');
-    });
-    rowEl.appendChild(remove);
-
-    host.appendChild(rowEl);
-  });
-}
-
-async function loadAdmins() {
-  try {
-    const result = await listAdmins();
-    hubAdmins = result.admins || [];
-  } catch (err) {
-    console.error(err);
-    hubAdmins = [];
-  }
-  renderAdmins();
-}
-
 function initHub() {
   initAgency();
 
@@ -546,39 +446,6 @@ function initHub() {
       }
     });
 
-    $('#peopleSection').classList.remove('hidden');
-
-    /* Quietly bring every team login's name in Supabase up to date. */
-    serverAction('/api/boards', { action: 'names' }).catch(() => {});
-    $('#inviteForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = $('#inviteName').value.trim();
-      const email = $('#inviteEmail').value.trim();
-      const title = $('#inviteTitle').value.trim();
-      const ids = checkedIn($('#inviteBoards'));
-      if (!email) { $('#inviteEmail').focus(); return; }
-
-      const button = $('#inviteBtn');
-      button.disabled = true;
-      try {
-        await inviteAdmin(name, email, title, ids);
-      } catch (err) {
-        console.error(err);
-        notify(err.message);
-        return;
-      } finally {
-        button.disabled = false;
-      }
-      $('#inviteName').value = '';
-      $('#inviteEmail').value = '';
-      $('#inviteTitle').value = '';
-      delete $('#inviteBoards').dataset.touched;
-      notify('Invite sent to ' + email + '.');
-      loadAdmins();
-      paintInviteBoards();
-    });
-
-    loadAdmins();
   }
 
   renderHub();

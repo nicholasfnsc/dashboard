@@ -52,13 +52,29 @@ async function loadMe() {
   const session = await currentSession();
   if (!session) { CACHE.me = null; return null; }
 
-  const [profile, memberships] = await Promise.all([
+  const [profile, memberships, access] = await Promise.all([
     sb.from('profiles').select('is_owner, kind, email, full_name').eq('id', session.user.id).maybeSingle(),
-    sb.from('memberships').select('board_id, role').eq('user_id', session.user.id)
+    sb.from('memberships').select('board_id, role').eq('user_id', session.user.id),
+    sb.from('admin_access').select('sections, all_offers').eq('user_id', session.user.id).maybeSingle()
   ]);
 
   const p = profile.data || {};
   const meta = session.user.user_metadata || {};
+  const rows = memberships.data || [];
+
+  /* What an admin may use. Until access.sql has been run, admins keep
+     what they always had: the sales boards for their offers. */
+  let sections;
+  let allOffers = false;
+  if (p.is_owner === true) {
+    sections = PORTAL_SECTION_KEYS.slice();
+    allOffers = true;
+  } else if (!access.error) {
+    sections = (access.data && access.data.sections) || [];
+    allOffers = !!(access.data && access.data.all_offers);
+  } else {
+    sections = rows.some((m) => m.role === 'admin') ? ['sales'] : [];
+  }
   CACHE.me = {
     id: session.user.id,
     email: session.user.email,
@@ -69,7 +85,9 @@ async function loadMe() {
     avatar: meta.avatar_url || '',
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
-    memberships: memberships.data || [],
+    memberships: rows,
+    sections,
+    allOffers,
     /* Only someone who arrived by invitation and has not yet chosen a
        password. Decided by the account, never by the link, so a person
        who is already signed in can never be shown this screen. */
@@ -78,11 +96,27 @@ async function loadMe() {
   return CACHE.me;
 }
 
+/* The parts of the portal, in the order the owner ticks them. */
+const PORTAL_SECTION_KEYS = ['sales', 'metrics', 'funnel', 'content', 'signal'];
+const PORTAL_SECTION_NAMES = {
+  sales: 'Sales Team Boards',
+  metrics: 'Metrics Tracking',
+  funnel: 'Funnel Revenue Projections',
+  content: 'Weekly Content Hub',
+  signal: 'Signal List'
+};
+
+const canUse = (section) => !!CACHE.me && CACHE.me.kind === 'person' &&
+  (CACHE.me.isOwner || CACHE.me.sections.indexOf(section) !== -1);
+
+/* Role on an offer's sales board — the same rule the database uses. */
 function roleOn(boardId) {
   if (!CACHE.me) return null;
   if (CACHE.me.isOwner) return 'owner';
-  const hit = CACHE.me.memberships.find((m) => m.board_id === boardId);
-  return hit ? hit.role : null;
+  if (CACHE.me.memberships.some((m) => m.board_id === boardId && m.role === 'rep')) return 'rep';
+  const offerAllowed = CACHE.me.allOffers ||
+    CACHE.me.memberships.some((m) => m.board_id === boardId && m.role === 'admin');
+  return offerAllowed && canUse('sales') ? 'admin' : null;
 }
 
 const canManage = () => CACHE.role === 'owner' || CACHE.role === 'admin';
@@ -405,8 +439,9 @@ async function replaceTeam(people) {
 
 /* ---------- admins (owner) ---------- */
 const listAdmins = () => serverAction('/api/people', { action: 'list' });
-const inviteAdmin = (name, email, title, boardIds) => serverAction('/api/people', { action: 'invite', name, email, title, boardIds });
-const setAdminAccess = (userId, boardIds) => serverAction('/api/people', { action: 'access', userId, boardIds });
+/* access: { sections: [...], allOffers: true|false, boardIds: [...] } */
+const inviteAdmin = (name, email, title, access) => serverAction('/api/people', Object.assign({ action: 'invite', name, email, title }, access));
+const setAdminAccess = (userId, access) => serverAction('/api/people', Object.assign({ action: 'access', userId }, access));
 const removeAdmin = (userId) => serverAction('/api/people', { action: 'remove', userId });
 
 /* ---------- keeping up with everyone else ---------- */

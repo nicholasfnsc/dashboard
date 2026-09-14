@@ -68,22 +68,40 @@ export async function caller(request) {
     return null;
   }
 
-  const [profile, memberships] = await Promise.all([
+  const [profile, memberships, access] = await Promise.all([
     db.from('profiles').select('is_owner, kind, email, full_name').eq('id', data.user.id).maybeSingle(),
-    db.from('memberships').select('board_id, role').eq('user_id', data.user.id)
+    db.from('memberships').select('board_id, role').eq('user_id', data.user.id),
+    db.from('admin_access').select('sections, all_offers').eq('user_id', data.user.id).maybeSingle()
   ]);
 
   const p = profile.data || {};
   const rows = memberships.data || [];
+  const isOwner = p.is_owner === true;
+  const { sections, allOffers } = accessFrom(access, rows);
+  const offerAllowed = (boardId) => allOffers || rows.some((m) => m.board_id === boardId && m.role === 'admin');
   return {
     id: data.user.id,
     email: data.user.email,
-    isOwner: p.is_owner === true,
+    isOwner,
     kind: p.kind || 'person',
-    manages: (boardId) => p.is_owner === true ||
-      rows.some((m) => m.board_id === boardId && m.role === 'admin')
+    /* The same rule as the database's can_manage_board(). */
+    manages: (boardId) => isOwner || (sections.indexOf('sales') !== -1 && offerAllowed(boardId))
   };
 }
+
+/* An admin's sections and offers. Until access.sql has been run the
+   table is missing, and admins keep what they always had: the sales
+   boards for the offers they were given. */
+export function accessFrom(access, memberships) {
+  if (access && !access.error) {
+    const row = access.data || {};
+    return { sections: row.sections || [], allOffers: row.all_offers === true };
+  }
+  const isAdmin = (memberships || []).some((m) => m.role === 'admin');
+  return { sections: isAdmin ? ['sales'] : [], allOffers: false };
+}
+
+export const SECTIONS = ['sales', 'metrics', 'funnel', 'content', 'signal'];
 
 /* What the login is called in Supabase → Authentication → Users, so the
    team logins say which offer they open instead of being blank. */

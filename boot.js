@@ -4,6 +4,7 @@
      /                          the portal: every section of the company
      /sales-dashboard           every sales team board you can reach
      /sales-dashboard/<offer>   that offer's board, if you may see it
+     /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
 
@@ -13,7 +14,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -133,6 +134,16 @@
     initProfile();
   }
 
+  async function openAccess() {
+    await loadBoards();
+    openShell('accessShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    document.title = 'Team & Access · Inevitable Acquisition';
+    initAccess();
+    initProfile();
+  }
+
   async function openHub() {
     await loadHub();
     openShell('hubShell');
@@ -234,7 +245,17 @@
         return;
       }
 
-      if (path === SALES_PATH) { await openHub(); return; }
+      if (path === ACCESS_PATH) {
+        if (!me.isOwner) { location.replace('/'); return; }
+        await openAccess();
+        return;
+      }
+
+      if (path === SALES_PATH) {
+        if (!canUse('sales')) { location.replace('/'); return; }
+        await openHub();
+        return;
+      }
       if (path !== '/') { location.replace('/'); return; }
       await openPortal();
     } catch (err) {

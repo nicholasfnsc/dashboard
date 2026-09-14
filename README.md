@@ -10,8 +10,8 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 
 | Who | Goes to | Enters | Sees |
 |---|---|---|---|
-| Owner | `portal.inevitableacq.com` | email + password | the portal, every offer, admins |
-| Admin | `portal.inevitableacq.com` | email + password | the portal, only their offers |
+| Owner | `portal.inevitableacq.com` | email + password | the whole portal, every offer, Team & Access |
+| Admin | `portal.inevitableacq.com` | email + password | the sections and offers the owner ticked |
 | Rep | `portal.inevitableacq.com/sales-team` | the offer's code | that offer's board only |
 
 ## Addresses
@@ -19,7 +19,8 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 | Address | What it is |
 |---|---|
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
-| `/sales-dashboard` | Sales Team Boards: totals, offer cards, admins |
+| `/team-access` | owner only: invite admins, choose their sections and offers |
+| `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
 | `/sales-team` | where reps enter their code |
 | `/board/<id>` | old links; forwarded to the new address |
@@ -40,7 +41,8 @@ config.js         Supabase address and publishable key (both public by design)
 db.js             every read and write to Supabase
 boot.js           decides which screen each person gets
 portal.js         the portal page: greeting, total revenue, Signal List, section cards
-hub.js            Sales Team Boards: offer cards, new offer, admins and invites
+hub.js            Sales Team Boards: agency summary, offer cards, new offer
+access.js         Team & Access: invite admins, sections and offers for each
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
@@ -54,7 +56,19 @@ api/people.js     invite admins, change their offers, remove them
 api/profile.js    save or remove your own profile picture (Storage bucket "avatars")
 supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
+supabase/access.sql   admin sections and offers, and the access rules that use them
 ```
+
+## Team & Access
+
+The owner invites admins from **Team & Access** and ticks, for each one, the **sections** they
+can use (Sales Team Boards, Metrics Tracking, Funnel Revenue Projections, Weekly Content Hub,
+Signal List) and the **offers** they see inside per-offer sections — every offer, or chosen ones.
+Inside a section they have, an admin can view and edit. Only the owner invites, changes access,
+creates and archives offers. Reps are unaffected: a code opens one sales board.
+
+The rules live in the database (`supabase/access.sql`): calls are readable with the sales boards
+or metrics, and writable by the offer's reps or whoever has its sales board.
 
 ## Security
 

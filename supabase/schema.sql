@@ -3,6 +3,8 @@
 --
 --  Run once: Supabase → SQL Editor → New query → paste → Run.
 --  Safe to run again; nothing here deletes data.
+--  Then run rep-hub.sql and access.sql (in that order) — access.sql
+--  sets the final access rules, so run it again after this file.
 --
 --  The whole model:
 --    You either have an account or you have a code.

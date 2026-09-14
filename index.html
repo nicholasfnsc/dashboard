@@ -197,31 +197,47 @@
     <div class="hub-grid" id="hubBoards"></div>
   </div>
 
-  <div class="section hidden" id="peopleSection">
+</div>
+
+<!-- ================= TEAM & ACCESS (owner only) ================= -->
+<div class="shell hidden" id="accessShell">
+  <div class="dash-head">
+    <div>
+      <p class="eyebrow">Inevitable Acquisition Portal</p>
+      <h1 class="dash-title">Team &amp; Access</h1>
+      <p class="hub-sub">Admins sign in with their own email and password. Tick what each one can use — inside those sections they can view and edit.</p>
+    </div>
+  </div>
+
+  <p class="access-warning hidden" id="accessNotReady">
+    One setup step first: run <b>supabase/access.sql</b> in Supabase → SQL Editor. Until then admins keep the sales boards they already had.
+  </p>
+
+  <div class="panel invite-panel">
+    <div class="panel-head">
+      <h3>Invite an admin</h3>
+      <p>They get an email, choose a password, and sign in at portal.inevitableacq.com.</p>
+    </div>
+    <form class="panel-body access-form" id="inviteForm">
+      <div class="invite-row">
+        <label class="hidden" for="inviteName">Name</label>
+        <input type="text" id="inviteName" placeholder="Name" autocomplete="off">
+        <label class="hidden" for="inviteEmail">Email</label>
+        <input type="email" id="inviteEmail" placeholder="Email" autocomplete="off">
+        <label class="hidden" for="inviteTitle">Role</label>
+        <input type="text" id="inviteTitle" placeholder="Role, e.g. CMO (they can change it)" autocomplete="off">
+      </div>
+      <div id="inviteAccess"></div>
+      <button type="submit" class="btn-primary" id="inviteBtn">Send invite</button>
+    </form>
+  </div>
+
+  <div class="section">
     <div class="section-head">
       <h2>Admins</h2>
-      <p>People with their own sign-in. Tick the offers each one can open.</p>
+      <p>Changes save as you tick. Removing someone deletes their sign-in; nothing they logged is touched.</p>
     </div>
-
-    <div class="panel">
-      <div class="panel-body">
-        <div id="adminList"></div>
-
-        <form class="invite-form" id="inviteForm">
-          <h4>Invite an admin</h4>
-          <div class="invite-row">
-            <label class="hidden" for="inviteName">Name</label>
-            <input type="text" id="inviteName" placeholder="Name" autocomplete="off">
-            <label class="hidden" for="inviteEmail">Email</label>
-            <input type="email" id="inviteEmail" placeholder="Email" autocomplete="off">
-            <label class="hidden" for="inviteTitle">Role</label>
-            <input type="text" id="inviteTitle" placeholder="Role, e.g. COO (they can change it)" autocomplete="off">
-          </div>
-          <div class="check-row" id="inviteBoards"></div>
-          <button type="submit" class="btn-primary" id="inviteBtn">Send invite</button>
-        </form>
-      </div>
-    </div>
+    <div class="admin-list" id="adminList"></div>
   </div>
 </div>
 
@@ -627,6 +643,7 @@
 <script src="/rephub.js"></script>
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
+<script src="/access.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>

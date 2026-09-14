@@ -16,7 +16,8 @@ const PORTAL_ICONS = {
   sales:   '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
   metrics: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/>',
   funnel:  '<path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/>',
-  content: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18"/><path d="M8 2v4"/><path d="M16 2v4"/>'
+  content: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18"/><path d="M8 2v4"/><path d="M16 2v4"/>',
+  access:  '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 4.5a3.5 3.5 0 0 1 0 7"/><path d="M19 14.8c1.4.9 2.2 2.6 2.5 5.2"/>'
 };
 
 const PORTAL_SECTIONS = [
@@ -68,41 +69,57 @@ function renderPortal() {
   const host = $('#portalSections');
   host.textContent = '';
 
-  /* Total revenue generated — every offer, all time. */
-  const rows = CACHE.allCalls.map((r) => r.record);
-  const all = computeMetrics(rows, rangeFor('all'));
-  const month = computeMetrics(rows, rangeFor('mtd'));
-  const revenue = el('div', 'portal-revenue');
-  revenue.appendChild(el('div', 'portal-revenue-value', money(all.totalRevenue)));
-  const facts = el('div', 'portal-revenue-facts');
-  [
-    [money(all.totalCash), 'cash collected'],
-    [money(month.totalRevenue), 'revenue this month'],
-    [int(all.deals), all.deals === 1 ? 'deal closed' : 'deals closed']
-  ].forEach((f) => {
-    const s = el('span', 'portal-fact');
-    s.appendChild(el('b', null, f[0]));
-    s.appendChild(document.createTextNode(' ' + f[1]));
-    facts.appendChild(s);
-  });
-  revenue.appendChild(facts);
-  host.appendChild(portalCard({
-    title: 'Total Revenue Generated', icon: 'revenue', wide: true, body: revenue,
-    href: SALES_PATH, foot: 'All offers · all time'
-  }));
+  /* Total revenue generated — every offer this person can see, all time.
+     Sales data, so it shows to those with the sales boards or metrics. */
+  if (canUse('sales') || canUse('metrics')) {
+    const rows = CACHE.allCalls.map((r) => r.record);
+    const all = computeMetrics(rows, rangeFor('all'));
+    const month = computeMetrics(rows, rangeFor('mtd'));
+    const revenue = el('div', 'portal-revenue');
+    revenue.appendChild(el('div', 'portal-revenue-value', money(all.totalRevenue)));
+    const facts = el('div', 'portal-revenue-facts');
+    [
+      [money(all.totalCash), 'cash collected'],
+      [money(month.totalRevenue), 'revenue this month'],
+      [int(all.deals), all.deals === 1 ? 'deal closed' : 'deals closed']
+    ].forEach((f) => {
+      const s = el('span', 'portal-fact');
+      s.appendChild(el('b', null, f[0]));
+      s.appendChild(document.createTextNode(' ' + f[1]));
+      facts.appendChild(s);
+    });
+    revenue.appendChild(facts);
+    host.appendChild(portalCard({
+      title: 'Total Revenue Generated', icon: 'revenue', wide: true, body: revenue,
+      href: canUse('sales') ? SALES_PATH : '', foot: (CACHE.me.isOwner || CACHE.me.allOffers ? 'All offers' : 'Your offers') + ' · all time'
+    }));
+  }
 
   /* Signal List */
-  host.appendChild(portalCard({
-    title: 'Signal List', icon: 'signal',
-    body: el('p', 'portal-card-blurb', 'Nothing flagged right now.')
-  }));
+  if (canUse('signal')) {
+    host.appendChild(portalCard({
+      title: 'Signal List', icon: 'signal',
+      body: el('p', 'portal-card-blurb', 'Nothing flagged right now.')
+    }));
+  }
 
-  PORTAL_SECTIONS.forEach((s) => {
+  PORTAL_SECTIONS.filter((s) => canUse(s.id)).forEach((s) => {
     host.appendChild(portalCard({
       title: s.title, icon: s.icon, href: s.href ? s.href() : '',
       body: el('p', 'portal-card-blurb', s.blurb)
     }));
   });
+
+  if (CACHE.me.isOwner) {
+    host.appendChild(portalCard({
+      title: 'Team &amp; Access', icon: 'access', href: ACCESS_PATH,
+      body: el('p', 'portal-card-blurb', 'Invite admins and choose which sections and offers each one can use.')
+    }));
+  }
+
+  if (!host.children.length) {
+    host.appendChild(el('p', 'hub-empty', 'Nothing has been shared with you yet. Ask the owner for access.'));
+  }
 }
 
 function initPortal() {
