@@ -5,7 +5,7 @@
      /sales-dashboard           every sales team board you can reach
      /sales-dashboard/<offer>   that offer's board, if you may see it
      /metrics/<offer>           Metrics Tracking for that offer
-     /projections/<offer>       Funnel Revenue Projections for that offer
+     /projections               Funnel Revenue Projections (a calculator, no offer data)
      /team-access               invite admins and choose what they can use (owner)
      /sales-team                the team code page
      /board/<id>                old links — forwarded to the new address
@@ -149,10 +149,7 @@
     initProfile();
   }
 
-  async function openProjections(boardId) {
-    await loadProjections(boardId);
-    if (!CACHE.board) { location.replace('/'); return; }
-    CACHE.role = null;
+  function openProjections() {
     openShell('projectionsShell');
     crumb('Portal', '/');
     $('#undoBtn').classList.add('hidden');
@@ -284,12 +281,8 @@
 
       if (projectionsBoard) {
         if (!canUse('funnel')) { location.replace('/'); return; }
-        const board = projectionsBoard[1] ? findBoardBySlug(decodeURIComponent(projectionsBoard[1])) : CACHE.boards[0];
-        if (!board) {
-          location.replace(projectionsBoard[1] && CACHE.boards.length ? PROJECTIONS_PATH : '/');
-          return;
-        }
-        await openProjections(board.id);
+        if (projectionsBoard[1]) { location.replace(PROJECTIONS_PATH + location.search); return; }
+        openProjections();
         return;
       }
 

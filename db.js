@@ -450,30 +450,6 @@ async function metricsSignature() {
   return [top(c1), c2.count, top(e1), e2.count, top(s1)].join('|');
 }
 
-/* ---------- Funnel Revenue Projections ----------
-   One saved model per offer and funnel: typed numbers and the
-   industry standards beside them. */
-async function loadProjections(boardId) {
-  const [board, saved] = await Promise.all([
-    sb.from('boards').select('id, name, directory').eq('id', boardId).maybeSingle(),
-    sb.from('funnel_projections').select('funnel, model').eq('board_id', boardId)
-  ]);
-  if (board.error) throw board.error;
-  const models = {};
-  (saved.data || []).forEach((row) => { models[row.funnel] = row.model; });
-  CACHE.boardId = boardId;
-  CACHE.board = board.data;
-  CACHE.projections = { ready: !saved.error, models };
-}
-
-async function saveProjection(funnel, model) {
-  const { error } = await sb.from('funnel_projections').upsert({
-    board_id: CACHE.boardId, funnel, model, updated_at: new Date().toISOString()
-  });
-  if (error) throw error;
-  CACHE.projections.models[funnel] = model;
-}
-
 /* ---------- calls ---------- */
 async function saveCall(record) {
   const { error } = await sb.from('calls').upsert({

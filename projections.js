@@ -1,5 +1,5 @@
 /* ============================================================
-   projections.js — Funnel Revenue Projections (/projections/<offer>)
+   projections.js — Funnel Revenue Projections (/projections)
    ------------------------------------------------------------
    Model a funnel from ad spend to revenue. Every figure comes from a
    handful of inputs — ad spend, cost per click, each stage's rate,
@@ -8,9 +8,9 @@
      edit a rate    → every count after it follows
      edit a count   → the rate beside it is worked out backwards
 
-   The industry standard under a rate is a reference, edited by
-   clicking it. One model per offer and funnel, saved for everyone
-   with access.
+   A what-if calculator, not tied to any offer or its data. The
+   industry standard under a rate is a reference, edited by clicking
+   it. Numbers are remembered in this browser.
    ============================================================ */
 
 const PROJECTIONS_PATH = '/projections';
@@ -208,10 +208,18 @@ function parseProjection(text) {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
-/* ---------- the saved model for this offer ---------- */
+/* ---------- remembered on this device ----------
+   A what-if calculator, not tied to any offer: the numbers typed in
+   are kept in this browser so they are still there next time. */
+const projectionKey = (funnel) => 'ia-projections:' + funnel;
+
+function savedModel(funnel) {
+  try { return JSON.parse(localStorage.getItem(projectionKey(funnel))) || null; } catch (e) { return null; }
+}
+
 function currentModel(funnel) {
   const def = PROJECTION_MODELS[funnel];
-  const saved = CACHE.projections.models[funnel] || {};
+  const saved = savedModel(funnel) || {};
   return {
     inputs: Object.assign({}, def.inputs, saved.inputs || {}),
     std: Object.assign({}, def.std, saved.std || {})
@@ -221,22 +229,19 @@ function currentModel(funnel) {
 function scheduleSave() {
   clearTimeout(PV.saveTimer);
   const funnel = PV.funnel;
-  const model = JSON.parse(JSON.stringify(PV.model));
-  $('#projSaved').textContent = 'Saving…';
-  PV.saveTimer = setTimeout(async () => {
-    if (!CACHE.projections.ready) { $('#projSaved').textContent = 'Not saved — run projections.sql first'; return; }
+  const model = JSON.stringify(PV.model);
+  PV.saveTimer = setTimeout(() => {
     try {
-      await saveProjection(funnel, model);
-      $('#projSaved').textContent = 'Saved';
-    } catch (err) {
-      console.error(err);
-      $('#projSaved').textContent = "Couldn't save — check your connection";
+      localStorage.setItem(projectionKey(funnel), model);
+      $('#projSaved').textContent = 'Saved on this device';
+    } catch (e) {
+      $('#projSaved').textContent = 'This browser isn’t keeping changes (private window?)';
     }
-  }, 600);
+  }, 300);
 }
 
 /* ============================================================
-   Build — once per offer and funnel
+   Build — once per funnel
    ============================================================ */
 const PROJ_ICONS = {
   eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -497,33 +502,14 @@ function paintProjections() {
 /* ============================================================
    Start
    ============================================================ */
-const projectionsPathFor = (board) => PROJECTIONS_PATH + '/' + ((board.directory && board.directory.slug) || board.id);
-
-function paintProjectionOffers() {
-  const nav = $('#projOffers');
-  nav.textContent = '';
-  nav.classList.toggle('hidden', CACHE.boards.length < 2);
-  CACHE.boards.forEach((b) => {
-    const a = el('a', 'offer-tab');
-    a.href = projectionsPathFor(b) + '?funnel=' + PV.funnel;
-    a.textContent = b.name;
-    if (b.id === CACHE.boardId) a.setAttribute('aria-current', 'page');
-    nav.appendChild(a);
-  });
-}
-
 function initProjections() {
   if (new URLSearchParams(location.search).get('funnel') === 'webinar') PV.funnel = 'webinar';
-
-  $('#projOffer').textContent = (CACHE.board && CACHE.board.name) || '';
-  document.title = 'Projections · ' + ((CACHE.board && CACHE.board.name) || 'Offer') + ' · Inevitable Acquisition';
-  $('#projNotReady').classList.toggle('hidden', CACHE.projections.ready);
+  document.title = 'Funnel Revenue Projections · Inevitable Acquisition';
 
   const show = () => {
     document.querySelectorAll('#projFunnel button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.funnel === PV.funnel)));
-    history.replaceState(null, '', projectionsPathFor(CACHE.board) + '?funnel=' + PV.funnel);
-    paintProjectionOffers();
-    $('#projSaved').textContent = CACHE.projections.models[PV.funnel] ? 'Saved' : 'Example numbers — edit any box';
+    history.replaceState(null, '', PROJECTIONS_PATH + '?funnel=' + PV.funnel);
+    $('#projSaved').textContent = savedModel(PV.funnel) ? 'Saved on this device' : 'Example numbers — edit any box';
     buildProjections();
   };
 
@@ -537,12 +523,10 @@ function initProjections() {
   });
 
   $('#projReset').addEventListener('click', () => {
-    if (!window.confirm('Put the example numbers back for this offer’s ' + (PV.funnel === 'vsl' ? 'VSL' : 'Webinar') + ' projection?\n\nIndustry standards go back to the defaults too.')) return;
-    const def = PROJECTION_MODELS[PV.funnel];
-    PV.model = { inputs: Object.assign({}, def.inputs), std: Object.assign({}, def.std) };
-    CACHE.projections.models[PV.funnel] = PV.model;
+    if (!window.confirm('Put the example numbers back for the ' + (PV.funnel === 'vsl' ? 'VSL' : 'Webinar') + ' projection?\n\nIndustry standards go back to the defaults too.')) return;
+    try { localStorage.removeItem(projectionKey(PV.funnel)); } catch (e) { /* nothing saved */ }
     buildProjections();
-    scheduleSave();
+    $('#projSaved').textContent = 'Example numbers — edit any box';
   });
 
   show();

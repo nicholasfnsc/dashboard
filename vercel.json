@@ -5,7 +5,6 @@
     { "source": "/team-access", "destination": "/index.html" },
     { "source": "/metrics", "destination": "/index.html" },
     { "source": "/projections", "destination": "/index.html" },
-    { "source": "/projections/:slug", "destination": "/index.html" },
     { "source": "/metrics/:slug", "destination": "/index.html" },
     { "source": "/sales-dashboard", "destination": "/index.html" },
     { "source": "/sales-dashboard/:slug", "destination": "/index.html" },

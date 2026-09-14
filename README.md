@@ -20,7 +20,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 |---|---|
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
 | `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
-| `/projections/<offer>` | Funnel Revenue Projections: model VSL or Webinar from ad spend to profit |
+| `/projections` | Funnel Revenue Projections: a VSL or Webinar calculator from ad spend to profit |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
 | `/sales-dashboard/<offer>` | one offer's board, e.g. `/sales-dashboard/alex` |
@@ -63,7 +63,6 @@ supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
 supabase/access.sql   admin sections and offers, and the access rules that use them
 supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
-supabase/projections.sql  saved projection per offer and funnel
 ```
 
 ## Metrics Tracking
@@ -84,7 +83,8 @@ starting lists live in `metrics-model.js`.
 
 ## Funnel Revenue Projections
 
-One model per offer, VSL or Webinar. Everything is worked out from a few inputs (ad spend,
+A what-if calculator for VSL or Webinar, not tied to any offer or its data. Numbers are
+remembered in the browser. Everything is worked out from a few inputs (ad spend,
 cost per click, each stage's rate, AOV). Editing a rate moves every count after it; editing a
 count works the rate beside it out backwards. Counts of people are rounded up. The industry
 standard under a rate turns green when the rate beats it, and is changed by clicking it. VSL
