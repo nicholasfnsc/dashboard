@@ -86,14 +86,15 @@ function freshDay(template, previous) {
     prev.breakers.filter((b) => b.keep).forEach((b) => content.breakers.push({ id: sid(), problem: b.problem, fix: b.fix, keep: true }));
   }
 
-  /* Anything not checked off wasn't done, so it comes along. Checked items stay behind. */
-  if (prev) {
+  /* Anything not checked off wasn't done, so it comes along, keeping the
+     day it was first written — so it's clear how long it has been open.
+     Checked items stay behind. */
+  if (prev && previous.day) {
     upgradeSignalDay(prev);
-    const from = previous.day ? shortSignalDate(previous.day) : 'yesterday';
     (prev.signals || []).filter((s) => !s.done && s.text && s.text.trim())
-      .forEach((s) => content.signals.push({ id: sid(), text: s.text, why: s.why || '', done: false, carried: from }));
+      .forEach((s) => content.signals.push({ id: sid(), text: s.text, why: s.why || '', done: false, since: s.since || previous.day }));
     (prev.subs || []).filter((x) => !x.done && x.text && x.text.trim())
-      .forEach((x) => content.subs.push({ id: sid(), text: x.text, done: false, carried: from }));
+      .forEach((x) => content.subs.push({ id: sid(), text: x.text, done: false, since: x.since || previous.day }));
   }
   if (!content.signals.length) content.signals.push({ id: sid(), text: '', why: '', done: false });
   return content;
@@ -101,6 +102,16 @@ function freshDay(template, previous) {
 
 function shortSignalDate(iso) {
   return asDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/* "since Sep 12 · 3 days" — on anything that has rolled over from an earlier day. */
+function sinceTag(item) {
+  if (!item.since || item.since >= SV.day) return null;
+  const days = Math.round((asDate(SV.day) - asDate(item.since)) / 86400000);
+  const tag = el('span', 'scarried' + (days >= 3 ? ' is-late' : ''));
+  tag.textContent = 'since ' + shortSignalDate(item.since) + ' · ' + days + (days === 1 ? ' day' : ' days');
+  tag.title = 'First written on ' + asDate(item.since).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' and not checked off since';
+  return tag;
 }
 
 /* Days written before sub-priority tasks had their own list. */
@@ -379,7 +390,8 @@ function renderSignal() {
         if (title) title.textContent = v.trim() || 'Signal action ' + (i + 1);
       }, { label: 'Signal action', cls: 'sfield-signal' }));
       top.appendChild(removeButton('signal action', () => { c.signals = c.signals.filter((x) => x !== s); signalChanged(); renderSignal(); }));
-      if (s.carried) top.appendChild(el('span', 'scarried', 'from ' + s.carried));
+      const sTag = sinceTag(s);
+      if (sTag) top.appendChild(sTag);
       row.appendChild(top);
       list.appendChild(row);
     });
@@ -427,7 +439,8 @@ function renderSignal() {
       row.dataset.id = item.id;
       row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => { item.done = on; row.classList.toggle('is-done', on); }));
       row.appendChild(textBox(item.text, 'Sub-priority task', (v) => { item.text = v; }, { label: 'Sub-priority task', cls: 'sfield-plain' }));
-      if (item.carried) row.appendChild(el('span', 'scarried', 'from ' + item.carried));
+      const subTag = sinceTag(item);
+      if (subTag) row.appendChild(subTag);
       row.appendChild(removeButton('task', () => { c.subs = c.subs.filter((x) => x !== item); signalChanged(); renderSignal(); }));
       list.appendChild(row);
     });
@@ -501,48 +514,12 @@ function renderSignal() {
   const planBtn = el('button', 'btn-primary', 'Plan tomorrow &rarr;');
   planBtn.type = 'button';
   planBtn.addEventListener('click', () => goToDay(shiftDay(SV.day, 1)));
-  const dupBtn = el('button', 'btn-export', 'Duplicate to tomorrow');
-  dupBtn.type = 'button';
-  dupBtn.addEventListener('click', duplicateToTomorrow);
   plan.appendChild(el('p', 'axis-note', 'Tomorrow starts with your goals, a fresh checklist, what broke your speed today, and anything you didn’t check off.'));
-  const buttons = el('div', 'splan-buttons');
-  buttons.appendChild(dupBtn);
-  buttons.appendChild(planBtn);
-  plan.appendChild(buttons);
+  plan.appendChild(planBtn);
   host.appendChild(plan);
 
   paintSignalProgress();
   requestAnimationFrame(refitSignalBoxes);
-}
-
-/* Copy every signal action (with its why) and sub-priority task to the
-   next day, unchecked — done or not. Nothing already there is lost. */
-async function duplicateToTomorrow() {
-  if (!SV.ready) { notify('Run supabase/signal.sql in Supabase first.'); return; }
-  const source = SV.content;
-  const signals = source.signals.filter((s) => s.text.trim());
-  const subs = source.subs.filter((x) => x.text.trim());
-  if (!signals.length && !subs.length) { notify('Nothing to copy yet — add a signal action first.'); return; }
-
-  const tomorrow = shiftDay(SV.day, 1);
-  try {
-    clearTimeout(SV.saveTimer);
-    if (SV.dirty) { await saveSignalDay(SV.day, SV.content); SV.dirty = false; }
-    const row = await loadSignalDay(tomorrow);
-    const target = upgradeSignalDay(row ? row.content : freshDay(SV.template, { day: SV.day, content: { goals: source.goals, reflection: source.reflection, breakers: source.breakers } }));
-    const from = shortSignalDate(SV.day);
-    const has = (list, text) => list.some((x) => x.text.trim().toLowerCase() === text.trim().toLowerCase());
-    target.signals = target.signals.filter((s) => s.text.trim() || s.why.trim());
-    signals.forEach((s) => { if (!has(target.signals, s.text)) target.signals.push({ id: sid(), text: s.text, why: s.why, done: false, carried: from }); });
-    subs.forEach((x) => { if (!has(target.subs, x.text)) target.subs.push({ id: sid(), text: x.text, done: false, carried: from }); });
-    await saveSignalDay(tomorrow, target);
-  } catch (err) {
-    console.error(err);
-    notify("Couldn't copy to tomorrow — check your connection.");
-    return;
-  }
-  notify('Copied to ' + shortSignalDate(tomorrow) + '.');
-  goToDay(tomorrow);
 }
 
 function paintSignalProgress() {

@@ -1581,4 +1581,4 @@ textarea.squote::placeholder { color: #3f434c; }
   flex: none; align-self: center; margin-left: 4px; padding: 2px 7px; border-radius: 999px;
   background: rgba(232, 163, 63, .1); color: #e8b25e; font-size: 10.5px; white-space: nowrap;
 }
-.splan-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.scarried.is-late { background: rgba(239, 68, 68, .1); color: #f87171; }
