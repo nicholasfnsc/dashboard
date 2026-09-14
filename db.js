@@ -385,7 +385,7 @@ async function loadMetrics(boardId) {
 
   const ready = !settings.error && !entries.error;
   const configs = {};
-  (settings.data || []).forEach((row) => { configs[row.funnel] = row.config; });
+  (settings.data || []).forEach((row) => { configs[row.funnel] = upgradeMetricConfig(row.config); });
 
   const values = { vsl: new Map(), webinar: new Map() };
   (Array.isArray(entries) ? entries : []).forEach((row) => {
@@ -409,7 +409,7 @@ async function updateMetricConfig(funnel, change) {
   const { data, error: readError } = await sb.from('metric_settings')
     .select('config').eq('board_id', CACHE.boardId).eq('funnel', funnel).maybeSingle();
   if (readError) throw readError;
-  const config = data && data.config && Array.isArray(data.config.groups) ? data.config : templateFor(funnel);
+  const config = data && data.config && Array.isArray(data.config.groups) ? upgradeMetricConfig(data.config) : templateFor(funnel);
   change(config);
   const { error } = await sb.from('metric_settings').upsert({
     board_id: CACHE.boardId, funnel, config, updated_at: new Date().toISOString()

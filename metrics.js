@@ -131,7 +131,9 @@ function renderMetricCards(ctx) {
     card.appendChild(head);
     card.appendChild(el('div', 'mkpi-value', formatMetric(m.unit, v)));
     const sub = el('div', 'mkpi-sub');
-    sub.textContent = ctx.calc.describe(m);
+    const avg = ctx.calc.dailyAverage(m.id, ctx.days);
+    const summed = m.unit === 'count' || m.unit === 'money';
+    sub.textContent = ctx.calc.describe(m) + (summed && avg != null ? ' · avg ' + formatMetric(m.unit, avg) + ' a day' : '');
     card.appendChild(sub);
     const foot = el('div', 'mkpi-foot');
     if (st) foot.appendChild(el('span', 'mbadge is-' + st, st === 'on' ? 'On target' : 'Behind'));
@@ -421,7 +423,7 @@ function renderDetail(ctx) {
       th.appendChild(el('small', null, shortDay(d)));
       hr.appendChild(th);
     });
-    ['Week', 'Target', '', 'Trend'].forEach((t, i) => hr.appendChild(el('th', ['mcol-week', 'mcol-target', 'mcol-dot', 'mcol-trend'][i], t)));
+    ['Avg', 'Week', 'Target', '', 'Trend'].forEach((t, i) => hr.appendChild(el('th', ['mcol-avg', 'mcol-week', 'mcol-target', 'mcol-dot', 'mcol-trend'][i], t)));
     thead.appendChild(hr);
     table.appendChild(thead);
 
@@ -451,6 +453,11 @@ function renderDetail(ctx) {
         }
         tr.appendChild(td);
       });
+
+      const avgCell = el('td', 'mcol-avg');
+      avgCell.textContent = formatMetric(m.unit, ctx.calc.dailyAverage(m.id, ctx.days));
+      if (avgCell.textContent === '—') avgCell.classList.add('is-empty');
+      tr.appendChild(avgCell);
 
       const week = ctx.calc.value(m.id, ctx.days);
       const st = ctx.calc.status(m, week);

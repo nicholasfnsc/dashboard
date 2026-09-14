@@ -1193,6 +1193,8 @@ a.portal-card:hover .portal-arrow { transform: translate(2px, -2px); }
 .mtable td.mcol-week.is-behind { color: #f87171; }
 .mcol-day { width: 82px; }
 .mcol-target { width: 96px; }
+.mtable td.mcol-avg { color: var(--ink-2); white-space: nowrap; }
+.mcol-avg { width: 76px; }
 .mcol-dot { width: 22px; }
 .mcol-trend { width: 76px; }
 

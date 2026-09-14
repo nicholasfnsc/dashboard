@@ -31,12 +31,13 @@ const METRIC_UNITS = {
 
 /* Everything the sales board can answer, for any day or week. */
 const SALES_SOURCES = {
-  callsOnCalendar: { label: 'Calls on calendar',   unit: 'count' },
+  callsOnCalendar: { label: 'Calls scheduled',     unit: 'count' },
   callsBooked:     { label: 'Calls booked',        unit: 'count' },
   callsShown:      { label: 'Calls shown',         unit: 'count' },
   noShows:         { label: 'No-shows',            unit: 'count' },
   cancelled:       { label: 'Cancelled calls',     unit: 'count' },
   showRate:        { label: 'Show rate',           unit: 'percent' },
+  totalShowRate:   { label: 'Total show rate',     unit: 'percent' },
   dqRate:          { label: 'DQ rate',             unit: 'percent' },
   closeRate:       { label: 'Close rate',          unit: 'percent' },
   deals:           { label: 'Deals closed',        unit: 'count' },
@@ -82,7 +83,7 @@ const METRIC_TEMPLATES = {
       ] },
       { id: 'sales-setting', name: 'Sales Setting', color: '#22c55e', metrics: [
         tplInput('dials', 'Dials', 'count'),
-        tplSales('calls_on_calendar', 'Calls On Calendar', 'callsOnCalendar'),
+        tplSales('calls_on_calendar', 'Calls Scheduled', 'callsOnCalendar'),
         tplSales('calls_show', 'Calls Show', 'callsShown'),
         tplSales('show_rate', 'Show Up Rate', 'showRate', 80)
       ] },
@@ -100,7 +101,7 @@ const METRIC_TEMPLATES = {
     stages: [
       { name: 'Clicks', sub: 'From Meta ads', metric: 'link_clicks' },
       { name: 'Applications', sub: 'Applications submitted', metric: 'apps_submitted' },
-      { name: 'Calls on calendar', sub: 'Calls scheduled this week', metric: 'sales.callsOnCalendar' },
+      { name: 'Calls scheduled', sub: 'On the calendar this week', metric: 'sales.callsOnCalendar' },
       { name: 'Calls shown', sub: 'Actually attended', metric: 'sales.callsShown' },
       { name: 'Closed', sub: 'Deals won', metric: 'sales.deals' }
     ]
@@ -150,7 +151,7 @@ const METRIC_TEMPLATES = {
       { name: 'Registrants', sub: 'Opted in to the webinar', metric: 'registrants' },
       { name: 'Attendees', sub: 'Showed up live', metric: 'attendees' },
       { name: 'Applications', sub: 'Applied after the pitch', metric: 'leads' },
-      { name: 'Calls on calendar', sub: 'Calls scheduled this week', metric: 'sales.callsOnCalendar' },
+      { name: 'Calls scheduled', sub: 'On the calendar this week', metric: 'sales.callsOnCalendar' },
       { name: 'Calls shown', sub: 'Actually attended', metric: 'sales.callsShown' },
       { name: 'Closed', sub: 'Deals won', metric: 'sales.deals' }
     ]
@@ -158,6 +159,18 @@ const METRIC_TEMPLATES = {
 };
 
 const templateFor = (funnel) => JSON.parse(JSON.stringify(METRIC_TEMPLATES[funnel]));
+
+/* Offers saved before a rename keep working with today's names. */
+function upgradeMetricConfig(config) {
+  if (!config || !Array.isArray(config.groups)) return config;
+  config.groups.forEach((g) => g.metrics.forEach((m) => {
+    if (m.source === 'sales' && m.key === 'callsOnCalendar' && m.name === 'Calls On Calendar') m.name = 'Calls Scheduled';
+  }));
+  (config.stages || []).forEach((s) => {
+    if (s.metric === 'sales.callsOnCalendar' && s.name === 'Calls on calendar') { s.name = 'Calls scheduled'; s.sub = 'On the calendar this week'; }
+  });
+  return config;
+}
 
 /* ---------- dates ---------- */
 const isoDay = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -185,6 +198,9 @@ function salesFigures(rows, from, to) {
   const scheduled = calendar.filter((c) => inSpan(c.callDate));
   const live = scheduled.filter(isLiveRecord);
   const deals = scheduled.filter((c) => c.outcome === 'closed');
+  /* The sales dashboard's Show Rate: closed, no close and 2nd call count as
+     showing; disqualified calls do not. Total Show Rate counts every live call. */
+  const showed = scheduled.filter((c) => c.outcome === 'closed' || c.outcome === 'no_close' || c.outcome === 'second_call').length;
   const dq = scheduled.filter((c) => c.outcome === 'disqualified').length;
   const revenue = deals.reduce((s, c) => s + (c.contractValue || 0), 0);
   let cash = 0;
@@ -196,7 +212,8 @@ function salesFigures(rows, from, to) {
     callsShown: live.length,
     noShows: scheduled.filter((c) => c.outcome === 'no_show').length,
     cancelled: scheduled.filter((c) => c.outcome === 'cancelled').length,
-    showRate: metricRate(live.length, scheduled.length, 100),
+    showRate: metricRate(showed, scheduled.length, 100),
+    totalShowRate: metricRate(live.length, scheduled.length, 100),
     dqRate: metricRate(dq, live.length, 100),
     closeRate: metricRate(deals.length, live.length, 100),
     deals: deals.length,
@@ -263,6 +280,12 @@ function metricCalculator(config, calls, entries) {
     return result;
   }
 
+  /* The average of the days that have a number — the "Avg" column. */
+  function dailyAverage(ref, days) {
+    const got = days.map((iso) => value(ref, [iso])).filter((v) => v != null);
+    return got.length ? got.reduce((s, v) => s + v, 0) / got.length : null;
+  }
+
   /* on target, behind, or nothing to judge */
   function status(m, v) {
     if (v == null || m.target == null || m.target === '') return null;
@@ -281,7 +304,7 @@ function metricCalculator(config, calls, entries) {
     return m ? m.name : 'a removed metric';
   }
 
-  return { value, status, describe, nameOf, find: (id) => all.get(id), sales };
+  return { value, dailyAverage, status, describe, nameOf, find: (id) => all.get(id), sales };
 }
 
 /* ---------- showing a value ---------- */
