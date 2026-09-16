@@ -126,10 +126,46 @@
 <!-- ================= PORTAL (owner and admins) ================= -->
 <div class="shell hidden" id="portalShell">
   <div class="portal-head">
-    <p class="eyebrow" id="portalDate"></p>
-    <h1 class="portal-greeting" id="portalGreeting">Welcome back.</h1>
+    <div class="portal-hello">
+      <p class="eyebrow" id="portalDate"></p>
+      <h1 class="portal-greeting" id="portalGreeting">Welcome back.</h1>
+    </div>
+
+    <div class="portal-clock">
+      <button type="button" class="clock-main" id="clockMain" title="Choose your time zones">
+        <span class="clock-time-row">
+          <span class="clock-time" id="clockTime">--:--</span>
+          <span class="clock-small">
+            <span class="clock-seconds" id="clockSeconds"></span>
+            <span class="clock-suffix" id="clockSuffix"></span>
+          </span>
+        </span>
+        <span class="clock-meta">
+          <span class="clock-zone" id="clockZone"></span>
+          <span class="clock-day" id="clockDay"></span>
+        </span>
+      </button>
+      <div class="clock-others" id="clockOthers"></div>
+    </div>
   </div>
   <div class="portal-grid" id="portalSections"></div>
+</div>
+
+<div class="gate gate-overlay hidden" id="viewClock" role="dialog" aria-labelledby="clockPickerTitle">
+  <div class="gate-box clock-picker">
+    <h1 class="gate-title" id="clockPickerTitle">Time zones</h1>
+    <p class="gate-sub">Search any city, show the ones you watch, and star the one that leads.</p>
+    <label class="hidden" for="zoneSearch">Search cities</label>
+    <input type="text" id="zoneSearch" placeholder="Search a city — Dubai, London, São Paulo…" autocomplete="off">
+    <div class="zone-list" id="zoneList"></div>
+    <div class="clock-picker-foot">
+      <div class="metric-switch" id="clockFormat" role="group" aria-label="Clock format">
+        <button type="button" data-format="24">24-hour</button>
+        <button type="button" data-format="12">12-hour</button>
+      </div>
+      <button type="button" class="link-btn" id="clockClose">Done</button>
+    </div>
+  </div>
 </div>
 
 <!-- ================= SALES TEAM BOARDS (owner and admins) ================= -->
@@ -814,6 +850,7 @@
 <script src="/metrics.js"></script>
 <script src="/projections.js"></script>
 <script src="/signal.js"></script>
+<script src="/clock.js"></script>
 <script src="/profile.js"></script>
 <script src="/boot.js"></script>
 </body>

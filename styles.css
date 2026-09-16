@@ -1582,3 +1582,71 @@ textarea.squote::placeholder { color: #3f434c; }
   background: rgba(232, 163, 63, .1); color: #e8b25e; font-size: 10.5px; white-space: nowrap;
 }
 .scarried.is-late { background: rgba(239, 68, 68, .1); color: #f87171; }
+
+/* ============================================================
+   Portal clock
+   ============================================================ */
+.portal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; flex-wrap: wrap; }
+.portal-hello { min-width: 0; }
+.portal-clock { display: flex; align-items: flex-start; gap: 22px; padding-top: 6px; }
+.clock-main {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  background: none; border: 0; padding: 0; cursor: pointer; color: inherit; text-align: right;
+}
+.clock-time-row { display: inline-flex; align-items: baseline; gap: 6px; }
+.clock-time {
+  font-size: clamp(30px, 4vw, 42px); font-weight: 200; letter-spacing: -.02em; line-height: 1;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.clock-small { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.clock-seconds { font-family: var(--f-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.clock-suffix { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.clock-meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+.clock-zone { color: var(--accent-ink); letter-spacing: .01em; }
+.clock-day::before { content: "·"; margin-right: 8px; color: var(--line); }
+.clock-main:hover .clock-zone { color: var(--ink); }
+
+.clock-others { display: flex; flex-direction: column; gap: 4px; padding: 4px 0 0 22px; border-left: 1px solid var(--line-soft); }
+.clock-row { display: grid; grid-template-columns: minmax(72px, auto) auto auto; align-items: baseline; gap: 10px; font-size: 11.5px; }
+.clock-row-city { color: var(--ink-2); white-space: nowrap; }
+.clock-row-time { color: var(--ink); font-variant-numeric: tabular-nums; }
+.clock-row-diff { color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+
+.clock-picker { max-width: 520px; text-align: left; }
+.clock-picker .gate-title, .clock-picker .gate-sub { text-align: center; }
+.clock-picker input {
+  width: 100%; background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 11px; padding: 12px 14px; font-size: 13.5px;
+}
+.clock-picker input:focus { outline: none; border-color: var(--accent-bright); }
+.zone-list { max-height: 46vh; overflow-y: auto; margin: 12px 0 4px; display: flex; flex-direction: column; }
+.zone-hint { margin: 4px 2px 8px; font-size: 11.5px; color: var(--muted); }
+.zone-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 8px 2px; border-bottom: 1px solid var(--line-soft); }
+.zone-row:last-child { border-bottom: 0; }
+.zone-row.is-primary { background: linear-gradient(90deg, var(--accent-wash), transparent 80%); border-radius: 8px; }
+.zone-star { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; background: none; border: 0; color: #3a3f49; cursor: pointer; transition: color .14s; }
+.zone-star svg { width: 15px; height: 15px; fill: currentColor; }
+.zone-star:hover { color: var(--ink-2); }
+.zone-star.is-on { color: #e8b25e; }
+.zone-text { display: flex; flex-direction: column; min-width: 0; }
+.zone-city { font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zone-region { font-size: 10.5px; color: var(--muted); }
+.zone-time { font-size: 12.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.zone-toggle {
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--muted);
+  padding: 4px 12px; font-size: 11.5px; cursor: pointer; transition: border-color .14s, color .14s;
+}
+.zone-toggle:hover:not(:disabled) { border-color: var(--accent-deep); color: var(--accent-ink); }
+.zone-toggle.is-on { border-color: var(--accent-deep); color: var(--accent-ink); background: var(--accent-wash); }
+.zone-toggle:disabled { opacity: .5; cursor: default; }
+.clock-picker-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
+.clock-picker-foot .metric-switch { margin-top: 0; }
+
+@media (max-width: 700px) {
+  .portal-head { gap: 16px; }
+  .portal-clock { width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding-top: 0; }
+  .clock-main { align-items: flex-start; text-align: left; }
+  .clock-others { padding-left: 16px; }
+  .clock-row { grid-template-columns: auto auto; gap: 8px; }
+  .clock-row-diff { display: none; }
+}

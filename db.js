@@ -83,6 +83,7 @@ async function loadMe() {
     name: meta.full_name || p.full_name || '',
     title: meta.title || '',
     avatar: meta.avatar_url || '',
+    clock: meta.clock || null,
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
     memberships: rows,

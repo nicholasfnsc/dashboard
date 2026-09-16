@@ -64,6 +64,7 @@ function portalCard(opts) {
 
 function renderPortal() {
   $('#portalGreeting').textContent = greeting();
+  initClock();
   $('#portalDate').textContent = TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   const host = $('#portalSections');

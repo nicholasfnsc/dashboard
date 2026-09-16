@@ -50,6 +50,7 @@ metrics-model.js  Metrics Tracking: starting metric lists, and how every metric 
 metrics.js        Metrics Tracking page: cards, funnel, charts, daily tables, editing
 projections.js    Funnel Revenue Projections: both funnel models, cascading boxes, industry standards
 signal.js         Signal List: daily page, carry-over to tomorrow, defaults
+clock.js          the portal clock: chosen time zones, kept on the account
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
