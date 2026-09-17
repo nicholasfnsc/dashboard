@@ -209,6 +209,7 @@
     initDataTab();
     initTeamTab();
     initRepHub();
+    initTranscriber();
     paintOfferTabs();
     initProfile();
 

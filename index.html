@@ -465,6 +465,7 @@
     <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
     <button class="tab" role="tab" data-tab="rephub" aria-selected="false">Rep Hub</button>
+    <button class="tab tab-with-icon" role="tab" data-tab="transcriber" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 10v4"/><path d="M7.5 6.5v11"/><path d="M12 3v18"/><path d="M16.5 7.5v9"/><path d="M21 10.5v3"/></svg>Audio Transcriber</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
   </nav>
 
@@ -765,6 +766,73 @@
     </div>
   </section>
 
+  <!-- ================= AUDIO TRANSCRIBER ================= -->
+  <section data-panel="transcriber" class="hidden">
+    <div class="transcriber">
+      <div class="tr-head">
+        <p class="eyebrow">Handoffs</p>
+        <h2 class="tr-title">Audio Transcriber</h2>
+        <p class="tr-sub">Turn a call recording from Close into text you can copy into your handoff.</p>
+      </div>
+
+      <div class="tr-guide" id="transcriberGuide"></div>
+
+      <ol class="tr-how">
+        <li><b>1</b><span>Download the call’s MP3 from Close</span></li>
+        <li><b>2</b><span>Drop it in the box below</span></li>
+        <li><b>3</b><span>Copy the transcript into your handoff</span></li>
+      </ol>
+
+      <p class="tr-error hidden" id="trError" role="alert"></p>
+
+      <div class="tr-drop" id="trDrop" tabindex="0" role="button" aria-label="Choose a call recording to transcribe">
+        <div class="tr-drop-inner">
+          <span class="tr-drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 15V4"/><polyline points="7.5 8.5 12 4 16.5 8.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+            </svg>
+          </span>
+          <p class="tr-drop-title">Drop the call recording here</p>
+          <p class="tr-drop-sub">MP3, M4A or WAV · up to 25 MB</p>
+          <button type="button" class="btn-primary" id="trChoose">Choose a file</button>
+        </div>
+        <input type="file" id="trInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.ogg,.mp4" class="hidden">
+      </div>
+
+      <div class="tr-working hidden" id="trWorking" aria-live="polite">
+        <div class="tr-file">
+          <span class="tr-file-icon"><svg class="tr-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 10v4"/><path d="M7.5 6.5v11"/><path d="M12 3v18"/><path d="M16.5 7.5v9"/><path d="M21 10.5v3"/></svg></span>
+          <div class="tr-file-text">
+            <span class="tr-file-name" id="trFileName"></span>
+            <span class="tr-file-size" id="trFileSize"></span>
+          </div>
+        </div>
+        <div class="tr-bar"><span></span></div>
+        <p class="tr-step-label" id="trStepLabel">Uploading the recording…</p>
+        <div class="tr-steps">
+          <span class="tr-step" data-step="upload">Upload</span>
+          <span class="tr-step" data-step="transcribe">Transcribe</span>
+          <span class="tr-step" data-step="done">Copy</span>
+        </div>
+      </div>
+
+      <div class="tr-result hidden" id="trResult">
+        <div class="tr-result-head">
+          <div>
+            <p class="tr-result-name" id="trResultName"></p>
+            <p class="tr-result-meta" id="trResultMeta"></p>
+          </div>
+          <div class="tr-result-actions">
+            <button type="button" class="btn-export" id="trAgain">Transcribe another</button>
+            <button type="button" class="btn-primary tr-copy" id="trCopy">Copy transcript</button>
+          </div>
+        </div>
+        <div class="tr-text" id="trText" tabindex="0"></div>
+        <p class="tr-privacy">The recording was deleted as soon as it was transcribed. Nothing is saved — copy the text before you leave this tab.</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= REP HUB ================= -->
   <section data-panel="rephub" class="hidden">
     <div class="rephub">
@@ -863,6 +931,7 @@
 <script src="/datatab.js"></script>
 <script src="/team.js"></script>
 <script src="/rephub.js"></script>
+<script src="/transcriber.js"></script>
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
 <script src="/access.js"></script>

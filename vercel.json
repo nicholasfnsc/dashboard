@@ -1,14 +1,46 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/sales-team", "destination": "/index.html" },
-    { "source": "/team-access", "destination": "/index.html" },
-    { "source": "/metrics", "destination": "/index.html" },
-    { "source": "/projections", "destination": "/index.html" },
-    { "source": "/signal-list", "destination": "/index.html" },
-    { "source": "/metrics/:slug", "destination": "/index.html" },
-    { "source": "/sales-dashboard", "destination": "/index.html" },
-    { "source": "/sales-dashboard/:slug", "destination": "/index.html" },
-    { "source": "/board/:id", "destination": "/index.html" }
-  ]
+    {
+      "source": "/sales-team",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/team-access",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/metrics",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/projections",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/signal-list",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/metrics/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sales-dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sales-dashboard/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/board/:id",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/transcribe.js": {
+      "maxDuration": 60
+    }
+  }
 }

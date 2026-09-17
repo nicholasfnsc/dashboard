@@ -57,11 +57,13 @@ form.js           Post Call Form
 datatab.js        Data tab
 team.js           Add Team: offer name, team with roles and commission, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
+transcriber.js    Audio Transcriber tab: drop a call recording, copy the transcript
 profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
 api/boards.js     create an offer, make a new code, archive, offer addresses
 api/people.js     invite admins, change their offers, remove them
+api/transcribe.js one-time upload address, then Groq transcription; the recording is deleted after
 api/profile.js    save or remove your own profile picture (Storage bucket "avatars")
 supabase/schema.sql   tables and access rules
 supabase/rep-hub.sql  the shared Rep Hub template table
@@ -106,6 +108,15 @@ signal actions (with why), sub-priority tasks for after the signals, a 30-minute
 evening reflection and journal. Everything saves as you type. **Plan tomorrow** carries goals over,
 resets the checklist, and turns today's reflection into tomorrow's watch list. **Customize** sets
 the focus line, checklist, questions and day length.
+
+## Audio Transcriber
+
+A tab on every sales board for handoffs. A setter drops a call recording (MP3, M4A, WAV, up to
+25 MB); the browser uploads it to a private Storage bucket (`call-audio`) through a one-time
+address, the server sends it to Groq (Whisper Large v3) and returns the text in paragraphs, and
+the recording is deleted straight away whether it worked or not. The Groq key lives only in
+Vercel as `GROQ_API_KEY`. The owner can paste a Loom at the top of the tab; it shows on every
+offer. Groq's free plan allows about 8 hours of audio a day.
 
 ## Team & Access
 

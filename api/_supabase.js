@@ -84,6 +84,9 @@ export async function caller(request) {
     email: data.user.email,
     isOwner,
     kind: p.kind || 'person',
+    sections,
+    allOffers,
+    memberships: rows,
     /* The same rule as the database's can_manage_board(). */
     manages: (boardId) => isOwner || (sections.indexOf('sales') !== -1 && offerAllowed(boardId))
   };
