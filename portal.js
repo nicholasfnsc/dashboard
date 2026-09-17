@@ -134,7 +134,25 @@ function renderPortal() {
   }
 
   if (!host.children.length) {
-    host.appendChild(el('p', 'hub-empty', 'Nothing has been shared with you yet. Ask the owner for access.'));
+    const box = el('div', 'hub-empty portal-empty');
+    if (CACHE.me.unreadable) {
+      box.appendChild(el('p', null, 'Your account couldn’t be loaded on this device.'));
+      box.appendChild(el('p', 'portal-empty-sub', 'Check your connection, then try again. If it keeps happening, sign out and sign back in.'));
+      const retry = el('button', 'btn-primary', 'Try again');
+      retry.type = 'button';
+      retry.addEventListener('click', () => location.reload());
+      box.appendChild(retry);
+    } else {
+      box.appendChild(el('p', null, 'Nothing has been shared with this account yet.'));
+      const who = el('p', 'portal-empty-sub');
+      who.textContent = 'Signed in as ' + CACHE.me.email + '. If that isn’t the account you meant to use, sign out and sign in with the right email.';
+      box.appendChild(who);
+      const out = el('button', 'btn-export', 'Sign out');
+      out.type = 'button';
+      out.addEventListener('click', signOut);
+      box.appendChild(out);
+    }
+    host.appendChild(box);
   }
 }
 

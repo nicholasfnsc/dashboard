@@ -52,11 +52,21 @@ async function loadMe() {
   const session = await currentSession();
   if (!session) { CACHE.me = null; return null; }
 
-  const [profile, memberships, access] = await Promise.all([
+  const readAccount = () => Promise.all([
     sb.from('profiles').select('is_owner, kind, email, full_name').eq('id', session.user.id).maybeSingle(),
     sb.from('memberships').select('board_id, role').eq('user_id', session.user.id),
     sb.from('admin_access').select('sections, all_offers').eq('user_id', session.user.id).maybeSingle()
   ]);
+
+  let [profile, memberships, access] = await readAccount();
+
+  /* A sign-in kept on a device can go stale. If the account can't be read,
+     refresh the sign-in once and try again before deciding anything. */
+  if (profile.error || memberships.error) {
+    console.error('loadMe: could not read the account', profile.error || memberships.error);
+    try { await sb.auth.refreshSession(); } catch (e) { /* tried */ }
+    [profile, memberships, access] = await readAccount();
+  }
 
   const p = profile.data || {};
   const meta = session.user.user_metadata || {};
@@ -84,6 +94,8 @@ async function loadMe() {
     title: meta.title || '',
     avatar: meta.avatar_url || '',
     clock: meta.clock || null,
+    /* true when the account itself could not be read — never mistaken for "no access" */
+    unreadable: !!(profile.error || memberships.error),
     isOwner: p.is_owner === true,
     kind: p.kind || 'person',
     memberships: rows,

@@ -1816,3 +1816,8 @@ textarea.squote::placeholder { color: #3f434c; }
   .cedit-actions { flex-direction: column-reverse; align-items: stretch; }
   .cedit-right { justify-content: flex-end; }
 }
+
+.portal-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.portal-empty p { margin: 0; }
+.portal-empty .portal-empty-sub { max-width: 46ch; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+.portal-empty button { margin-top: 8px; }
