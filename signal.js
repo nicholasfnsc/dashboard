@@ -584,14 +584,64 @@ function meetingKind(url) {
 
 function sortCalls(calls) {
   return calls.sort((a, b) => {
-    const x = callMinutes(a.time);
-    const y = callMinutes(b.time);
+    const x = callMinutes(a.start);
+    const y = callMinutes(b.start);
     if (x == null && y == null) return 0;
     if (x == null) return 1;
     if (y == null) return -1;
     return x - y;
   });
 }
+
+/* ---------- repeating calls ----------
+   Kept with your defaults, not on any one day, so they appear on every
+   day they repeat. Each day only remembers whether you checked it off. */
+const REPEAT_LABELS = { daily: 'Every day', weekdays: 'Weekdays', weekly: 'Weekly' };
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function repeatingCalls() {
+  if (!Array.isArray(SV.template.calls)) SV.template.calls = [];
+  return SV.template.calls;
+}
+
+function occursOn(call, iso) {
+  if (!call.repeat || iso < call.from) return false;
+  if (call.until && iso > call.until) return false;
+  if ((call.skip || []).indexOf(iso) !== -1) return false;
+  const weekday = asDate(iso).getDay();
+  if (call.repeat === 'daily') return true;
+  if (call.repeat === 'weekdays') return weekday >= 1 && weekday <= 5;
+  return (call.days || []).indexOf(weekday) !== -1;
+}
+
+function repeatText(call) {
+  if (!call.repeat) return '';
+  if (call.repeat !== 'weekly') return REPEAT_LABELS[call.repeat];
+  const days = (call.days || []).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  return days.length === 7 ? 'Every day' : 'Every ' + days.map((d) => WEEKDAY_SHORT[d]).join(', ');
+}
+
+/* One-off calls for this day, plus every repeating call that falls on it. */
+function callsForDay() {
+  const c = SV.content;
+  if (!c.doneRepeats || typeof c.doneRepeats !== 'object') c.doneRepeats = {};
+  const own = c.calls.map((call) => Object.assign(call, { start: call.start || call.time || '' }));
+  const repeats = repeatingCalls().filter((r) => occursOn(r, SV.day))
+    .map((r) => Object.assign({}, r, { done: !!c.doneRepeats[r.id], repeating: true }));
+  return sortCalls(own.concat(repeats));
+}
+
+function callRangeLabel(call) {
+  const start = callTimeLabel(call.start);
+  const end = callTimeLabel(call.end);
+  if (!start) return 'No time set';
+  if (!end) return start;
+  const twelve = CACHE.me && CACHE.me.clock && CACHE.me.clock.hour12;
+  if (twelve && start.slice(-2) === end.slice(-2)) return start.slice(0, -3) + ' – ' + end;
+  return start + ' – ' + end;
+}
+
+const LOOP_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></svg>';
 
 function renderSignalAside() {
   const c = SV.content;
@@ -601,80 +651,63 @@ function renderSignalAside() {
   const zone = mainClockZone();
 
   /* ---------- daily calls ---------- */
-  const calls = el('section', 'panel scard sside-card');
+  const card = el('section', 'panel scard sside-card');
   const head = el('div', 'scard-head');
   head.appendChild(el('h2', 'scard-title', 'Daily calls'));
   const count = el('span', 'scard-sub');
   count.id = 'signalCallCount';
   head.appendChild(count);
-  calls.appendChild(head);
+  card.appendChild(head);
   const zoneNote = el('p', 'scall-zone');
   zoneNote.textContent = 'Times in ' + zone.label;
-  calls.appendChild(zoneNote);
+  card.appendChild(zoneNote);
 
   const list = el('div', 'scall-list');
-  if (!c.calls.length) list.appendChild(el('p', 'sempty', 'No calls for this day. Add one and paste its Meet link.'));
-  sortCalls(c.calls).forEach((call) => {
+  const calls = callsForDay();
+  if (!calls.length) list.appendChild(el('p', 'sempty', 'No calls on this day.'));
+  calls.forEach((call) => {
     const row = el('div', 'scall' + (call.done ? ' is-done' : ''));
     row.dataset.id = call.id;
 
-    const top = el('div', 'scall-top');
-    top.appendChild(checkBox(call.done, call.title || 'call', (on) => { call.done = on; row.classList.toggle('is-done', on); paintSignalCalls(); }));
+    row.appendChild(checkBox(call.done, call.title || 'call', (on) => {
+      if (call.repeating) c.doneRepeats[call.id] = on;
+      else c.calls.find((x) => x.id === call.id).done = on;
+      row.classList.toggle('is-done', on);
+      paintSignalCalls();
+    }));
 
-    const time = document.createElement('input');
-    time.type = 'time';
-    time.className = 'scall-time';
-    time.value = call.time || '';
-    time.setAttribute('aria-label', 'Call time');
-    time.addEventListener('change', () => { call.time = time.value; signalChanged(); renderSignalAside(); });
-    top.appendChild(time);
+    const open = el('button', 'scall-body');
+    open.type = 'button';
+    open.title = 'Edit call';
+    const title = el('span', 'scall-title');
+    title.textContent = call.title || 'Untitled call';
+    open.appendChild(title);
+    const meta = el('span', 'scall-meta');
+    meta.appendChild(el('span', 'scall-range', callRangeLabel(call)));
+    if (call.repeating) {
+      const loop = el('span', 'scall-loop', LOOP_ICON);
+      loop.title = repeatText(call);
+      meta.appendChild(loop);
+    }
+    meta.appendChild(el('span', 'scall-when'));
+    open.appendChild(meta);
+    open.addEventListener('click', () => openCallEditor(call));
+    row.appendChild(open);
 
-    const title = document.createElement('input');
-    title.type = 'text';
-    title.className = 'scall-title';
-    title.placeholder = 'Call title';
-    title.value = call.title || '';
-    title.setAttribute('aria-label', 'Call title');
-    title.addEventListener('input', () => { call.title = title.value; signalChanged(); });
-    top.appendChild(title);
-
-    top.appendChild(removeButton('call', () => { c.calls = c.calls.filter((x) => x !== call); signalChanged(); renderSignalAside(); }));
-    row.appendChild(top);
-
-    const bottom = el('div', 'scall-bottom');
-    const link = document.createElement('input');
-    link.type = 'text';
-    link.className = 'scall-link';
-    link.placeholder = 'Paste the Meet link';
-    link.value = call.link || '';
-    link.setAttribute('aria-label', 'Meeting link');
-    link.addEventListener('input', () => { call.link = link.value.trim(); signalChanged(); paintJoin(); });
-    bottom.appendChild(link);
-
-    const join = el('a', 'scall-join');
-    join.target = '_blank';
-    join.rel = 'noopener noreferrer';
-    const paintJoin = () => {
-      const url = meetingUrl(call.link);
-      join.classList.toggle('hidden', !url);
-      if (url) { join.href = url; join.textContent = 'Join ' + meetingKind(url) + ' \u2197'; }
-    };
-    paintJoin();
-    bottom.appendChild(join);
-    bottom.appendChild(el('span', 'scall-when'));
-    row.appendChild(bottom);
-
+    const url = meetingUrl(call.link);
+    if (url) {
+      const join = el('a', 'scall-join', 'Join');
+      join.href = url;
+      join.target = '_blank';
+      join.rel = 'noopener noreferrer';
+      join.title = 'Join on ' + meetingKind(url);
+      row.appendChild(join);
+    }
     list.appendChild(row);
   });
-  calls.appendChild(list);
-  calls.appendChild(addButton('Add a call', () => {
-    const call = { id: sid(), time: '', title: '', link: '', done: false };
-    c.calls.push(call);
-    signalChanged();
-    renderSignalAside();
-    focusLater('.scall[data-id="' + call.id + '"] .scall-title');
-  }));
-  host.appendChild(calls);
+  card.appendChild(list);
+  card.appendChild(addButton('Add a call', () => openCallEditor(null)));
+  host.appendChild(card);
 
   /* ---------- daily brain dump ---------- */
   const dump = el('section', 'panel scard sside-card sdump-card');
@@ -682,7 +715,7 @@ function renderSignalAside() {
   dumpHead.appendChild(el('h2', 'scard-title', 'Daily brain dump'));
   dumpHead.appendChild(el('span', 'scard-sub', asDate(SV.day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })));
   dump.appendChild(dumpHead);
-  const area = textBox(c.dump, 'Anything — reminders, notes, what Tom just said on the call…', (v) => { c.dump = v; }, { label: 'Daily brain dump', multiline: true, cls: 'sdump' });
+  const area = textBox(c.dump, 'Anything — reminders, notes, things to keep in mind…', (v) => { c.dump = v; }, { label: 'Daily brain dump', multiline: true, cls: 'sdump' });
   dump.appendChild(area);
   dump.appendChild(el('p', 'sdump-note', 'Each day starts blank. Open any past day on the calendar to read it again.'));
   host.appendChild(dump);
@@ -695,31 +728,287 @@ function renderSignalAside() {
 function paintSignalCalls() {
   const c = SV.content;
   if (!c || !$('#signalAside')) return;
-  const zone = mainClockZone();
-  const now = zoneNow(zone.zone);
+  const now = zoneNow(mainClockZone().zone);
   const isToday = SV.day === now.day;
+  const calls = callsForDay();
 
-  const open = c.calls.filter((x) => !x.done && (x.title.trim() || x.link.trim() || x.time));
   const count = $('#signalCallCount');
-  if (count) count.textContent = c.calls.length ? (c.calls.length - open.length) + ' / ' + c.calls.length + ' done' : '';
+  if (count) count.textContent = calls.length ? calls.filter((x) => x.done).length + ' / ' + calls.length + ' done' : '';
 
   let nextMarked = false;
   document.querySelectorAll('#signalAside .scall').forEach((row) => {
-    const call = c.calls.find((x) => x.id === row.dataset.id);
+    const call = calls.find((x) => x.id === row.dataset.id);
     const when = row.querySelector('.scall-when');
     row.classList.remove('is-next', 'is-now');
     when.textContent = '';
     if (!call || call.done || !isToday) return;
-    const m = callMinutes(call.time);
-    if (m == null) return;
-    const diff = m - now.minute;
-    if (diff <= 0 && diff > -45) { row.classList.add('is-now'); when.textContent = diff === 0 ? 'Starting now' : 'Started ' + -diff + ' min ago'; return; }
+    const start = callMinutes(call.start);
+    if (start == null) return;
+    const end = callMinutes(call.end);
+    const diff = start - now.minute;
+    const running = diff <= 0 && (end != null ? now.minute < end : diff > -45);
+    if (running) { row.classList.add('is-now'); when.textContent = 'Now'; return; }
     if (diff > 0 && !nextMarked) {
       nextMarked = true;
       row.classList.add('is-next');
       when.textContent = diff < 60 ? 'in ' + diff + ' min' : 'in ' + Math.floor(diff / 60) + 'h' + (diff % 60 ? ' ' + (diff % 60) + 'm' : '');
     }
   });
+}
+
+/* ============================================================
+   The call window — like Google Calendar's
+   ============================================================ */
+const toClock = (minutes) => String(Math.floor(minutes / 60) % 24).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
+
+function durationText(minutes) {
+  if (minutes <= 0) return '';
+  if (minutes < 60) return minutes + ' min';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h + (h === 1 ? ' hr' : ' hrs') + (m ? ' ' + m + ' min' : '');
+}
+
+/* A time chooser: a button that opens a dark list in 15-minute steps. */
+function timeChooser(getValue, onPick, opts) {
+  const wrap = el('div', 'tpick');
+  const button = el('button', 'tpick-button');
+  button.type = 'button';
+  const list = el('div', 'tpick-list hidden');
+  list.setAttribute('role', 'listbox');
+
+  const paint = () => { button.textContent = callTimeLabel(getValue()) || 'Time'; };
+  const close = () => { list.classList.add('hidden'); wrap.classList.remove('is-open'); };
+
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const opening = list.classList.contains('hidden');
+    document.querySelectorAll('.tpick-list').forEach((l) => l.classList.add('hidden'));
+    document.querySelectorAll('.tpick.is-open').forEach((w) => w.classList.remove('is-open'));
+    if (!opening) return;
+    list.textContent = '';
+    const from = opts && opts.after ? callMinutes(opts.after()) : null;
+    const first = from != null ? from + 15 : 0;
+    const last = from != null ? from + 12 * 60 : 24 * 60 - 15;
+    let selected = null;
+    for (let m = first; m <= last; m += 15) {
+      if (from == null && m >= 24 * 60) break;
+      const value = toClock(m);
+      const item = el('button', 'tpick-item' + (value === getValue() ? ' is-on' : ''));
+      item.type = 'button';
+      item.appendChild(el('span', null, callTimeLabel(value)));
+      if (from != null) item.appendChild(el('small', null, durationText(m - from)));
+      item.addEventListener('click', (ev) => { ev.stopPropagation(); onPick(value); paint(); close(); });
+      list.appendChild(item);
+      if (value === getValue()) selected = item;
+    }
+    list.classList.remove('hidden');
+    wrap.classList.add('is-open');
+    const target = selected || (from == null ? list.children[Math.min(36, list.children.length - 1)] : null);
+    if (target) list.scrollTop = target.offsetTop - 60;
+  });
+  list.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', close);
+
+  wrap.appendChild(button);
+  wrap.appendChild(list);
+  wrap.paint = paint;
+  paint();
+  return wrap;
+}
+
+function openCallEditor(existing) {
+  const modal = $('#callEditor');
+  const form = $('#callEditorBody');
+  form.textContent = '';
+  const series = existing && existing.repeating ? repeatingCalls().find((r) => r.id === existing.id) : null;
+  const own = existing && !existing.repeating ? SV.content.calls.find((x) => x.id === existing.id) : null;
+  const source = series || own || {};
+  const weekday = asDate(SV.day).getDay();
+
+  const draft = {
+    title: source.title || '',
+    start: source.start || source.time || '',
+    end: source.end || '',
+    link: source.link || '',
+    repeat: source.repeat || '',
+    days: Array.isArray(source.days) && source.days.length ? source.days.slice() : [weekday]
+  };
+  if (!draft.start) {
+    const now = zoneNow(mainClockZone().zone).minute;
+    const rounded = Math.min(Math.ceil((now + 1) / 15) * 15, 23 * 60);
+    draft.start = SV.day === todayIso() ? toClock(rounded) : '09:00';
+  }
+  if (!draft.end) draft.end = toClock(Math.min(callMinutes(draft.start) + 30, 24 * 60 - 1));
+
+  $('#callEditorTitle').textContent = existing ? 'Edit call' : 'New call';
+
+  const title = document.createElement('input');
+  title.type = 'text';
+  title.className = 'cedit-title';
+  title.placeholder = 'Add a title';
+  title.value = draft.title;
+  title.setAttribute('aria-label', 'Call title');
+  title.addEventListener('input', () => { draft.title = title.value; });
+  form.appendChild(title);
+
+  const timeRow = el('div', 'cedit-row');
+  timeRow.appendChild(el('span', 'cedit-icon', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'));
+  const dayLabel = el('span', 'cedit-day');
+  dayLabel.textContent = asDate(SV.day).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  timeRow.appendChild(dayLabel);
+  let endChooser = null;
+  const startChooser = timeChooser(() => draft.start, (v) => {
+    const length = callMinutes(draft.end) - callMinutes(draft.start);
+    draft.start = v;
+    draft.end = toClock(Math.min(callMinutes(v) + (length > 0 ? length : 30), 24 * 60 - 1));
+    if (endChooser) endChooser.paint();
+  });
+  endChooser = timeChooser(() => draft.end, (v) => { draft.end = v; }, { after: () => draft.start });
+  const times = el('div', 'cedit-times');
+  times.appendChild(startChooser);
+  times.appendChild(el('span', 'cedit-dash', '–'));
+  times.appendChild(endChooser);
+  timeRow.appendChild(times);
+  form.appendChild(timeRow);
+
+  const repeatRow = el('div', 'cedit-row cedit-repeat');
+  repeatRow.appendChild(el('span', 'cedit-icon', LOOP_ICON));
+  const choices = el('div', 'cedit-choices');
+  const dayChips = el('div', 'cedit-days');
+  const paintRepeat = () => {
+    choices.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.repeat === draft.repeat)));
+    dayChips.classList.toggle('hidden', draft.repeat !== 'weekly');
+    dayChips.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(draft.days.indexOf(+b.dataset.day) !== -1)));
+  };
+  [['', "Doesn't repeat"], ['daily', 'Every day'], ['weekdays', 'Weekdays'], ['weekly', 'Weekly on…']].forEach(([value, label]) => {
+    const b = el('button', 'cedit-choice', label);
+    b.type = 'button';
+    b.dataset.repeat = value;
+    b.addEventListener('click', () => { draft.repeat = value; paintRepeat(); });
+    choices.appendChild(b);
+  });
+  [1, 2, 3, 4, 5, 6, 0].forEach((d) => {
+    const b = el('button', 'cedit-daychip', WEEKDAY_SHORT[d].slice(0, 2));
+    b.type = 'button';
+    b.dataset.day = String(d);
+    b.title = WEEKDAY_SHORT[d];
+    b.addEventListener('click', () => {
+      draft.days = draft.days.indexOf(d) === -1 ? draft.days.concat([d]) : draft.days.filter((x) => x !== d);
+      if (!draft.days.length) draft.days = [d];
+      paintRepeat();
+    });
+    dayChips.appendChild(b);
+  });
+  const repeatWrap = el('div', 'cedit-repeat-wrap');
+  repeatWrap.appendChild(choices);
+  repeatWrap.appendChild(dayChips);
+  repeatRow.appendChild(repeatWrap);
+  form.appendChild(repeatRow);
+  paintRepeat();
+
+  const linkRow = el('div', 'cedit-row');
+  linkRow.appendChild(el('span', 'cedit-icon', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5"/></svg>'));
+  const link = document.createElement('input');
+  link.type = 'text';
+  link.className = 'cedit-link';
+  link.placeholder = 'Paste the Google Meet or Zoom link';
+  link.value = draft.link;
+  link.setAttribute('aria-label', 'Meeting link');
+  link.addEventListener('input', () => { draft.link = link.value.trim(); });
+  linkRow.appendChild(link);
+  form.appendChild(linkRow);
+
+  /* ---------- buttons ---------- */
+  const actions = el('div', 'cedit-actions');
+  const left = el('div', 'cedit-left');
+  if (existing) {
+    if (series) {
+      const skip = el('button', 'link-btn danger', 'Remove from this day');
+      skip.type = 'button';
+      skip.addEventListener('click', async () => {
+        series.skip = (series.skip || []).concat([SV.day]);
+        closeCallEditor();
+        await saveTemplateNow();
+        renderSignalAside();
+      });
+      left.appendChild(skip);
+      const stop = el('button', 'link-btn danger', 'Delete this and future');
+      stop.type = 'button';
+      stop.addEventListener('click', async () => {
+        if (SV.day <= series.from) SV.template.calls = repeatingCalls().filter((r) => r !== series);
+        else series.until = shiftDay(SV.day, -1);
+        closeCallEditor();
+        await saveTemplateNow();
+        renderSignalAside();
+      });
+      left.appendChild(stop);
+    } else {
+      const del = el('button', 'link-btn danger', 'Delete');
+      del.type = 'button';
+      del.addEventListener('click', () => {
+        SV.content.calls = SV.content.calls.filter((x) => x !== own);
+        signalChanged();
+        closeCallEditor();
+        renderSignalAside();
+      });
+      left.appendChild(del);
+    }
+  }
+  actions.appendChild(left);
+
+  const right = el('div', 'cedit-right');
+  const cancel = el('button', 'link-btn', 'Cancel');
+  cancel.type = 'button';
+  cancel.addEventListener('click', closeCallEditor);
+  right.appendChild(cancel);
+  const save = el('button', 'btn-primary', 'Save');
+  save.type = 'button';
+  save.addEventListener('click', async () => {
+    const fields = { title: draft.title.trim(), start: draft.start, end: draft.end, link: draft.link };
+    const repeat = draft.repeat ? { repeat: draft.repeat, days: draft.repeat === 'weekly' ? draft.days.slice() : [] } : null;
+
+    if (series && repeat) {
+      /* Changing a repeating call changes it from this day on; earlier days keep what they had. */
+      if (SV.day > series.from) {
+        series.until = shiftDay(SV.day, -1);
+        repeatingCalls().push(Object.assign({ id: sid(), from: SV.day }, fields, repeat));
+      } else {
+        Object.assign(series, fields, repeat);
+      }
+    } else if (series && !repeat) {
+      /* No longer repeating: it stays on this day only. */
+      if (SV.day > series.from) series.until = shiftDay(SV.day, -1);
+      else SV.template.calls = repeatingCalls().filter((r) => r !== series);
+      SV.content.calls.push(Object.assign({ id: sid(), done: false }, fields));
+      signalChanged();
+    } else if (own && repeat) {
+      SV.content.calls = SV.content.calls.filter((x) => x !== own);
+      repeatingCalls().push(Object.assign({ id: sid(), from: SV.day }, fields, repeat));
+      signalChanged();
+    } else if (own) {
+      Object.assign(own, fields);
+      signalChanged();
+    } else if (repeat) {
+      repeatingCalls().push(Object.assign({ id: sid(), from: SV.day }, fields, repeat));
+    } else {
+      SV.content.calls.push(Object.assign({ id: sid(), done: false }, fields));
+      signalChanged();
+    }
+    if (repeat || series) await saveTemplateNow();
+    closeCallEditor();
+    renderSignalAside();
+  });
+  right.appendChild(save);
+  actions.appendChild(right);
+  form.appendChild(actions);
+
+  modal.classList.remove('hidden');
+  if (!existing) title.focus();
+}
+
+function closeCallEditor() {
+  $('#callEditor').classList.add('hidden');
 }
 
 function paintSignalProgress() {
@@ -904,6 +1193,8 @@ async function initSignal() {
   document.addEventListener('click', () => { if (!pop.classList.contains('hidden')) showCalendar(false); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) showCalendar(false); });
   window.closeSignalCalendar = () => showCalendar(false);
+  $('#callEditor').addEventListener('click', (e) => { if (e.target.id === 'callEditor') closeCallEditor(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#callEditor').classList.contains('hidden')) closeCallEditor(); });
   setInterval(() => { if (!$('#signalShell').classList.contains('hidden')) paintSignalCalls(); }, 30000);
   window.addEventListener('resize', () => { if (!$('#signalShell').classList.contains('hidden')) refitSignalBoxes(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitSignalBoxes);

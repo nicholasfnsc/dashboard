@@ -1736,3 +1736,83 @@ textarea.squote::placeholder { color: #3f434c; }
   .scal-anchor { position: static; margin-left: 0; }
   .signal-calendar { left: 0; right: 0; width: auto; }
 }
+
+/* ---------- Signal List: calls list and the call window ---------- */
+.scall { display: flex; align-items: center; gap: 10px; padding: 9px 6px; }
+.scall .scheck { margin-top: 0; }
+.scall-body {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer;
+}
+.scall-body .scall-title { font-size: 13.5px; font-weight: 500; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.scall-body:hover .scall-title { color: var(--accent-ink); }
+.scall-meta { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.scall-loop { display: inline-grid; place-items: center; color: var(--accent-ink); }
+.scall-loop svg { width: 12px; height: 12px; }
+.scall-meta .scall-when { flex-basis: auto; }
+.scall-join { padding: 5px 13px; }
+.scall.is-done .scall-body .scall-title { color: var(--muted); text-decoration: line-through; text-decoration-color: #4d525c; }
+
+.cedit { max-width: 480px; text-align: left; padding: 22px 22px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 24px 60px rgba(0, 0, 0, .6); }
+.cedit-heading { margin: 0 0 12px; font-family: var(--f-mono); font-size: 10px; font-weight: 400; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-ink); }
+.cedit-body { display: flex; flex-direction: column; gap: 4px; }
+.cedit-title {
+  width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--ink);
+  font-size: 20px; font-weight: 300; padding: 6px 0 10px; margin-bottom: 8px;
+}
+.cedit-title:focus { outline: none; border-bottom-color: var(--accent-bright); }
+.cedit-title::placeholder { color: #4d525c; }
+.cedit-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; column-gap: 12px; row-gap: 6px; padding: 9px 0; }
+.cedit-icon { display: grid; place-items: center; color: var(--muted); }
+.cedit-icon svg { width: 17px; height: 17px; }
+.cedit-day { font-size: 13px; color: var(--ink-2); }
+.cedit-times { grid-column: 2; display: flex; align-items: center; gap: 8px; }
+.cedit-dash { color: var(--muted); }
+.cedit-repeat { align-items: start; }
+.cedit-repeat .cedit-icon { padding-top: 6px; }
+.cedit-repeat-wrap { display: flex; flex-direction: column; gap: 8px; }
+.cedit-choices, .cedit-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.cedit-choice, .cedit-daychip {
+  border: 1px solid var(--line); background: none; color: var(--ink-2); border-radius: 999px;
+  padding: 5px 11px; font-size: 12px; cursor: pointer; transition: border-color .14s, color .14s, background .14s;
+}
+.cedit-daychip { width: 34px; padding: 5px 0; text-align: center; }
+.cedit-choice:hover, .cedit-daychip:hover { border-color: #2e323b; color: var(--ink); }
+.cedit-choice[aria-pressed="true"], .cedit-daychip[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--accent-deep); color: var(--accent-ink); }
+.cedit-link {
+  width: 100%; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 9px 11px; font-size: 13px;
+}
+.cedit-link:focus { outline: none; border-color: var(--accent-bright); }
+.cedit-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.cedit-left, .cedit-right { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cedit-left .link-btn { font-size: 12px; padding: 4px 6px; }
+.cedit-right .btn-primary { padding: 8px 22px; }
+
+/* the time chooser */
+.tpick { position: relative; }
+.tpick-button {
+  min-width: 96px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2);
+  color: var(--ink); font-size: 13.5px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left;
+  transition: border-color .14s, background .14s;
+}
+.tpick-button:hover, .tpick.is-open .tpick-button { border-color: var(--accent-deep); background: var(--accent-wash); }
+.tpick-list {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 90; width: 176px; max-height: 232px; overflow-y: auto;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 5px;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .65); scrollbar-width: thin;
+}
+.tpick-item {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%;
+  padding: 7px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink-2);
+  font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left;
+}
+.tpick-item small { font-size: 11px; color: var(--muted); }
+.tpick-item:hover { background: var(--surface-3); color: var(--ink); }
+.tpick-item.is-on { background: var(--accent-wash); color: var(--accent-ink); }
+
+@media (max-width: 520px) {
+  .cedit { padding: 18px 16px 14px; }
+  .cedit-actions { flex-direction: column-reverse; align-items: stretch; }
+  .cedit-right { justify-content: flex-end; }
+}
