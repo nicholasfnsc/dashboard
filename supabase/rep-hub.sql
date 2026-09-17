@@ -9,7 +9,9 @@
 --  Values marked "This offer only" are stored on each offer instead.
 --
 --  Everyone signed in can read it — reps need it to see the hub.
---  The owner and admins who have the sales boards can change it.
+--  It shows on every offer, so it is changed by the owner and by admins
+--  who have the sales boards and every offer. An admin with only some
+--  offers fills in those offers' own rows, which live on each offer.
 -- ============================================================
 
 create table if not exists public.rep_hub (
@@ -27,13 +29,24 @@ create policy rep_hub_read on public.rep_hub
   for select to authenticated
   using (true);
 
+-- Someone whose offers are all of them: the owner, or an admin ticked
+-- "Every offer" in Team & Access.
+create or replace function public.has_every_offer()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select public.is_owner()
+      or exists (select 1 from public.admin_access
+                 where user_id = auth.uid() and all_offers);
+$$;
+
 drop policy if exists rep_hub_update on public.rep_hub;
 create policy rep_hub_update on public.rep_hub
   for update to authenticated
-  using (public.is_owner() or public.has_section('sales'))
-  with check (public.is_owner() or public.has_section('sales'));
+  using (public.is_owner() or (public.has_section('sales') and public.has_every_offer()))
+  with check (public.is_owner() or (public.has_section('sales') and public.has_every_offer()));
 
 drop policy if exists rep_hub_insert on public.rep_hub;
 create policy rep_hub_insert on public.rep_hub
   for insert to authenticated
-  with check (public.is_owner() or public.has_section('sales'));
+  with check (public.is_owner() or (public.has_section('sales') and public.has_every_offer()));

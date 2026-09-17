@@ -134,6 +134,14 @@ function roleOn(boardId) {
 
 const canManage = () => CACHE.role === 'owner' || CACHE.role === 'admin';
 
+/* Some things are shared by every offer: the Rep Hub template itself, its
+   "All offers" values, and the Audio Transcriber's Loom and handoff form.
+   An admin who only has some offers would be changing what the offers they
+   cannot see show, so those stay with the owner and admins who have every
+   offer. Rows marked "This offer only" are open to any admin of the offer. */
+const canEditShared = () => CACHE.role === 'owner'
+  || (CACHE.role === 'admin' && !!(CACHE.me && CACHE.me.allOffers));
+
 async function signInWithEmail(email, password) {
   const { error } = await sb.auth.signInWithPassword({ email, password });
   return error ? error.message : null;

@@ -43,8 +43,11 @@ const DEFAULT_HANDOFF = [
 
 const HANDOFF_KEY = 'handoff-form';
 
-/* The owner and admins set the Loom and the handoff form; reps read them. */
-const canEditTranscriber = () => CACHE.role === 'owner' || CACHE.role === 'admin';
+/* The Loom and the shared handoff form show on every offer, so they follow
+   the same rule as the Rep Hub template. An admin of this offer can still
+   give this offer its own form. */
+const canEditTranscriber = () => canEditShared();
+const canEditOfferHandoff = () => canEditShared() || CACHE.role === 'admin';
 
 function offerHandoff() {
   const own = CACHE.board && CACHE.board.directory && CACHE.board.directory.repHub && CACHE.board.directory.repHub[HANDOFF_KEY];
@@ -59,7 +62,7 @@ function sharedHandoff() {
 const currentHandoff = () => offerHandoff() || sharedHandoff();
 
 function renderHandoff() {
-  const canEdit = canEditTranscriber();
+  const canEdit = canEditOfferHandoff();
   const own = offerHandoff();
   $('#trHandoffText').textContent = currentHandoff();
   $('#trHandoffEdit').classList.toggle('hidden', !canEdit);
@@ -70,7 +73,9 @@ function renderHandoff() {
 
 function openHandoffEditor() {
   $('#trHandoffInput').value = currentHandoff();
-  $('#trHandoffScope').value = offerHandoff() ? 'offer' : 'all';
+  const shared = canEditShared();
+  $('#trHandoffScope').querySelector('option[value="all"]').disabled = !shared;
+  $('#trHandoffScope').value = !shared || offerHandoff() ? 'offer' : 'all';
   paintScopeNote();
   $('#trHandoffText').classList.add('hidden');
   $('#trHandoffEditor').classList.remove('hidden');
@@ -85,15 +90,19 @@ function closeHandoffEditor() {
 }
 
 function paintScopeNote() {
-  $('#trHandoffScopeNote').textContent = $('#trHandoffScope').value === 'offer'
+  const offerOnly = $('#trHandoffScope').value === 'offer';
+  const note = offerOnly
     ? 'Only ' + ((CACHE.board && CACHE.board.name) || 'this offer') + ' uses this form. Every other offer keeps the shared one.'
     : 'Every offer uses this form' + (offerHandoff() ? ' — this offer’s own form will be removed.' : '.');
+  $('#trHandoffScopeNote').textContent = offerOnly && !canEditShared()
+    ? note + ' The form every offer shares is changed by the owner, or an admin with every offer.'
+    : note;
 }
 
 async function saveHandoff() {
   const text = $('#trHandoffInput').value.replace(/\s+$/, '');
   if (!text.trim()) { notify('The form can’t be empty.'); return; }
-  const scope = $('#trHandoffScope').value;
+  const scope = canEditShared() ? $('#trHandoffScope').value : 'offer';
   const button = $('#trHandoffSave');
   button.disabled = true;
   try {

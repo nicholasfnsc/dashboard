@@ -129,15 +129,18 @@ it, choosing **All offers** (saved in `rep_hub` content as `handoffForm`) or **T
 The owner invites admins from **Team & Access** and ticks, for each one, the **sections** they
 can use (Sales Team Boards, Metrics Tracking, Funnel Revenue Projections, Weekly Content Hub,
 Signal List) and the **offers** they see inside per-offer sections — every offer, or chosen ones.
-Inside a section they have, an admin edits everything the owner can: the Rep Hub template (rows,
-links, sections, and both "All offers" and "This offer only" values), the Audio Transcriber's Loom
-and handoff form, metrics and targets, the team and its commission. Only the owner invites admins,
+Inside a section they have, an admin edits what the owner edits: metrics and targets, the team and
+its commission, and their offers' Rep Hub rows. Anything **shared by every offer** — the Rep Hub
+template itself (its sections, rows and links), its "All offers" values, and the Audio Transcriber's
+Loom and handoff form — is kept for the owner and for admins ticked **Every offer**, so a manager who
+has one offer cannot change what the offers they never see show. Only the owner invites admins,
 changes access, creates and archives offers, and has the Signal List. Reps are unaffected: a code
 opens one sales board.
 
 The rules live in the database (`supabase/access.sql`): calls are readable with the sales boards
 or metrics, and writable by the offer's reps or whoever has its sales board. The shared Rep Hub
-template (`supabase/rep-hub.sql`) is writable by the owner and by admins who have the sales boards.
+template (`supabase/rep-hub.sql`) is writable by the owner and by admins who have the sales boards
+and every offer (`has_every_offer()`); an offer's own rows follow that offer instead.
 
 ## Security
 

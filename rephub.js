@@ -8,9 +8,10 @@
      All offers        — filled in once, shown on every board
      This offer only   — each offer fills in its own
 
-   The owner and admins edit everything: the values, the rows, the
-   links and the sections. Reps read and click; they cannot change
-   anything. Who is an admin, and which offers they reach, is set in
+   The owner, and admins who have every offer, edit everything: the
+   values, the rows, the links and the sections. An admin with only
+   some offers fills in those offers' "This offer only" rows. Reps read
+   and click. Who is an admin, and which offers they reach, is set in
    Team & Access.
    ============================================================ */
 
@@ -123,12 +124,13 @@ function hubValue(item) {
   return item.scope === 'offer' ? (offerHubValues()[item.id] || '') : (item.value || '');
 }
 
-const isHubOwner = () => CACHE.role === 'owner' || CACHE.role === 'admin';
+const isHubOwner = () => canEditShared();
 
-/* Owner and admins: anything. Reps: nothing. */
+/* The template is shared; an offer's own rows are not. */
 function canEditHubItem(item) {
   if (item.type === 'offername') return false;         // renamed at the top of Add Team
-  return isHubOwner();
+  if (canEditShared()) return true;
+  return CACHE.role === 'admin' && item.scope === 'offer';
 }
 
 /* Turns a Loom or YouTube share link into something that plays in
@@ -590,7 +592,7 @@ function editItem(section, item, index) {
     box.appendChild(shown);
     const why = item.type === 'offername'
       ? 'Change the offer name at the top of Add Team.'
-      : 'Shared by every offer.';
+      : 'Shared by every offer — changed by the owner, or an admin with every offer.';
     box.appendChild(el('p', 'hub-locked', why));
     box.classList.add('is-locked');
     if (owner) {                                                // the owner can still move it
