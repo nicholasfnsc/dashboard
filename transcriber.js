@@ -43,9 +43,6 @@ const DEFAULT_HANDOFF = [
 
 const HANDOFF_KEY = 'handoff-form';
 
-const CLAUDE_INSTRUCTION = 'Using only what was said in this call transcript, fill out the handoff form below. ' +
-  'If something wasn\'t mentioned, write "Not mentioned". Keep each answer short and specific.';
-
 function offerHandoff() {
   const own = CACHE.board && CACHE.board.directory && CACHE.board.directory.repHub && CACHE.board.directory.repHub[HANDOFF_KEY];
   return typeof own === 'string' && own.trim() ? own : null;
@@ -252,19 +249,11 @@ function showTranscript(file, result) {
   $('#trText').textContent = TRANSCRIBE.lastText;
   $('#trCopy').textContent = 'Copy transcript';
   $('#trCopy').classList.remove('is-copied');
-  $('#trCopyClaude').textContent = 'Copy for Claude';
-  $('#trCopyClaude').classList.remove('is-copied');
   showTranscriberState('trResult');
 }
 
 function copyTranscript() {
   return copyText(TRANSCRIBE.lastText, $('#trCopy'));
-}
-
-/* Everything Claude needs in one paste: what to do, the form, the call. */
-function copyForClaude() {
-  const prompt = CLAUDE_INSTRUCTION + '\n\nHANDOFF FORM:\n' + currentHandoff() + '\n\nCALL TRANSCRIPT:\n' + TRANSCRIBE.lastText;
-  return copyText(prompt, $('#trCopyClaude'), 'Copied — paste into Claude');
 }
 
 function initTranscriber() {
@@ -296,7 +285,6 @@ function initTranscriber() {
   });
 
   $('#trCopy').addEventListener('click', copyTranscript);
-  $('#trCopyClaude').addEventListener('click', copyForClaude);
   $('#trHandoffCopy').addEventListener('click', () => copyText(currentHandoff(), $('#trHandoffCopy')));
   $('#trHandoffEdit').addEventListener('click', openHandoffEditor);
   $('#trHandoffCancel').addEventListener('click', closeHandoffEditor);

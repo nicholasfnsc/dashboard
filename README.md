@@ -57,7 +57,7 @@ form.js           Post Call Form
 datatab.js        Data tab
 team.js           Add Team: offer name, team with roles and commission, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
-transcriber.js    Audio Transcriber tab: drop a call recording, copy it with the handoff form
+transcriber.js    Audio Transcriber tab: drop a call recording, copy the transcript, handoff form
 profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
@@ -118,8 +118,7 @@ the recording is deleted straight away whether it worked or not. The Groq key li
 Vercel as `GROQ_API_KEY`. The owner can paste a Loom at the top of the tab; it shows on every
 offer. Groq's free plan allows about 8 hours of audio a day.
 
-Below the transcriber sits the **handoff form**. Everyone sees it and can copy it; **Copy for
-Claude** copies an instruction, the form and the transcript in one paste. Only the owner edits
+Below the transcriber sits the **handoff form**. Everyone sees it and can copy it. Only the owner edits
 it, choosing **All offers** (saved in `rep_hub` content as `handoffForm`) or **This offer only**
 (saved on the offer in `directory.repHub['handoff-form']`, which wins over the shared form).
 
