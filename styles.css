@@ -1708,3 +1708,31 @@ textarea.squote::placeholder { color: #3f434c; }
 }
 
 #signalShell { max-width: 1320px; }
+
+/* ---------- Signal List: compact calendar behind a button ---------- */
+.signal-nav { position: relative; flex-wrap: wrap; }
+.scal-anchor { position: relative; margin-left: 6px; }
+.scal-toggle {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 10px;
+  background: none; border: 1px solid var(--line); border-radius: 999px; color: var(--ink-2);
+  font-size: 12px; cursor: pointer; transition: border-color .14s, color .14s, background .14s;
+}
+.scal-toggle svg { width: 15px; height: 15px; }
+.scal-toggle:hover, .scal-toggle[aria-expanded="true"] { border-color: var(--accent-deep); color: var(--accent-ink); background: var(--accent-wash); }
+.signal-calendar {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: 296px;
+  padding: 12px 12px 10px; margin: 0; box-shadow: 0 18px 50px rgba(0, 0, 0, .6);
+}
+.signal-calendar .scal-head { margin-bottom: 6px; }
+.signal-calendar .scal-month { font-size: 13px; }
+.signal-calendar .week-btn { width: 26px; height: 26px; font-size: 16px; }
+.signal-calendar .scal-grid { gap: 2px; }
+.signal-calendar .scal-name { font-size: 8.5px; padding-bottom: 2px; }
+.signal-calendar .scal-day { height: 34px; border-radius: 8px; gap: 2px; }
+.signal-calendar .scal-num { font-size: 12px; }
+.signal-calendar .scal-dot { width: 4px; height: 4px; }
+.signal-calendar .scal-foot { flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px; padding-top: 8px; font-size: 10.5px; }
+@media (max-width: 640px) {
+  .scal-anchor { position: static; margin-left: 0; }
+  .signal-calendar { left: 0; right: 0; width: auto; }
+}

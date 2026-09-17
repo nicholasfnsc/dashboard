@@ -842,6 +842,7 @@ function fillTimeSelect(sel) {
    ============================================================ */
 async function goToDay(iso) {
   if (SV.loading) return;
+  if (window.closeSignalCalendar) window.closeSignalCalendar();
   if (SV.dirty) {
     clearTimeout(SV.saveTimer);
     try { await saveSignalDay(SV.day, SV.content); SV.dirty = false; } catch (err) { notify("Couldn't save — check your connection."); return; }
@@ -884,6 +885,25 @@ async function initSignal() {
   $('#signalToday').addEventListener('click', () => goToDay(todayIso()));
   $('#signalCustomizeBtn').addEventListener('click', openSignalCustomize);
   $('#signalMonthPrev').addEventListener('click', () => moveSignalMonth(-1));
+
+  /* The calendar opens under its button and closes when you pick a day,
+     click anywhere else, or press Escape. */
+  const pop = $('#signalCalendarPop');
+  const toggle = $('#signalCalendarBtn');
+  const showCalendar = (open) => {
+    pop.classList.toggle('hidden', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const shown = asDate(SV.day);
+      SV.month = new Date(shown.getFullYear(), shown.getMonth(), 1);
+      paintSignalCalendar();
+    }
+  };
+  toggle.addEventListener('click', (e) => { e.stopPropagation(); showCalendar(pop.classList.contains('hidden')); });
+  pop.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', () => { if (!pop.classList.contains('hidden')) showCalendar(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.classList.contains('hidden')) showCalendar(false); });
+  window.closeSignalCalendar = () => showCalendar(false);
   setInterval(() => { if (!$('#signalShell').classList.contains('hidden')) paintSignalCalls(); }, 30000);
   window.addEventListener('resize', () => { if (!$('#signalShell').classList.contains('hidden')) refitSignalBoxes(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitSignalBoxes);
