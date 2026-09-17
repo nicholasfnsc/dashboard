@@ -9,7 +9,7 @@
 --  Values marked "This offer only" are stored on each offer instead.
 --
 --  Everyone signed in can read it — reps need it to see the hub.
---  Only the owner can change it.
+--  The owner and admins who have the sales boards can change it.
 -- ============================================================
 
 create table if not exists public.rep_hub (
@@ -30,10 +30,10 @@ create policy rep_hub_read on public.rep_hub
 drop policy if exists rep_hub_update on public.rep_hub;
 create policy rep_hub_update on public.rep_hub
   for update to authenticated
-  using (public.is_owner())
-  with check (public.is_owner());
+  using (public.is_owner() or public.has_section('sales'))
+  with check (public.is_owner() or public.has_section('sales'));
 
 drop policy if exists rep_hub_insert on public.rep_hub;
 create policy rep_hub_insert on public.rep_hub
   for insert to authenticated
-  with check (public.is_owner());
+  with check (public.is_owner() or public.has_section('sales'));

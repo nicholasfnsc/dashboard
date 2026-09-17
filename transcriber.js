@@ -8,14 +8,14 @@
      2. the recording uploads straight to private storage
      3. the server sends it to Groq, returns the words, deletes the file
 
-   A Loom at the top explains it; the owner sets that link here, and
-   every offer shows the same one.
+   A Loom at the top explains it; the owner or an admin sets that link
+   here, and every offer shows the same one.
    ============================================================ */
 
 const TRANSCRIBE = { busy: false, lastText: '' };
 
-/* The handoff form every offer starts with. The owner can change it for
-   all offers, or give one offer its own. */
+/* The handoff form every offer starts with. The owner or an admin can
+   change it for all offers, or give one offer its own. */
 const DEFAULT_HANDOFF = [
   'LEAD',
   'Name:',
@@ -43,6 +43,9 @@ const DEFAULT_HANDOFF = [
 
 const HANDOFF_KEY = 'handoff-form';
 
+/* The owner and admins set the Loom and the handoff form; reps read them. */
+const canEditTranscriber = () => CACHE.role === 'owner' || CACHE.role === 'admin';
+
 function offerHandoff() {
   const own = CACHE.board && CACHE.board.directory && CACHE.board.directory.repHub && CACHE.board.directory.repHub[HANDOFF_KEY];
   return typeof own === 'string' && own.trim() ? own : null;
@@ -56,11 +59,11 @@ function sharedHandoff() {
 const currentHandoff = () => offerHandoff() || sharedHandoff();
 
 function renderHandoff() {
-  const owner = CACHE.role === 'owner';
+  const canEdit = canEditTranscriber();
   const own = offerHandoff();
   $('#trHandoffText').textContent = currentHandoff();
-  $('#trHandoffEdit').classList.toggle('hidden', !owner);
-  $('#trHandoffSub').textContent = owner
+  $('#trHandoffEdit').classList.toggle('hidden', !canEdit);
+  $('#trHandoffSub').textContent = canEdit
     ? (own ? 'This offer’s own form — other offers use the shared one' : 'Shared by every offer')
     : 'What Claude fills out from the call';
 }
@@ -172,7 +175,7 @@ function renderTranscriberGuide() {
     host.appendChild(row);
   }
 
-  if (CACHE.role === 'owner') {
+  if (canEditTranscriber()) {
     const row = el('div', 'tr-guide-edit');
     const input = document.createElement('input');
     input.type = 'text';
@@ -197,7 +200,7 @@ function renderTranscriberGuide() {
 
     host.appendChild(row);
   }
-  host.classList.toggle('hidden', !embed && !asLink && CACHE.role !== 'owner');
+  host.classList.toggle('hidden', !embed && !asLink && !canEditTranscriber());
 }
 
 async function saveGuide(url, style) {
