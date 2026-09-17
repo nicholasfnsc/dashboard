@@ -130,7 +130,7 @@ The owner invites admins from **Team & Access** and ticks, for each one, the **s
 can use (Sales Team Boards, Metrics Tracking, Funnel Revenue Projections, Weekly Content Hub,
 Signal List) and the **offers** they see inside per-offer sections — every offer, or chosen ones.
 Inside a section they have, an admin edits everything the owner can: the Rep Hub template (rows,
-links, sections, and both  and  values), the Audio Transcriber's Loom
+links, sections, and both "All offers" and "This offer only" values), the Audio Transcriber's Loom
 and handoff form, metrics and targets, the team and its commission. Only the owner invites admins,
 changes access, creates and archives offers, and has the Signal List. Reps are unaffected: a code
 opens one sales board.
