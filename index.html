@@ -780,7 +780,8 @@
       <ol class="tr-how">
         <li><b>1</b><span>Download the call’s MP3 from Close</span></li>
         <li><b>2</b><span>Drop it in the box below</span></li>
-        <li><b>3</b><span>Copy the transcript into your handoff</span></li>
+        <li><b>3</b><span>Click <em>Copy for Claude</em> below the transcript</span></li>
+        <li><b>4</b><span>Paste into Claude — it fills out the handoff form</span></li>
       </ol>
 
       <p class="tr-error hidden" id="trError" role="alert"></p>
@@ -824,12 +825,45 @@
           </div>
           <div class="tr-result-actions">
             <button type="button" class="btn-export" id="trAgain">Transcribe another</button>
-            <button type="button" class="btn-primary tr-copy" id="trCopy">Copy transcript</button>
+            <button type="button" class="btn-export" id="trCopy">Copy transcript</button>
+            <button type="button" class="btn-primary tr-copy" id="trCopyClaude">Copy for Claude</button>
           </div>
         </div>
         <div class="tr-text" id="trText" tabindex="0"></div>
         <p class="tr-privacy">The recording was deleted as soon as it was transcribed. Nothing is saved — copy the text before you leave this tab.</p>
       </div>
+
+      <section class="tr-handoff" id="trHandoff">
+        <div class="tr-handoff-head">
+          <div>
+            <p class="eyebrow">Handoff form</p>
+            <p class="tr-handoff-sub" id="trHandoffSub">What Claude fills out from the call</p>
+          </div>
+          <div class="tr-handoff-actions">
+            <button type="button" class="btn-export hidden" id="trHandoffEdit">Edit</button>
+            <button type="button" class="btn-export" id="trHandoffCopy">Copy form</button>
+          </div>
+        </div>
+        <pre class="tr-handoff-text" id="trHandoffText"></pre>
+        <div class="tr-handoff-editor hidden" id="trHandoffEditor">
+          <label class="hidden" for="trHandoffInput">Handoff form</label>
+          <textarea id="trHandoffInput" rows="18"></textarea>
+          <div class="tr-handoff-editor-foot">
+            <label class="tr-scope">
+              <span>Applies to</span>
+              <select id="trHandoffScope" class="role-select">
+                <option value="all">All offers</option>
+                <option value="offer">This offer only</option>
+              </select>
+            </label>
+            <div class="tr-handoff-actions">
+              <button type="button" class="link-btn" id="trHandoffCancel">Cancel</button>
+              <button type="button" class="btn-primary" id="trHandoffSave">Save form</button>
+            </div>
+          </div>
+          <p class="tr-scope-note" id="trHandoffScopeNote"></p>
+        </div>
+      </section>
     </div>
   </section>
 

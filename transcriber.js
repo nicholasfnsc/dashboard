@@ -13,6 +13,126 @@
    ============================================================ */
 
 const TRANSCRIBE = { busy: false, lastText: '' };
+
+/* The handoff form every offer starts with. The owner can change it for
+   all offers, or give one offer its own. */
+const DEFAULT_HANDOFF = [
+  'LEAD',
+  'Name:',
+  'Contact (IG / phone):',
+  'Call date + time (their timezone):',
+  '',
+  'THEIR SITUATION',
+  'What they\'re currently struggling with:',
+  'How long they\'ve been struggling with it:',
+  'What they do for work:',
+  'How long they\'ve been doing that:',
+  '',
+  'WHAT THEY NEED',
+  'What they said they need help with:',
+  'What it\'s costing them to not fix it:',
+  '',
+  'WHAT THEY WANT',
+  'What they want to achieve:',
+  'Why it matters to them:',
+  '',
+  'CAPITAL',
+  'What they have set aside to invest in the program:',
+  'What they have set aside to work with once they\'re in:'
+].join('\n');
+
+const HANDOFF_KEY = 'handoff-form';
+
+const CLAUDE_INSTRUCTION = 'Using only what was said in this call transcript, fill out the handoff form below. ' +
+  'If something wasn\'t mentioned, write "Not mentioned". Keep each answer short and specific.';
+
+function offerHandoff() {
+  const own = CACHE.board && CACHE.board.directory && CACHE.board.directory.repHub && CACHE.board.directory.repHub[HANDOFF_KEY];
+  return typeof own === 'string' && own.trim() ? own : null;
+}
+
+function sharedHandoff() {
+  const saved = CACHE.repHub && CACHE.repHub.handoffForm;
+  return typeof saved === 'string' && saved.trim() ? saved : DEFAULT_HANDOFF;
+}
+
+const currentHandoff = () => offerHandoff() || sharedHandoff();
+
+function renderHandoff() {
+  const owner = CACHE.role === 'owner';
+  const own = offerHandoff();
+  $('#trHandoffText').textContent = currentHandoff();
+  $('#trHandoffEdit').classList.toggle('hidden', !owner);
+  $('#trHandoffSub').textContent = owner
+    ? (own ? 'This offer’s own form — other offers use the shared one' : 'Shared by every offer')
+    : 'What Claude fills out from the call';
+}
+
+function openHandoffEditor() {
+  $('#trHandoffInput').value = currentHandoff();
+  $('#trHandoffScope').value = offerHandoff() ? 'offer' : 'all';
+  paintScopeNote();
+  $('#trHandoffText').classList.add('hidden');
+  $('#trHandoffEditor').classList.remove('hidden');
+  $('#trHandoffEdit').classList.add('hidden');
+  $('#trHandoffInput').focus();
+}
+
+function closeHandoffEditor() {
+  $('#trHandoffEditor').classList.add('hidden');
+  $('#trHandoffText').classList.remove('hidden');
+  renderHandoff();
+}
+
+function paintScopeNote() {
+  $('#trHandoffScopeNote').textContent = $('#trHandoffScope').value === 'offer'
+    ? 'Only ' + ((CACHE.board && CACHE.board.name) || 'this offer') + ' uses this form. Every other offer keeps the shared one.'
+    : 'Every offer uses this form' + (offerHandoff() ? ' — this offer’s own form will be removed.' : '.');
+}
+
+async function saveHandoff() {
+  const text = $('#trHandoffInput').value.replace(/\s+$/, '');
+  if (!text.trim()) { notify('The form can’t be empty.'); return; }
+  const scope = $('#trHandoffScope').value;
+  const button = $('#trHandoffSave');
+  button.disabled = true;
+  try {
+    if (scope === 'offer') {
+      await saveOfferHubValue(HANDOFF_KEY, text);
+    } else {
+      CACHE.repHub.handoffForm = text;
+      await saveRepHubTemplate();
+      if (offerHandoff()) await saveOfferHubValue(HANDOFF_KEY, null);
+    }
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't save the form — check your connection.");
+    return;
+  } finally {
+    button.disabled = false;
+  }
+  closeHandoffEditor();
+  notify(scope === 'offer' ? 'Saved for this offer only.' : 'Saved for every offer.');
+}
+
+async function copyText(text, button, doneLabel) {
+  const original = button.textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    try { document.execCommand('copy'); } catch (e) { /* nothing more to try */ }
+    area.remove();
+  }
+  button.textContent = doneLabel || 'Copied ✓';
+  button.classList.add('is-copied');
+  setTimeout(() => { button.textContent = original; button.classList.remove('is-copied'); }, 2200);
+}
 const AUDIO_TYPES = /\.(mp3|m4a|wav|webm|ogg|oga|mp4|mpeg|mpga|flac|aac)$/i;
 const AUDIO_LIMIT = 25 * 1024 * 1024;
 
@@ -132,29 +252,24 @@ function showTranscript(file, result) {
   $('#trText').textContent = TRANSCRIBE.lastText;
   $('#trCopy').textContent = 'Copy transcript';
   $('#trCopy').classList.remove('is-copied');
+  $('#trCopyClaude').textContent = 'Copy for Claude';
+  $('#trCopyClaude').classList.remove('is-copied');
   showTranscriberState('trResult');
 }
 
-async function copyTranscript() {
-  const button = $('#trCopy');
-  try {
-    await navigator.clipboard.writeText(TRANSCRIBE.lastText);
-  } catch (err) {
-    const range = document.createRange();
-    range.selectNodeContents($('#trText'));
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    try { document.execCommand('copy'); } catch (e) { /* the text stays selected to copy by hand */ }
-  }
-  button.textContent = 'Copied ✓';
-  button.classList.add('is-copied');
-  setTimeout(() => { button.textContent = 'Copy transcript'; button.classList.remove('is-copied'); }, 2200);
+function copyTranscript() {
+  return copyText(TRANSCRIBE.lastText, $('#trCopy'));
+}
+
+/* Everything Claude needs in one paste: what to do, the form, the call. */
+function copyForClaude() {
+  const prompt = CLAUDE_INSTRUCTION + '\n\nHANDOFF FORM:\n' + currentHandoff() + '\n\nCALL TRANSCRIPT:\n' + TRANSCRIBE.lastText;
+  return copyText(prompt, $('#trCopyClaude'), 'Copied — paste into Claude');
 }
 
 function initTranscriber() {
   const drop = $('#trDrop');
-  if (!drop || drop.dataset.wired) { if (drop) renderTranscriberGuide(); return; }
+  if (!drop || drop.dataset.wired) { if (drop) { renderTranscriberGuide(); renderHandoff(); } return; }
   drop.dataset.wired = '1';
 
   const input = $('#trInput');
@@ -181,7 +296,14 @@ function initTranscriber() {
   });
 
   $('#trCopy').addEventListener('click', copyTranscript);
+  $('#trCopyClaude').addEventListener('click', copyForClaude);
+  $('#trHandoffCopy').addEventListener('click', () => copyText(currentHandoff(), $('#trHandoffCopy')));
+  $('#trHandoffEdit').addEventListener('click', openHandoffEditor);
+  $('#trHandoffCancel').addEventListener('click', closeHandoffEditor);
+  $('#trHandoffSave').addEventListener('click', saveHandoff);
+  $('#trHandoffScope').addEventListener('change', paintScopeNote);
   $('#trAgain').addEventListener('click', () => { $('#trError').classList.add('hidden'); showTranscriberState('trDrop'); });
 
   renderTranscriberGuide();
+  renderHandoff();
 }

@@ -376,7 +376,7 @@ async function saveOfferHubValue(itemId, value) {
   if (readError) throw readError;
   const directory = Object.assign({}, (data && data.directory) || CACHE.board.directory || {});
   directory.repHub = Object.assign({}, directory.repHub || {});
-  directory.repHub[itemId] = value;
+  if (value == null) delete directory.repHub[itemId]; else directory.repHub[itemId] = value;
 
   const { error } = await sb.from('boards').update({ directory }).eq('id', CACHE.boardId);
   if (error) throw error;
