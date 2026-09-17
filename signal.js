@@ -3,6 +3,8 @@
    ------------------------------------------------------------
    The owner's own daily page — nobody else has one:
 
+     beside the day, always in view: daily calls · daily brain dump
+
      calendar · quotes · morning checklist · what broke your speed
      yesterday · focus · goals & limiting factors · highest signal
      actions (and why) · sub-priority tasks · daily speed check in
@@ -44,7 +46,8 @@ const SIGNAL_DEFAULTS = {
 const SV = { day: '', month: null, content: null, template: null, ready: true, saveTimer: 0, templateTimer: 0, dirty: false, loading: false };
 
 const sid = () => Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-const todayIso = () => isoDay(new Date());
+/* 'Today' is today where your main portal clock is set, not wherever this device thinks it is. */
+const todayIso = () => { try { return zoneNow(mainClockZone().zone).day; } catch (e) { return isoDay(new Date()); } };
 const shiftDay = (iso, n) => { const d = asDate(iso); d.setDate(d.getDate() + n); return isoDay(d); };
 
 function slotsFor(template) {
@@ -71,7 +74,9 @@ function freshDay(template, previous) {
     subs: [],
     schedule: {},
     reflection: {},
-    journal: ''
+    journal: '',
+    calls: [],
+    dump: ''
   };
   Object.keys(template.schedule || {}).forEach((t) => { content.schedule[t] = template.schedule[t]; });
 
@@ -116,6 +121,8 @@ function sinceTag(item) {
 
 /* Days written before sub-priority tasks had their own list. */
 function upgradeSignalDay(c) {
+  if (!Array.isArray(c.calls)) c.calls = [];
+  if (typeof c.dump !== 'string') c.dump = '';
   if (!Array.isArray(c.subs)) {
     c.subs = (c.signals || []).filter((s) => s.sub && s.sub.trim()).map((s) => ({ id: sid(), text: s.sub, done: false }));
   }
@@ -467,8 +474,8 @@ function renderSignal() {
     });
     head.appendChild(makeDefault);
 
-    const now = new Date();
-    const nowSlot = String(now.getHours()).padStart(2, '0') + ':' + (now.getMinutes() < 30 ? '00' : '30');
+    const clockNow = zoneNow(mainClockZone().zone).minute;
+    const nowSlot = String(Math.floor(clockNow / 60)).padStart(2, '0') + ':' + (clockNow % 60 < 30 ? '00' : '30');
     const grid = el('div', 'sschedule');
     slotsFor(t).forEach((time) => {
       const row = el('div', 'sslot' + (SV.day === todayIso() && time === nowSlot ? ' is-now' : ''));
@@ -518,8 +525,201 @@ function renderSignal() {
   plan.appendChild(planBtn);
   host.appendChild(plan);
 
+  renderSignalAside();
   paintSignalProgress();
   requestAnimationFrame(refitSignalBoxes);
+}
+
+/* ============================================================
+   Beside the day: daily calls and the brain dump
+   ============================================================ */
+
+/* Call times use the portal clock's main time zone. */
+function mainClockZone() {
+  const saved = CACHE.me && CACHE.me.clock;
+  const lead = saved && (saved.primary || (Array.isArray(saved.places) && saved.places[0]));
+  if (lead && typeof lead === 'object' && lead.zone) return { zone: lead.zone, label: lead.label || zoneLabel(lead.zone) };
+  if (typeof lead === 'string') return { zone: lead, label: zoneLabel(lead) };
+  const zone = deviceZone();
+  const city = CLOCK_CITIES.find((c) => c.zone === zone);
+  return { zone, label: city ? city.name : zoneLabel(zone) };
+}
+
+/* Today's date and the minute of the day, in that zone. */
+function zoneNow(zone) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+  }).formatToParts(new Date());
+  const get = (type) => (parts.find((p) => p.type === type) || {}).value || '';
+  return { day: get('year') + '-' + get('month') + '-' + get('day'), minute: (+get('hour') % 24) * 60 + (+get('minute')) };
+}
+
+const callMinutes = (time) => (/^\d{1,2}:\d{2}$/.test(time || '') ? (+time.split(':')[0]) * 60 + (+time.split(':')[1]) : null);
+
+function callTimeLabel(time) {
+  const m = callMinutes(time);
+  if (m == null) return '';
+  const h = Math.floor(m / 60);
+  const min = String(m % 60).padStart(2, '0');
+  return CACHE.me && CACHE.me.clock && CACHE.me.clock.hour12
+    ? (h % 12 || 12) + ':' + min + (h < 12 ? ' am' : ' pm')
+    : String(h).padStart(2, '0') + ':' + min;
+}
+
+/* A pasted Meet or Zoom link, with or without https://. */
+function meetingUrl(link) {
+  const text = String(link || '').trim();
+  if (!text) return '';
+  const url = /^https?:\/\//i.test(text) ? text : 'https://' + text;
+  try { return new URL(url).href; } catch (e) { return ''; }
+}
+
+function meetingKind(url) {
+  if (/meet\.google\.com/i.test(url)) return 'Google Meet';
+  if (/zoom\.us/i.test(url)) return 'Zoom';
+  if (/teams\.microsoft|teams\.live/i.test(url)) return 'Teams';
+  if (/calendly\.com/i.test(url)) return 'Calendly';
+  return 'Link';
+}
+
+function sortCalls(calls) {
+  return calls.sort((a, b) => {
+    const x = callMinutes(a.time);
+    const y = callMinutes(b.time);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return x - y;
+  });
+}
+
+function renderSignalAside() {
+  const c = SV.content;
+  const host = $('#signalAside');
+  if (!host || !c) return;
+  host.textContent = '';
+  const zone = mainClockZone();
+
+  /* ---------- daily calls ---------- */
+  const calls = el('section', 'panel scard sside-card');
+  const head = el('div', 'scard-head');
+  head.appendChild(el('h2', 'scard-title', 'Daily calls'));
+  const count = el('span', 'scard-sub');
+  count.id = 'signalCallCount';
+  head.appendChild(count);
+  calls.appendChild(head);
+  const zoneNote = el('p', 'scall-zone');
+  zoneNote.textContent = 'Times in ' + zone.label;
+  calls.appendChild(zoneNote);
+
+  const list = el('div', 'scall-list');
+  if (!c.calls.length) list.appendChild(el('p', 'sempty', 'No calls for this day. Add one and paste its Meet link.'));
+  sortCalls(c.calls).forEach((call) => {
+    const row = el('div', 'scall' + (call.done ? ' is-done' : ''));
+    row.dataset.id = call.id;
+
+    const top = el('div', 'scall-top');
+    top.appendChild(checkBox(call.done, call.title || 'call', (on) => { call.done = on; row.classList.toggle('is-done', on); paintSignalCalls(); }));
+
+    const time = document.createElement('input');
+    time.type = 'time';
+    time.className = 'scall-time';
+    time.value = call.time || '';
+    time.setAttribute('aria-label', 'Call time');
+    time.addEventListener('change', () => { call.time = time.value; signalChanged(); renderSignalAside(); });
+    top.appendChild(time);
+
+    const title = document.createElement('input');
+    title.type = 'text';
+    title.className = 'scall-title';
+    title.placeholder = 'Call title';
+    title.value = call.title || '';
+    title.setAttribute('aria-label', 'Call title');
+    title.addEventListener('input', () => { call.title = title.value; signalChanged(); });
+    top.appendChild(title);
+
+    top.appendChild(removeButton('call', () => { c.calls = c.calls.filter((x) => x !== call); signalChanged(); renderSignalAside(); }));
+    row.appendChild(top);
+
+    const bottom = el('div', 'scall-bottom');
+    const link = document.createElement('input');
+    link.type = 'text';
+    link.className = 'scall-link';
+    link.placeholder = 'Paste the Meet link';
+    link.value = call.link || '';
+    link.setAttribute('aria-label', 'Meeting link');
+    link.addEventListener('input', () => { call.link = link.value.trim(); signalChanged(); paintJoin(); });
+    bottom.appendChild(link);
+
+    const join = el('a', 'scall-join');
+    join.target = '_blank';
+    join.rel = 'noopener noreferrer';
+    const paintJoin = () => {
+      const url = meetingUrl(call.link);
+      join.classList.toggle('hidden', !url);
+      if (url) { join.href = url; join.textContent = 'Join ' + meetingKind(url) + ' \u2197'; }
+    };
+    paintJoin();
+    bottom.appendChild(join);
+    bottom.appendChild(el('span', 'scall-when'));
+    row.appendChild(bottom);
+
+    list.appendChild(row);
+  });
+  calls.appendChild(list);
+  calls.appendChild(addButton('Add a call', () => {
+    const call = { id: sid(), time: '', title: '', link: '', done: false };
+    c.calls.push(call);
+    signalChanged();
+    renderSignalAside();
+    focusLater('.scall[data-id="' + call.id + '"] .scall-title');
+  }));
+  host.appendChild(calls);
+
+  /* ---------- daily brain dump ---------- */
+  const dump = el('section', 'panel scard sside-card sdump-card');
+  const dumpHead = el('div', 'scard-head');
+  dumpHead.appendChild(el('h2', 'scard-title', 'Daily brain dump'));
+  dumpHead.appendChild(el('span', 'scard-sub', asDate(SV.day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })));
+  dump.appendChild(dumpHead);
+  const area = textBox(c.dump, 'Anything — reminders, notes, what Tom just said on the call…', (v) => { c.dump = v; }, { label: 'Daily brain dump', multiline: true, cls: 'sdump' });
+  dump.appendChild(area);
+  dump.appendChild(el('p', 'sdump-note', 'Each day starts blank. Open any past day on the calendar to read it again.'));
+  host.appendChild(dump);
+
+  paintSignalCalls();
+  requestAnimationFrame(() => fitArea(area));
+}
+
+/* The count, and "now" / "in 12 min" beside each call. Runs every 30 seconds. */
+function paintSignalCalls() {
+  const c = SV.content;
+  if (!c || !$('#signalAside')) return;
+  const zone = mainClockZone();
+  const now = zoneNow(zone.zone);
+  const isToday = SV.day === now.day;
+
+  const open = c.calls.filter((x) => !x.done && (x.title.trim() || x.link.trim() || x.time));
+  const count = $('#signalCallCount');
+  if (count) count.textContent = c.calls.length ? (c.calls.length - open.length) + ' / ' + c.calls.length + ' done' : '';
+
+  let nextMarked = false;
+  document.querySelectorAll('#signalAside .scall').forEach((row) => {
+    const call = c.calls.find((x) => x.id === row.dataset.id);
+    const when = row.querySelector('.scall-when');
+    row.classList.remove('is-next', 'is-now');
+    when.textContent = '';
+    if (!call || call.done || !isToday) return;
+    const m = callMinutes(call.time);
+    if (m == null) return;
+    const diff = m - now.minute;
+    if (diff <= 0 && diff > -45) { row.classList.add('is-now'); when.textContent = diff === 0 ? 'Starting now' : 'Started ' + -diff + ' min ago'; return; }
+    if (diff > 0 && !nextMarked) {
+      nextMarked = true;
+      row.classList.add('is-next');
+      when.textContent = diff < 60 ? 'in ' + diff + ' min' : 'in ' + Math.floor(diff / 60) + 'h' + (diff % 60 ? ' ' + (diff % 60) + 'm' : '');
+    }
+  });
 }
 
 function paintSignalProgress() {
@@ -684,6 +884,7 @@ async function initSignal() {
   $('#signalToday').addEventListener('click', () => goToDay(todayIso()));
   $('#signalCustomizeBtn').addEventListener('click', openSignalCustomize);
   $('#signalMonthPrev').addEventListener('click', () => moveSignalMonth(-1));
+  setInterval(() => { if (!$('#signalShell').classList.contains('hidden')) paintSignalCalls(); }, 30000);
   window.addEventListener('resize', () => { if (!$('#signalShell').classList.contains('hidden')) refitSignalBoxes(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitSignalBoxes);
   $('#signalMonthNext').addEventListener('click', () => moveSignalMonth(1));

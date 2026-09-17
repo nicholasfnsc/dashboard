@@ -98,7 +98,7 @@ and standards live in `projections.js`.
 
 ## Signal List
 
-The owner's own daily page; it is never offered to admins. A month calendar at the top shows every
+The owner's own daily page; it is never offered to admins. Beside the day, always in view, are **Daily calls** (title, time, Meet link with a Join button; the next call is highlighted) and a **Daily brain dump** that starts blank each day. The page follows the portal clock's main time zone for what counts as today and for call times. A month calendar at the top shows every
 day written (green: all signal actions done, amber: some, grey: started); click any day to open
 everything written that day. Quotes are edited right at the top. Each day has the morning
 checklist, what broke your speed yesterday, the focus line, goals and limiting factors, highest
