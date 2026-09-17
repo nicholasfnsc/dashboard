@@ -293,7 +293,7 @@ function readItem(item) {
 
   if (item.type === 'note' || item.type === 'text') {
     if (!value && !manager) return null;
-    const p = el('p', item.type === 'note' ? 'hub-note' : 'hub-text');
+    const p = el('p', item.type === 'note' ? 'hub-note is-' + noteColor(item) : 'hub-text');
     p.textContent = value || 'Not filled in yet.';
     if (!value) p.classList.add('hub-empty-value');
     return p;
@@ -542,6 +542,42 @@ let hubGripFocusId = '';
 
 let hubFocusId = '';
 
+/* Highlighted notes come in a few colours; yellow when none is chosen. */
+const NOTE_COLORS = [
+  { value: 'yellow', label: 'Yellow' },
+  { value: 'blue',   label: 'Blue' },
+  { value: 'green',  label: 'Green' },
+  { value: 'red',    label: 'Red' },
+  { value: 'purple', label: 'Purple' },
+  { value: 'gray',   label: 'Grey' }
+];
+const noteColor = (item) => (NOTE_COLORS.some((c) => c.value === item.color) ? item.color : 'yellow');
+
+function noteColorPicker(item, onChange) {
+  const wrap = el('div', 'hub-note-colors');
+  wrap.setAttribute('role', 'radiogroup');
+  wrap.setAttribute('aria-label', 'Note colour');
+  NOTE_COLORS.forEach((c) => {
+    const dot = el('button', 'hub-note-dot is-' + c.value + (noteColor(item) === c.value ? ' is-on' : ''));
+    dot.type = 'button';
+    dot.title = c.label;
+    dot.setAttribute('role', 'radio');
+    dot.setAttribute('aria-checked', String(noteColor(item) === c.value));
+    dot.setAttribute('aria-label', c.label);
+    dot.addEventListener('click', () => {
+      item.color = c.value;
+      wrap.querySelectorAll('.hub-note-dot').forEach((d) => {
+        const on = d === dot;
+        d.classList.toggle('is-on', on);
+        d.setAttribute('aria-checked', String(on));
+      });
+      onChange(c.value);
+    });
+    wrap.appendChild(dot);
+  });
+  return wrap;
+}
+
 function editItem(section, item, index) {
   const owner = isHubOwner();
   const editable = canEditHubItem(item);
@@ -595,6 +631,14 @@ function editItem(section, item, index) {
     type.addEventListener('change', () => { item.type = type.value; saveTemplateSoon(); renderRepHub(); });
     controls.appendChild(type);
 
+    if (item.type === 'note') {
+      controls.appendChild(noteColorPicker(item, (color) => {
+        const preview = box.querySelector('.hub-edit-value');
+        if (preview) NOTE_COLORS.forEach((c) => preview.classList.toggle('is-' + c.value, c.value === color));
+        saveTemplateSoon();
+      }));
+    }
+
     if (item.type !== 'heading') {
       const scope = document.createElement('select');
       scope.setAttribute('aria-label', 'Applies to');
@@ -633,7 +677,7 @@ function editItem(section, item, index) {
     const input = document.createElement(long ? 'textarea' : 'input');
     if (!long) input.type = 'text';
     if (long) input.rows = Math.min(10, Math.max(3, Math.ceil(hubValue(item).length / 90)));
-    input.className = 'hub-edit-value';
+    input.className = 'hub-edit-value' + (item.type === 'note' ? ' hub-note-edit is-' + noteColor(item) : '');
     input.placeholder = item.type === 'video' ? 'Paste a Loom or YouTube link'
       : long ? 'Write it here…' : 'Paste a link, or type the text';
     input.value = hubValue(item);

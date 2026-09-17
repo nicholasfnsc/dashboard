@@ -1821,3 +1821,28 @@ textarea.squote::placeholder { color: #3f434c; }
 .portal-empty p { margin: 0; }
 .portal-empty .portal-empty-sub { max-width: 46ch; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
 .portal-empty button { margin-top: 8px; }
+
+/* ---------- Rep Hub: highlighted note colours ---------- */
+.hub-note.is-yellow, .hub-note-edit.is-yellow { background: #1f1a0b; border-color: #4a3b12; color: #f3d98b; }
+.hub-note.is-blue,   .hub-note-edit.is-blue   { background: #0c1826; border-color: #1f3d63; color: #a9c9ee; }
+.hub-note.is-green,  .hub-note-edit.is-green  { background: #0b1c13; border-color: #1c4a2f; color: #9fe0b8; }
+.hub-note.is-red,    .hub-note-edit.is-red    { background: #210e0f; border-color: #54201f; color: #f4b0ac; }
+.hub-note.is-purple, .hub-note-edit.is-purple { background: #19102a; border-color: #3d2963; color: #cdb6f6; }
+.hub-note.is-gray,   .hub-note-edit.is-gray   { background: #16181c; border-color: #2e323b; color: #d6d9df; }
+.hub-edit-value.hub-note-edit { border-width: 1px; border-style: solid; font-weight: 500; }
+.hub-edit-value.hub-note-edit::placeholder { color: inherit; opacity: .5; }
+
+.hub-note-colors { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; }
+.hub-note-dot {
+  width: 18px; height: 18px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+  transition: transform .12s, border-color .12s;
+}
+.hub-note-dot:hover { transform: scale(1.12); }
+.hub-note-dot.is-on { border-color: var(--ink); }
+.hub-note-dot.is-yellow { background: #d9a93a; }
+.hub-note-dot.is-blue   { background: #4f86c6; }
+.hub-note-dot.is-green  { background: #3fa46a; }
+.hub-note-dot.is-red    { background: #d2605a; }
+.hub-note-dot.is-purple { background: #9171d8; }
+.hub-note-dot.is-gray   { background: #7c8290; }
