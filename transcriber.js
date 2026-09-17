@@ -145,11 +145,17 @@ function formatSize(bytes) {
 }
 
 /* ---------- the Loom at the top ---------- */
+/* Two ways to show it: the video playing in the page, or just a button
+   that opens it — the same button the Rep Hub uses for client assets. */
+const loomStyle = () => ((CACHE.repHub && CACHE.repHub.transcriberLoomStyle) === 'link' ? 'link' : 'embed');
+
 function renderTranscriberGuide() {
   const host = $('#transcriberGuide');
   host.textContent = '';
   const url = (CACHE.repHub && CACHE.repHub.transcriberLoom) || '';
-  const embed = url ? embedFor(url) : '';
+  const style = loomStyle();
+  const embed = url && style === 'embed' ? embedFor(url) : '';
+  const asLink = !!url && (style === 'link' || !embed);
 
   if (embed) {
     const frame = document.createElement('iframe');
@@ -160,6 +166,10 @@ function renderTranscriberGuide() {
     frame.setAttribute('allow', 'fullscreen; picture-in-picture');
     frame.className = 'hub-frame tr-video';
     host.appendChild(frame);
+  } else if (asLink) {
+    const row = el('div', 'tr-guide-link');
+    row.appendChild(openButton(url));
+    host.appendChild(row);
   }
 
   if (CACHE.role === 'owner') {
@@ -169,21 +179,38 @@ function renderTranscriberGuide() {
     input.placeholder = 'Paste the Loom explaining how to use this (shown on every offer)';
     input.value = url;
     input.setAttribute('aria-label', 'Loom link for the Audio Transcriber');
-    input.addEventListener('change', async () => {
-      CACHE.repHub.transcriberLoom = input.value.trim();
-      try {
-        await saveRepHubTemplate();
-        notify(input.value.trim() ? 'Loom saved.' : 'Loom removed.');
-      } catch (err) {
-        console.error(err);
-        notify("Couldn't save the Loom — check your connection.");
-      }
-      renderTranscriberGuide();
-    });
+    input.addEventListener('change', () => saveGuide(input.value.trim(), loomStyle()));
     row.appendChild(input);
+
+    const choice = document.createElement('select');
+    choice.className = 'role-select tr-guide-style';
+    choice.setAttribute('aria-label', 'How the Loom is shown');
+    [['embed', 'Play in the page'], ['link', 'Link only']].forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      choice.appendChild(option);
+    });
+    choice.value = style;
+    choice.addEventListener('change', () => saveGuide(input.value.trim(), choice.value));
+    row.appendChild(choice);
+
     host.appendChild(row);
   }
-  host.classList.toggle('hidden', !embed && CACHE.role !== 'owner');
+  host.classList.toggle('hidden', !embed && !asLink && CACHE.role !== 'owner');
+}
+
+async function saveGuide(url, style) {
+  CACHE.repHub.transcriberLoom = url;
+  CACHE.repHub.transcriberLoomStyle = style;
+  try {
+    await saveRepHubTemplate();
+    notify(url ? (style === 'link' ? 'Saved — reps get a link to it.' : 'Saved — it plays on the tab.') : 'Loom removed.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't save the Loom — check your connection.");
+  }
+  renderTranscriberGuide();
 }
 
 /* ---------- the three states: waiting, working, done ---------- */

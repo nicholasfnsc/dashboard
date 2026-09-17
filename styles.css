@@ -1979,3 +1979,14 @@ textarea.squote::placeholder { color: #3f434c; }
 
 @media (max-width: 900px) { .tr-how { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 640px) { .tr-how { grid-template-columns: 1fr; } }
+
+/* The Loom: playing on the tab, or a button that opens it */
+.tr-guide-edit { display: flex; align-items: center; gap: 8px; }
+.tr-guide-edit input { flex: 1; }
+.tr-guide-style { flex: none; font-size: 12.5px; padding: 10px 12px; border-radius: 10px; }
+.tr-guide-link { display: flex; justify-content: center; }
+.tr-guide-link .hub-link { max-width: 320px; }
+@media (max-width: 640px) {
+  .tr-guide-edit { flex-direction: column; align-items: stretch; }
+  .tr-guide-style { width: 100%; }
+}

@@ -115,8 +115,10 @@ A tab on every sales board for handoffs. A setter drops a call recording (MP3, M
 25 MB); the browser uploads it to a private Storage bucket (`call-audio`) through a one-time
 address, the server sends it to Groq (Whisper Large v3) and returns the text in paragraphs, and
 the recording is deleted straight away whether it worked or not. The Groq key lives only in
-Vercel as `GROQ_API_KEY`. The owner can paste a Loom at the top of the tab; it shows on every
-offer. Groq's free plan allows about 8 hours of audio a day.
+Vercel as `GROQ_API_KEY`. The owner can paste a Loom at the top of the tab and choose how it
+shows — playing in the page, or just a **Watch on Loom** button like the Rep Hub's client asset
+links (`transcriberLoomStyle`). Either way it shows on every offer. Groq's free plan allows about
+8 hours of audio a day.
 
 Below the transcriber sits the **handoff form**. Everyone sees it and can copy it. Only the owner edits
 it, choosing **All offers** (saved in `rep_hub` content as `handoffForm`) or **This offer only**
