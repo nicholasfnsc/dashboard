@@ -147,10 +147,12 @@ function initPostCallForm() {
     if (pcState.outcome === 'closed') {
       const method = need('pcPaymentMethod', 'Payment Method', errors);
       const revenue = needPositive('pcRevenue', 'Revenue Generated', errors);
+      const term = need('pcTerm', 'Program Length', errors);
       const cash = parseFloat($('#pcCash').value);
 
       row.paymentMethod = method;
       row.contractValue = revenue;
+      row.termMonths = Number(term) || 0;
       if (Number.isFinite(cash) && cash > 0) {
         const type = method === 'paid_in_full' ? 'full'
           : method === 'financing' ? 'financing' : 'deposit';
@@ -265,6 +267,7 @@ function initPostCallForm() {
     $('#pcWasCall').value = row.wasCall === undefined ? '' : (row.wasCall ? 'yes' : 'no');
     $('#pcDqType').value = row.dqType || '';
     $('#pcRemainder').value = row.outcome === 'remainder' ? String(cash) : '0';
+    setSelectValue($('#pcTerm'), row.termMonths ? String(row.termMonths) : '');
 
     const banner = $('#pcEditBanner');
     banner.textContent = 'Editing the call logged for ' + (row.clientName || 'this client') +
@@ -317,6 +320,7 @@ function initPostCallForm() {
   /* Closer and Setter are filled by fillTeamSelects() in app.js — the
      Add Team roster is their single source. */
   fillSelect($('#pcPaymentMethod'), PAYMENT_METHODS, 'Select...');
+  fillSelect($('#pcTerm'), PROGRAM_TERMS, 'Select...');
   fillSelect($('#pcDqType'), DQ_TYPES, 'Select...');
   fillSelect($('#pcWasCall'), [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }], 'Select...');
 

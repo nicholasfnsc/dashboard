@@ -33,8 +33,8 @@ second "Alex" becomes `alex-2`), and every earlier address is remembered in
 `boards.directory.oldSlugs`, so links sent before a rename keep working. Addresses only
 point at an offer; calls are tied to the offer's id, so renaming never touches data.
 
-Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, and Add Team (owner
-and admins only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
+Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, Handoffs, Client Tracker,
+and Add Team (owner and admins only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
 
 ## Where things live
 
@@ -57,7 +57,8 @@ form.js           Post Call Form
 datatab.js        Data tab
 team.js           Add Team: offer name, team with roles and commission, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
-transcriber.js    Audio Transcriber tab: drop a call recording, copy the transcript, handoff form
+transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
+clients.js        Client Tracker: every client built from closed calls, soonest renewal first
 profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, commission rates
 api/enter.js      team code -> that offer's team account
@@ -125,6 +126,25 @@ admins with every offer edit it, choosing **All offers** (saved in `rep_hub` con
 `handoffForm`) or **This offer only** (saved on the offer in `directory.repHub['handoff-form']`,
 which wins over the shared form). An admin with only some offers can give their own offers a form,
 but not change the shared one.
+
+## Client Tracker
+
+A tab on every sales board. Nothing is typed into it: each client is built from the calls logged on
+the Post Call Form, so correcting a call corrects the tracker. Calls become one client when their
+email, phone or name matches, which keeps a later balance payment with the close it belongs to.
+
+For each client: **joined** (their first close), **renews** (their newest close plus the **Program
+Length** bought — 3 or 6 months, picked on the form), **paid** (every payment since that newest
+close), **due** (contract less paid), the closer, the setter and the Fathom recording. Signing again
+starts a fresh term from the new close, and the earlier one stays in their history.
+
+The list is sorted by who needs you soonest: a client with no Program Length yet comes first, then
+fewest days left. The pill is red under 14 days, amber under 30, quiet after that, and grey once the
+term has ended. Filters for Active, Renewing soon, Owing, Ended and Everyone, plus search by name,
+email, phone, closer or setter. Ended clients are never removed.
+
+Everyone on a board sees it, including reps. Nobody edits it directly — the Post Call Form is the
+only way anything changes, and **Open the call** on a row goes straight there.
 
 ## Team & Access
 

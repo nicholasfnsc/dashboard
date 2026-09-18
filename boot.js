@@ -210,6 +210,7 @@
     initTeamTab();
     initRepHub();
     initTranscriber();
+    initClientTracker();
     paintOfferTabs();
     initProfile();
 
@@ -220,6 +221,7 @@
       fillTeamSelects();
       render();
       renderDataTab();
+      renderClients();
       renderRoster();
       paintBoardName();
       paintProfile();

@@ -46,6 +46,12 @@ const PAYMENT_METHODS = [
   { value: 'deposit',      label: 'Deposit' }
 ];
 
+/* How long a client bought for. Their renewal date is the close plus this. */
+const PROGRAM_TERMS = [
+  { value: '3',  label: '3 months', months: 3 },
+  { value: '6',  label: '6 months', months: 6 }
+];
+
 const DQ_TYPES = [
   { value: 'financial', label: 'Financial Disqualification' },
   { value: 'icp',       label: 'ICP Disqualification' }

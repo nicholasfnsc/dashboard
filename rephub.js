@@ -228,6 +228,7 @@ function describeLink(url) {
   }
   if (host === 'instagram.com') return { icon: 'camera', text: 'Instagram' };
   if (host === 'loom.com') return { icon: 'play', text: 'Watch on Loom' };
+  if (host === 'fathom.video') return { icon: 'play', text: 'Watch the call' };
   if (host === 'drive.google.com') return { icon: 'folder', text: 'Google Drive' };
   if (host === 'docs.google.com') {
     if (path.indexOf('/spreadsheets') === 0) return { icon: 'sheet', text: 'Google Sheet' };

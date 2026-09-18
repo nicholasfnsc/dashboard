@@ -736,6 +736,7 @@ function showTab(name) {
   });
   if (name === 'data' && typeof renderDataTab === 'function') renderDataTab();
   if (name === 'rephub' && typeof renderRepHub === 'function') renderRepHub();
+  if (name === 'clients' && typeof renderClients === 'function') renderClients();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

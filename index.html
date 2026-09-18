@@ -465,7 +465,8 @@
     <button class="tab" role="tab" data-tab="postcall" aria-selected="false">Post Call Form</button>
     <button class="tab" role="tab" data-tab="data" aria-selected="false">Data</button>
     <button class="tab" role="tab" data-tab="rephub" aria-selected="false">Rep Hub</button>
-    <button class="tab tab-with-icon" role="tab" data-tab="transcriber" aria-selected="false"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 10v4"/><path d="M7.5 6.5v11"/><path d="M12 3v18"/><path d="M16.5 7.5v9"/><path d="M21 10.5v3"/></svg>Audio Transcriber</button>
+    <button class="tab" role="tab" data-tab="transcriber" aria-selected="false">Handoffs</button>
+    <button class="tab" role="tab" data-tab="clients" aria-selected="false">Client Tracker</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
   </nav>
 
@@ -665,6 +666,11 @@
             <label for="pcRevenue">Revenue Generated ($)</label>
             <input type="number" id="pcRevenue" min="0" step="0.01" value="0">
           </p>
+          <p class="field">
+            <label for="pcTerm">Program Length</label>
+            <span class="field-help">How long they bought. It sets their renewal date on the Client Tracker.</span>
+            <select id="pcTerm"></select>
+          </p>
         </div>
 
         <!-- Disqualified -->
@@ -766,13 +772,12 @@
     </div>
   </section>
 
-  <!-- ================= AUDIO TRANSCRIBER ================= -->
+  <!-- ================= HANDOFFS ================= -->
   <section data-panel="transcriber" class="hidden">
     <div class="transcriber">
       <div class="tr-head">
-        <p class="eyebrow">Handoffs</p>
-        <h2 class="tr-title">Audio Transcriber</h2>
-        <p class="tr-sub">Turn a call recording from Close into text you can copy into your handoff.</p>
+        <h2 class="tr-title">Handoffs</h2>
+        <p class="tr-sub">Turn a call recording from Close into text, and hand the call over on the form below.</p>
       </div>
 
       <div class="tr-guide" id="transcriberGuide"></div>
@@ -886,6 +891,31 @@
     </div>
   </section>
 
+  <!-- ================= CLIENT TRACKER ================= -->
+  <section data-panel="clients" class="hidden">
+    <div class="ct">
+      <div class="ct-head">
+        <div>
+          <h2 class="ct-title">Client Tracker</h2>
+          <p class="ct-sub">Everyone who signed, closest to renewal first. It reads the Post Call Form — change a call there and this follows.</p>
+        </div>
+      </div>
+
+      <div class="ct-summary" id="ctSummary"></div>
+
+      <div class="ct-controls">
+        <label class="ct-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="ctSearch" placeholder="Search a name, email or phone" aria-label="Search clients">
+        </label>
+        <div class="ct-filters" id="ctFilters" role="group" aria-label="Which clients to show"></div>
+      </div>
+
+      <div class="ct-list" id="ctList"></div>
+      <p class="ct-empty hidden" id="ctEmpty"></p>
+    </div>
+  </section>
+
   <section data-panel="team" class="hidden">
     <div class="panel offer-name-panel">
       <div class="panel-body offer-name-body">
@@ -965,6 +995,7 @@
 <script src="/team.js"></script>
 <script src="/rephub.js"></script>
 <script src="/transcriber.js"></script>
+<script src="/clients.js"></script>
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
 <script src="/access.js"></script>
