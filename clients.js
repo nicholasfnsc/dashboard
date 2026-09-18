@@ -145,9 +145,6 @@ function clientFrom(rows) {
     paid: paidNow,
     paidEver: paidEver,
     due: Math.max(0, contract - paidNow),
-    closer: latest.closer || '',
-    setter: latest.setter || '',
-    fathom: latest.fathomUrl || '',
     funnel: latest.funnel,
     signings: closes.length,
     ended: daysLeft != null && daysLeft < 0
@@ -175,7 +172,7 @@ function clientMatches(c, filter) {
 
 function clientSearched(c, query) {
   if (!query) return true;
-  const hay = [c.name, c.email, c.phone, c.closer, c.setter].join(' ').toLowerCase();
+  const hay = [c.name, c.email, c.phone].join(' ').toLowerCase();
   return hay.indexOf(query.toLowerCase().trim()) !== -1;
 }
 
@@ -250,19 +247,6 @@ function clientRow(c) {
   cash.appendChild(moneyLine('Due', c.due, c.due > 0 ? 'is-owing' : ''));
   cash.appendChild(moneyLine('Contract', c.contract, 'is-quiet'));
   row.appendChild(cash);
-
-  const team = el('div', 'ct-team');
-  team.appendChild(el('p', 'ct-team-line', 'Closer · ' + (c.closer || '—')));
-  team.appendChild(el('p', 'ct-team-line', 'Setter · ' + (c.setter || '—')));
-  row.appendChild(team);
-
-  const act = el('div', 'ct-actions');
-  if (c.fathom) act.appendChild(openButton(c.fathom));
-  const open = el('button', 'link-btn', 'Open the call');
-  open.type = 'button';
-  open.addEventListener('click', () => PostCallForm.startEdit(c.id));
-  act.appendChild(open);
-  row.appendChild(act);
 
   return row;
 }

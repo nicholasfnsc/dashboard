@@ -2032,8 +2032,8 @@ textarea.squote::placeholder { color: #3f434c; }
 
 .ct-list { display: flex; flex-direction: column; gap: 8px; }
 .ct-row {
-  display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(120px, .8fr) auto;
-  align-items: center; gap: 14px;
+  display: grid; grid-template-columns: minmax(200px, 1.6fr) minmax(170px, 1fr) 190px;
+  align-items: center; gap: 18px;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
   box-shadow: var(--shadow); padding: 14px 16px;
   transition: border-color .14s;
@@ -2058,23 +2058,18 @@ textarea.squote::placeholder { color: #3f434c; }
 .ct-pill.is-unset  { background: rgba(59, 130, 246, .12); border-color: var(--accent-deep); color: var(--accent-ink); font-weight: 500; }
 .ct-dates { margin: 5px 0 0; font-size: 11.5px; color: var(--muted); }
 
-.ct-cash { display: flex; flex-direction: column; gap: 2px; max-width: 165px; }
+.ct-cash { display: flex; flex-direction: column; gap: 2px; }
 .ct-money { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .ct-money-label { font-size: 11.5px; color: var(--muted); }
 .ct-money-value { font-size: 13px; font-variant-numeric: tabular-nums; }
 .ct-money.is-owing .ct-money-value { color: #fcd34d; font-weight: 600; }
 .ct-money.is-quiet .ct-money-value { color: var(--muted); }
 
-.ct-team-line { margin: 0 0 2px; font-size: 12px; color: var(--muted); }
-.ct-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.ct-actions .hub-link { padding: 6px 11px; font-size: 12px; }
 .ct-empty { margin: 0; padding: 26px 0; text-align: center; color: var(--muted); font-size: 13px; }
 
 @media (max-width: 1100px) {
   .ct-summary { grid-template-columns: repeat(2, 1fr); }
-  .ct-row { grid-template-columns: minmax(160px, 1.4fr) minmax(140px, 1fr) minmax(140px, 1fr); }
-  .ct-team, .ct-actions { grid-column: span 1; align-items: flex-start; }
-  .ct-actions { flex-direction: row; }
+  .ct-row { grid-template-columns: minmax(160px, 1.4fr) minmax(140px, 1fr) 170px; gap: 12px; }
 }
 @media (max-width: 640px) {
   .ct-summary { grid-template-columns: 1fr 1fr; }

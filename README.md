@@ -135,16 +135,17 @@ email, phone or name matches, which keeps a later balance payment with the close
 
 For each client: **joined** (their first close), **renews** (their newest close plus the **Program
 Length** bought — 3 or 6 months, picked on the form), **paid** (every payment since that newest
-close), **due** (contract less paid), the closer, the setter and the Fathom recording. Signing again
-starts a fresh term from the new close, and the earlier one stays in their history.
+close) and **due** (contract less paid). Nothing else — the closer, the setter and the recording
+already live on the Data tab. Signing again starts a fresh term from the new close, and the earlier
+one stays in their history.
 
 The list is sorted by who needs you soonest: a client with no Program Length yet comes first, then
 fewest days left. The pill is red under 14 days, amber under 30, quiet after that, and grey once the
 term has ended. Filters for Active, Renewing soon, Owing, Ended and Everyone, plus search by name,
-email, phone, closer or setter. Ended clients are never removed.
+email or phone. Ended clients are never removed.
 
 Everyone on a board sees it, including reps. Nobody edits it directly — the Post Call Form is the
-only way anything changes, and **Open the call** on a row goes straight there.
+only way anything changes.
 
 ## Team & Access
 
