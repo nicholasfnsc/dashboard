@@ -627,10 +627,12 @@
           <p class="field">
             <label for="pcCloser">Closer</label>
             <select id="pcCloser"></select>
+            <select id="pcCloserRate" class="field-rate hidden" aria-label="What the closer did on this call"></select>
           </p>
           <p class="field">
             <label for="pcSetter">Setter</label>
             <select id="pcSetter"></select>
+            <select id="pcSetterRate" class="field-rate hidden" aria-label="What the setter did on this call"></select>
           </p>
 
           <p class="field">
@@ -670,20 +672,6 @@
             <label for="pcTerm">Program Length</label>
             <span class="field-help">How long they bought. It sets their renewal date on the Client Tracker.</span>
             <select id="pcTerm"></select>
-          </p>
-        </div>
-
-        <!-- Commission: on any row that brings cash in -->
-        <div class="field-grid hidden" id="grpCommission">
-          <p class="field">
-            <label for="pcCloserRate">Closer Commission</label>
-            <span class="field-help">10% is closing the call. Pick higher only if the closer triaged or booked it too.</span>
-            <select id="pcCloserRate"></select>
-          </p>
-          <p class="field">
-            <label for="pcSetterRate">Setter Commission</label>
-            <span class="field-help">5% is setting the call. Pick 3% if the lead was already booked and they only triaged it.</span>
-            <select id="pcSetterRate"></select>
           </p>
         </div>
 

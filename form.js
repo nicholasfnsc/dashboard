@@ -33,8 +33,7 @@ function initPostCallForm() {
     closed:    $('#grpClosed'),
     dq:        $('#grpDq'),
     remainder: $('#grpRemainder'),
-    notes:     $('#grpNotes'),
-    commission: $('#grpCommission')
+    notes:     $('#grpNotes')
   };
 
   /* editingId is set while correcting a row from the Data tab; null means
@@ -71,7 +70,7 @@ function initPostCallForm() {
     paintPills($('#pcOutcome'), key);
 
     groups.closed.classList.toggle('hidden', key !== 'closed');
-    groups.commission.classList.toggle('hidden', key !== 'closed' && key !== 'remainder');
+    paintRates();
     groups.dq.classList.toggle('hidden', key !== 'disqualified');
     groups.remainder.classList.toggle('hidden', key !== 'remainder');
 
@@ -85,6 +84,15 @@ function initPostCallForm() {
     if (prompt) $('#pcNotesLabel').textContent = prompt;
 
     clearErrors();
+  }
+
+  /* The rate only means something once there is someone to pay and money
+     to pay it on, so it sits under the name rather than beside it. */
+  function paintRates() {
+    const earns = pcState.outcome === 'closed' || pcState.outcome === 'remainder';
+    [['#pcCloser', '#pcCloserRate'], ['#pcSetter', '#pcSetterRate']].forEach(([who, rate]) => {
+      $(rate).classList.toggle('hidden', !earns || !$(who).value);
+    });
   }
 
   /* ---------- validation ---------- */
@@ -196,8 +204,8 @@ function initPostCallForm() {
     /* Commission belongs to the call, not to the person: the same setter
        earns 5% for setting and 3% for triaging. */
     if (pcState.outcome === 'closed' || pcState.outcome === 'remainder') {
-      row.closerRate = Number($('#pcCloserRate').value) || CLOSER_RATE;
-      row.setterRate = Number($('#pcSetterRate').value) || SETTER_RATE;
+      if (closer) row.closerRate = Number($('#pcCloserRate').value) || CLOSER_RATE;
+      if (setter) row.setterRate = Number($('#pcSetterRate').value) || SETTER_RATE;
     }
 
     if (errors.length) { fail(errors); return; }
@@ -298,6 +306,7 @@ function initPostCallForm() {
     setSelectValue($('#pcTerm'), row.termMonths ? String(row.termMonths) : '');
     setRate($('#pcCloserRate'), Number.isFinite(row.closerRate) ? row.closerRate : CLOSER_RATE);
     setRate($('#pcSetterRate'), Number.isFinite(row.setterRate) ? row.setterRate : SETTER_RATE);
+    paintRates();
 
     const banner = $('#pcEditBanner');
     banner.textContent = 'Editing the call logged for ' + (row.clientName || 'this client') +
@@ -332,6 +341,10 @@ function initPostCallForm() {
     $('#pcPaymentMethod').value = '';
     $('#pcWasCall').value = '';
     $('#pcDqType').value = '';
+    $('#pcTerm').value = '';
+    setRate($('#pcCloserRate'), CLOSER_RATE);       // the next call starts on the usual rate
+    setRate($('#pcSetterRate'), SETTER_RATE);
+    paintRates();
     clearErrors();
   }
 
@@ -353,6 +366,8 @@ function initPostCallForm() {
   fillSelect($('#pcTerm'), PROGRAM_TERMS, 'Select...');
   fillRates($('#pcCloserRate'), CLOSER_RATES, CLOSER_RATE);
   fillRates($('#pcSetterRate'), SETTER_RATES, SETTER_RATE);
+  $('#pcCloser').addEventListener('change', paintRates);
+  $('#pcSetter').addEventListener('change', paintRates);
   fillSelect($('#pcDqType'), DQ_TYPES, 'Select...');
   fillSelect($('#pcWasCall'), [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }], 'Select...');
 

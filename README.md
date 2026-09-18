@@ -253,8 +253,8 @@ separating the two.
 ## Commission
 
 Commission belongs to the call, not to the person, because the same person earns a different
-rate depending on the work they did. Every call that brings cash in carries two rates, chosen
-on the Post Call Form:
+rate depending on the work they did. Pick the Closer or the Setter on the Post Call Form and a
+second line appears under that name asking what they did on this call:
 
 | Setter | | Closer | |
 |---|---|---|---|

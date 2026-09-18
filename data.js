@@ -37,14 +37,14 @@ const CLOSER_RATE = 0.10;
 const SETTER_RATE = 0.05;
 
 const SETTER_RATES = [
-  { value: String(0.05), label: '5% — set the call', rate: 0.05 },
-  { value: String(0.03), label: '3% — triaged the lead', rate: 0.03 }
+  { value: String(0.05), label: 'Set the call (5%)', rate: 0.05 },
+  { value: String(0.03), label: 'Triaged the lead (3%)', rate: 0.03 }
 ];
 
 const CLOSER_RATES = [
-  { value: String(0.10), label: '10% — closed the call', rate: 0.10 },
-  { value: String(0.13), label: '13% — triaged and closed', rate: 0.13 },
-  { value: String(0.15), label: '15% — booked and closed', rate: 0.15 }
+  { value: String(0.10), label: 'Closed the call (10%)', rate: 0.10 },
+  { value: String(0.13), label: 'Triaged and closed (13%)', rate: 0.13 },
+  { value: String(0.15), label: 'Booked and closed (15%)', rate: 0.15 }
 ];
 
 const FUNNELS = [

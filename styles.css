@@ -2076,3 +2076,11 @@ textarea.squote::placeholder { color: #3f434c; }
   .ct-row { grid-template-columns: 1fr; gap: 10px; }
   .ct-actions { justify-content: flex-start; }
 }
+
+/* A rate picker lives under the person it pays, quieter than the name above it */
+.field-rate {
+  margin-top: 7px; width: 100%; padding: 8px 12px; font-size: 12.5px;
+  background: var(--surface-2); color: var(--ink-2);
+  border: 1px solid var(--line-soft); border-radius: 9px;
+}
+.field-rate:focus { outline: none; border-color: var(--accent-bright); color: var(--ink); }
