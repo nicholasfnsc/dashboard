@@ -6,6 +6,25 @@
    fields appear depends entirely on the outcome picked.
    ============================================================ */
 
+/* A rate select has no empty option: the usual rate is the starting point. */
+function fillRates(sel, list, fallback) {
+  sel.textContent = '';
+  list.forEach((r) => {
+    const o = el('option', null, r.label);
+    o.value = r.value;
+    o.defaultSelected = r.rate === fallback;      // what a form reset returns to
+    sel.appendChild(o);
+  });
+  setRate(sel, fallback);
+}
+
+/* Rates are matched as numbers: 0.1 and "0.10" are the same rate. */
+function setRate(sel, rate) {
+  const want = Number(rate);
+  const hit = [...sel.options].find((o) => Number(o.value) === want);
+  sel.value = (hit || sel.options[0]).value;
+}
+
 function initPostCallForm() {
   const form = $('#postCallForm');
   if (!form) return;
@@ -14,7 +33,8 @@ function initPostCallForm() {
     closed:    $('#grpClosed'),
     dq:        $('#grpDq'),
     remainder: $('#grpRemainder'),
-    notes:     $('#grpNotes')
+    notes:     $('#grpNotes'),
+    commission: $('#grpCommission')
   };
 
   /* editingId is set while correcting a row from the Data tab; null means
@@ -51,6 +71,7 @@ function initPostCallForm() {
     paintPills($('#pcOutcome'), key);
 
     groups.closed.classList.toggle('hidden', key !== 'closed');
+    groups.commission.classList.toggle('hidden', key !== 'closed' && key !== 'remainder');
     groups.dq.classList.toggle('hidden', key !== 'disqualified');
     groups.remainder.classList.toggle('hidden', key !== 'remainder');
 
@@ -172,6 +193,13 @@ function initPostCallForm() {
       if (amount > 0) row.payments.push({ date, amount, type: 'remainder' });
     }
 
+    /* Commission belongs to the call, not to the person: the same setter
+       earns 5% for setting and 3% for triaging. */
+    if (pcState.outcome === 'closed' || pcState.outcome === 'remainder') {
+      row.closerRate = Number($('#pcCloserRate').value) || CLOSER_RATE;
+      row.setterRate = Number($('#pcSetterRate').value) || SETTER_RATE;
+    }
+
     if (errors.length) { fail(errors); return; }
 
     const rows = loggedCalls();
@@ -268,6 +296,8 @@ function initPostCallForm() {
     $('#pcDqType').value = row.dqType || '';
     $('#pcRemainder').value = row.outcome === 'remainder' ? String(cash) : '0';
     setSelectValue($('#pcTerm'), row.termMonths ? String(row.termMonths) : '');
+    setRate($('#pcCloserRate'), Number.isFinite(row.closerRate) ? row.closerRate : CLOSER_RATE);
+    setRate($('#pcSetterRate'), Number.isFinite(row.setterRate) ? row.setterRate : SETTER_RATE);
 
     const banner = $('#pcEditBanner');
     banner.textContent = 'Editing the call logged for ' + (row.clientName || 'this client') +
@@ -321,6 +351,8 @@ function initPostCallForm() {
      Add Team roster is their single source. */
   fillSelect($('#pcPaymentMethod'), PAYMENT_METHODS, 'Select...');
   fillSelect($('#pcTerm'), PROGRAM_TERMS, 'Select...');
+  fillRates($('#pcCloserRate'), CLOSER_RATES, CLOSER_RATE);
+  fillRates($('#pcSetterRate'), SETTER_RATES, SETTER_RATE);
   fillSelect($('#pcDqType'), DQ_TYPES, 'Select...');
   fillSelect($('#pcWasCall'), [{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }], 'Select...');
 

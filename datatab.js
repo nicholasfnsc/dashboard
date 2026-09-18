@@ -61,7 +61,7 @@ function filteredCalls(all) {
    Exactly the rows on screen, one line per call, ready for a spreadsheet
    or for reconciling commission at the end of the month. Cash is what
    landed inside the chosen period — the same rule the dashboard uses —
-   and commission uses each person's current rate from Add Team. */
+   and commission uses the rates chosen on the call itself. */
 function csvCell(value) {
   let text = value == null ? '' : String(value);
   /* A spreadsheet must never run a cell as a formula. Phone numbers and
@@ -70,9 +70,11 @@ function csvCell(value) {
   return /[",\n\r]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
 }
 
-function rateOf(name, role) {
-  const hit = CACHE.team.find((p) => p.name === name && p.role === role);
-  return hit ? hit.rate : null;
+/* The rate a call was logged at. Calls logged before commission was
+   chosen per call carry none, and are left blank rather than guessed. */
+function callRate(row, role) {
+  const rate = role === 'closer' ? row.closerRate : row.setterRate;
+  return Number.isFinite(rate) ? rate : null;
 }
 
 function exportCsv() {
@@ -90,8 +92,8 @@ function exportCsv() {
   const lines = rows.map((r) => {
     const paid = r.payments.filter((p) => DATA_FILTER.period === 'all' || within(p.date, range));
     const cash = paid.reduce((s, p) => s + p.amount, 0);
-    const closerRate = r.closer ? rateOf(r.closer, 'closer') : null;
-    const setterRate = r.setter ? rateOf(r.setter, 'setter') : null;
+    const closerRate = r.closer ? callRate(r, 'closer') : null;
+    const setterRate = r.setter ? callRate(r, 'setter') : null;
     const def = outcomeDef(r.outcome);
     const closed = r.outcome === 'closed';
     const dq = r.outcome === 'disqualified';
@@ -128,6 +130,27 @@ function exportCsv() {
   notify('Exported ' + rows.length + (rows.length === 1 ? ' call.' : ' calls.'));
 }
 
+/* Shown as the percentage, with what it pays on this call behind it. */
+function rateCell(row, role) {
+  const td = document.createElement('td');
+  td.className = 'num';
+  const who = role === 'closer' ? row.closer : row.setter;
+  const earns = row.outcome === 'closed' || row.outcome === 'remainder';
+  if (!who || !earns) { td.textContent = '—'; return td; }
+
+  const rate = callRate(row, role);
+  if (rate == null) {
+    td.textContent = 'Not set';
+    td.className = 'num is-unsetrate';
+    td.title = 'Logged before commission was chosen per call. Open the call to set it.';
+    return td;
+  }
+  const cash = row.payments.reduce((s, p) => s + p.amount, 0);
+  td.textContent = Math.round(rate * 10000) / 100 + '%';
+  td.title = money(cash * rate) + ' on ' + money(cash) + ' collected';
+  return td;
+}
+
 function renderDataTab() {
   const tbody = $('#dRows');
   if (!tbody) return;
@@ -150,7 +173,9 @@ function renderDataTab() {
     tr.appendChild(cell(labelFor(FUNNELS, r.funnel)));
     tr.appendChild(cell(r.callName));
     tr.appendChild(cell(r.closer));
+    tr.appendChild(rateCell(r, 'closer'));
     tr.appendChild(cell(r.setter));
+    tr.appendChild(rateCell(r, 'setter'));
     tr.appendChild(cell(r.clientName, 'strong'));
     tr.appendChild(cell(r.clientEmail));
     tr.appendChild(cell(r.clientPhone, 'mono'));

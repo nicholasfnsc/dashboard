@@ -29,11 +29,23 @@
    landed rather than the month the deal closed.
    ============================================================ */
 
-/* House rates: closers 10% of cash collected, setters 5%.
-   Each roster entry carries its own rate, so someone can be put on a
-   different deal without touching these. */
+/* What each side earns is chosen on the call itself, because it depends
+   on the work done, not on the person. A setter who called a lead that
+   was already booked triaged it, not set it. A closer who booked the
+   lead as well did both jobs. The usual case is the default. */
 const CLOSER_RATE = 0.10;
 const SETTER_RATE = 0.05;
+
+const SETTER_RATES = [
+  { value: String(0.05), label: '5% — set the call', rate: 0.05 },
+  { value: String(0.03), label: '3% — triaged the lead', rate: 0.03 }
+];
+
+const CLOSER_RATES = [
+  { value: String(0.10), label: '10% — closed the call', rate: 0.10 },
+  { value: String(0.13), label: '13% — triaged and closed', rate: 0.13 },
+  { value: String(0.15), label: '15% — booked and closed', rate: 0.15 }
+];
 
 const FUNNELS = [
   { value: 'vsl',     label: 'VSL' },

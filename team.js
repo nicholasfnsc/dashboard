@@ -4,9 +4,10 @@
    This offer's name, who is on its team, and how new people get in.
    Owner and admins only; reps never see this tab.
 
-   Removing someone switches them off rather than deleting them, so
-   every call they logged and every dollar of commission still adds
-   up. Making a new code signs the whole team out; they sign back in
+   Commission is not set here: it belongs to the call, since the same
+   person earns 5% for setting and 3% for triaging. Removing someone
+   switches them off rather than deleting them, so every call they
+   logged and every dollar of commission still adds up. Making a new code signs the whole team out; they sign back in
    with the new one. Neither touches a single call.
    ============================================================ */
 
@@ -26,7 +27,6 @@ const ROLE_CHOICES = [
 
 const rolesFor = (choice) => (choice === 'full' ? ['closer', 'setter'] : [choice]);
 const defaultRate = (role) => (role === 'closer' ? CLOSER_RATE : SETTER_RATE);
-const asPercent = (rate) => String(Math.round(Number(rate) * 10000) / 100);
 
 /* Everyone on the roster, one entry per person, in the order they were added. */
 function rosterPeople() {
@@ -44,48 +44,6 @@ function rosterPeople() {
 
 function roleLabel(choice) {
   return ROLE_CHOICES.find((c) => c.value === choice).label;
-}
-
-function rateField(person, role) {
-  const row = person.rows[role];
-  const wrap = el('label', 'rate-field');
-
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.min = '0';
-  input.max = '100';
-  input.step = '0.5';
-  input.inputMode = 'decimal';
-  input.value = asPercent(row.rate);
-  input.setAttribute('aria-label', (role === 'closer' ? 'Closing' : 'Setting') + ' commission for ' + person.name);
-  wrap.appendChild(input);
-  wrap.appendChild(el('span', 'rate-unit', '%'));
-  wrap.appendChild(el('span', 'rate-kind', role === 'closer' ? 'closing' : 'setting'));
-
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
-  input.addEventListener('change', async () => {
-    const percent = Number(input.value);
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100 || input.value === '') {
-      input.value = asPercent(row.rate);
-      notify('Use a number between 0 and 100.');
-      return;
-    }
-    const rate = Math.round(percent * 100) / 10000;
-    if (rate === Number(row.rate)) return;
-
-    pushUndo({ kind: 'restoreTeam', label: 'Changed ' + person.name + "'s commission", team: savedRoster().slice() });
-    try {
-      await setMemberRate(row, rate);
-    } catch (err) {
-      console.error(err);
-      input.value = asPercent(row.rate);
-      notify("Couldn't save that — check your connection and try again.");
-      return;
-    }
-    afterRosterChange();
-    notify(person.name + ' now earns ' + asPercent(rate) + '% ' + (role === 'closer' ? 'on deals they close.' : 'on calls they set.'));
-  });
-  return wrap;
 }
 
 async function changeRole(person, choice) {
@@ -142,14 +100,6 @@ function renderRoster() {
     role.disabled = !manager;
     role.addEventListener('change', () => changeRole(person, role.value));
     line.appendChild(role);
-
-    const rates = el('div', 'roster-rates');
-    rolesFor(person.choice).forEach((r) => {
-      const field = rateField(person, r);
-      field.querySelector('input').disabled = !manager;
-      rates.appendChild(field);
-    });
-    line.appendChild(rates);
 
     const remove = el('button', 'link-btn danger', 'Remove');
     remove.type = 'button';

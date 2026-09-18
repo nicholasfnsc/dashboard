@@ -55,12 +55,12 @@ clock-cities.js   cities you can search for, mapped to their time zone
 app.js            dashboard metrics, charts, filters, undo
 form.js           Post Call Form
 datatab.js        Data tab
-team.js           Add Team: offer name, team with roles and commission, login page, code
+team.js           Add Team: offer name, team and roles, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
 profile.js        the name, role and photo at the top right, and the rep name picker
-data.js           outcomes, funnels, commission rates
+data.js           outcomes, funnels, program lengths, commission rates
 api/enter.js      team code -> that offer's team account
 api/boards.js     create an offer, make a new code, archive, offer addresses
 api/people.js     invite admins, change their offers, remove them
@@ -250,6 +250,27 @@ Two rows never touch a call count:
 Their money still lands in the cash and commission figures. That's the point of
 separating the two.
 
+## Commission
+
+Commission belongs to the call, not to the person, because the same person earns a different
+rate depending on the work they did. Every call that brings cash in carries two rates, chosen
+on the Post Call Form:
+
+| Setter | | Closer | |
+|---|---|---|---|
+| **5%** | set the call (default) | **10%** | closed the call (default) |
+| **3%** | triaged a lead that was already booked | **13%** | triaged and closed |
+| | | **15%** | booked and closed |
+
+The defaults are what happens most of the time, so a normal close needs no thought. A closer
+who is unsure whether the setter booked or triaged checks Discord; a setter can open the call on
+the Data tab and correct their own rate, since their commission depends on it.
+
+Add Team no longer holds rates: it is only who is on the team and what they do. Calls logged
+before this show **Not set** on the Data tab and pay nothing until someone opens them and
+chooses — Commission Tracking says how many are waiting. A person's percentage on the dashboard
+is whatever their own priced calls blended out to, so mixed rates read honestly.
+
 ## How each KPI is calculated
 
 Within the selected date range, `scheduled` = calendar rows whose `callDate` falls in
@@ -311,8 +332,8 @@ Lists every row logged through the form, newest first, filterable by period and 
 A call belongs to a period if it happened in it or money from it landed in it.
 
 **Export CSV** downloads exactly the rows on screen: every form field, the payments, and
-each row's closer and setter commission at their current rates, using cash that landed
-inside the chosen period — the same figures as Commission Tracking. Cells that a
+each row's closer and setter commission at the rates chosen on that call, using cash that
+landed inside the chosen period — the same figures as Commission Tracking. Cells that a
 spreadsheet would run as a formula are made plain text. The
 **Details** and **Cash Type** columns are derived, not stored:
 

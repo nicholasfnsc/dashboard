@@ -673,6 +673,20 @@
           </p>
         </div>
 
+        <!-- Commission: on any row that brings cash in -->
+        <div class="field-grid hidden" id="grpCommission">
+          <p class="field">
+            <label for="pcCloserRate">Closer Commission</label>
+            <span class="field-help">10% is closing the call. Pick higher only if the closer triaged or booked it too.</span>
+            <select id="pcCloserRate"></select>
+          </p>
+          <p class="field">
+            <label for="pcSetterRate">Setter Commission</label>
+            <span class="field-help">5% is setting the call. Pick 3% if the lead was already booked and they only triaged it.</span>
+            <select id="pcSetterRate"></select>
+          </p>
+        </div>
+
         <!-- Disqualified -->
         <div class="field-grid hidden" id="grpDq">
           <p class="field">
@@ -749,7 +763,9 @@
               <th scope="col">Funnel</th>
               <th scope="col">Call</th>
               <th scope="col">Closer</th>
+              <th scope="col" class="num">Closer %</th>
               <th scope="col">Setter</th>
+              <th scope="col" class="num">Setter %</th>
               <th scope="col">Client</th>
               <th scope="col">Email</th>
               <th scope="col">Phone</th>
@@ -929,7 +945,7 @@
       <div class="panel">
         <div class="panel-head">
           <h3>Team</h3>
-          <p>Who shows up in the Post Call Form, and the commission each person earns on cash collected.</p>
+          <p>Who shows up in the Post Call Form. Commission is chosen on each call, because the same person earns a different rate for setting, triaging or running the whole cycle.</p>
         </div>
         <div class="panel-body team-body">
 

@@ -149,6 +149,12 @@ function computeMetrics(rows, range) {
   const byDay = new Map();
   const cashByCloser = new Map();
   const cashBySetter = new Map();
+  const payByCloser = new Map();
+  const paySetter = new Map();
+  const ratedCloser = new Map();
+  const ratedSetter = new Map();
+  let callsWithoutRate = 0;
+  const seenWithoutRate = new Set();
 
   rows.forEach((c) => {
     c.payments.forEach((p) => {
@@ -160,6 +166,22 @@ function computeMetrics(rows, range) {
       byDay.set(p.date, (byDay.get(p.date) || 0) + p.amount);
       cashByCloser.set(c.closer, (cashByCloser.get(c.closer) || 0) + p.amount);
       cashBySetter.set(c.setter, (cashBySetter.get(c.setter) || 0) + p.amount);
+
+      /* Each payment pays at the rate its own call was logged at. */
+      const closerRate = Number.isFinite(c.closerRate) ? c.closerRate : null;
+      const setterRate = Number.isFinite(c.setterRate) ? c.setterRate : null;
+      if (closerRate == null && setterRate == null && !seenWithoutRate.has(c.id)) {
+        seenWithoutRate.add(c.id);
+        callsWithoutRate += 1;
+      }
+      if (closerRate != null) {
+        payByCloser.set(c.closer, (payByCloser.get(c.closer) || 0) + p.amount * closerRate);
+        ratedCloser.set(c.closer, (ratedCloser.get(c.closer) || 0) + p.amount);
+      }
+      if (setterRate != null) {
+        paySetter.set(c.setter, (paySetter.get(c.setter) || 0) + p.amount * setterRate);
+        ratedSetter.set(c.setter, (ratedSetter.get(c.setter) || 0) + p.amount);
+      }
     });
   });
 
@@ -173,7 +195,8 @@ function computeMetrics(rows, range) {
     deals: counts.closed,
     totalRevenue: closedDeals.reduce((s, c) => s + c.contractValue, 0),
     totalCash, newCash, remainderCash, depositCash,
-    byDay, cashByCloser, cashBySetter,
+    byDay, cashByCloser, cashBySetter, payByCloser, paySetter,
+    ratedCloser, ratedSetter, callsWithoutRate,
     closedDeals
   };
 }
@@ -636,13 +659,16 @@ function renderPeopleDonut(targetId, map, label) {
 }
 
 function renderCommission(m) {
-  const build = (targetId, role, cashMap) => {
+  const build = (targetId, role, payMap, ratedMap) => {
     const body = $('#' + targetId);
     body.textContent = '';
     const people = rosterBy(role);
     const rows = people.map((p) => {
-      const cash = cashMap.get(p.name) || 0;
-      return { name: p.name, cash, rate: p.rate, payout: cash * p.rate };
+      /* Only cash on calls that carry a rate can say anything about the
+         percentage, so an unpriced call never drags the number down. */
+      const cash = ratedMap.get(p.name) || 0;
+      const payout = payMap.get(p.name) || 0;
+      return { name: p.name, cash, rate: cash > 0 ? payout / cash : 0, payout };
     }).sort((a, b) => b.payout - a.payout);
 
     const max = Math.max.apply(null, rows.map((r) => r.payout).concat([1]));
@@ -665,11 +691,16 @@ function renderCommission(m) {
     });
 
     if (!rows.length) list.appendChild(el('div', 'axis-note', 'No team members in this role yet'));
+    if (m.callsWithoutRate) {
+      list.appendChild(el('div', 'axis-note', m.callsWithoutRate === 1
+        ? '1 call has no commission on it yet — open it on the Data tab to set one'
+        : m.callsWithoutRate + ' calls have no commission on them yet — open them on the Data tab to set one'));
+    }
     body.appendChild(list);
   };
 
-  build('closersBody', 'closer', m.cashByCloser);
-  build('settersBody', 'setter', m.cashBySetter);
+  build('closersBody', 'closer', m.payByCloser, m.ratedCloser);
+  build('settersBody', 'setter', m.paySetter, m.ratedSetter);
 }
 
 /* ---------- filters ---------- */
