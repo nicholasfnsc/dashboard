@@ -100,6 +100,9 @@ function freshDay(template, previous) {
       .forEach((s) => content.signals.push({ id: sid(), text: s.text, why: s.why || '', done: false, since: s.since || previous.day }));
     (prev.subs || []).filter((x) => !x.done && x.text && x.text.trim())
       .forEach((x) => content.subs.push({ id: sid(), text: x.text, done: false, since: x.since || previous.day }));
+    /* The brain dump holds reminders as often as it holds notes, so it
+       travels too. Deleting a line is what ends it. */
+    if (typeof prev.dump === 'string' && prev.dump.trim()) content.dump = prev.dump;
   }
   if (!content.signals.length) content.signals.push({ id: sid(), text: '', why: '', done: false });
   return content;
@@ -193,7 +196,7 @@ function autoGrow(area) {
 }
 
 function refitSignalBoxes() {
-  document.querySelectorAll('#signalShell textarea').forEach(fitArea);
+  document.querySelectorAll('#signalShell textarea:not(.sdump)').forEach(fitArea);
 }
 
 function textBox(value, placeholder, onChange, opts) {
@@ -207,6 +210,9 @@ function textBox(value, placeholder, onChange, opts) {
   if (!(opts && opts.multiline)) {
     area.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && opts && opts.onEnter) { e.preventDefault(); opts.onEnter(); } });
   }
+  /* A box that keeps its own height scrolls itself, so what was written
+     first stays one scroll away instead of being pushed off the top. */
+  if (opts && opts.ownScroll) return area;
   return autoGrow(area);
 }
 
@@ -715,13 +721,12 @@ function renderSignalAside() {
   dumpHead.appendChild(el('h2', 'scard-title', 'Daily brain dump'));
   dumpHead.appendChild(el('span', 'scard-sub', asDate(SV.day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })));
   dump.appendChild(dumpHead);
-  const area = textBox(c.dump, 'Anything — reminders, notes, things to keep in mind…', (v) => { c.dump = v; }, { label: 'Daily brain dump', multiline: true, cls: 'sdump' });
+  const area = textBox(c.dump, 'Anything — reminders, notes, things to keep in mind…', (v) => { c.dump = v; }, { label: 'Daily brain dump', multiline: true, cls: 'sdump', ownScroll: true });
   dump.appendChild(area);
-  dump.appendChild(el('p', 'sdump-note', 'Each day starts blank. Open any past day on the calendar to read it again.'));
+  dump.appendChild(el('p', 'sdump-note', 'Whatever you leave here comes with you tomorrow. Delete a line to stop it. Drag the corner for a taller box.'));
   host.appendChild(dump);
 
   paintSignalCalls();
-  requestAnimationFrame(() => fitArea(area));
 }
 
 /* The count, and "now" / "in 12 min" beside each call. Runs every 30 seconds. */
