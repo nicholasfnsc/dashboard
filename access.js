@@ -12,6 +12,55 @@
    ============================================================ */
 
 const ACCESS_PATH = '/team-access';
+
+/* What each admin could reach, so a tick or a removal can be put back.
+   An invitation is an email already sent and cannot be unsent — undoing
+   one takes their access away instead. */
+const ACCESS_HISTORY = makeHistory(
+  () => accessAdmins.map((a) => ({
+    id: a.id, name: a.name, email: a.email, title: a.title,
+    sections: (a.sections || []).slice(), allOffers: !!a.allOffers, boardIds: (a.boardIds || []).slice()
+  })),
+  (was) => { writeAccessBack(was).catch((err) => console.error(err)); }
+);
+
+async function writeAccessBack(was) {
+  try {
+    for (const person of was) {
+      const now = accessAdmins.find((a) => a.id === person.id);
+      const same = now &&
+        JSON.stringify((now.sections || []).slice().sort()) === JSON.stringify(person.sections.slice().sort()) &&
+        !!now.allOffers === person.allOffers &&
+        JSON.stringify((now.boardIds || []).slice().sort()) === JSON.stringify(person.boardIds.slice().sort());
+      if (same) continue;
+      await setAdminAccess(person.id, {
+        sections: person.sections, allOffers: person.allOffers, boardIds: person.boardIds
+      });
+      if (now) Object.assign(now, person); else accessAdmins.push(person);
+    }
+    /* Anyone the step did not mention was invited after it: take their
+       access away, since the invitation itself cannot be recalled. */
+    for (const now of accessAdmins) {
+      if (was.some((p) => p.id === now.id)) continue;
+      await setAdminAccess(now.id, { sections: [], allOffers: false, boardIds: [] });
+      now.sections = [];
+      now.allOffers = false;
+      now.boardIds = [];
+    }
+    notify('Undone.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't undo that — check your connection.");
+  }
+  renderAccessAdmins();
+}
+
+registerUndo({
+  label: 'team and access',
+  when: () => shellShown('accessShell'),
+  undo: () => ACCESS_HISTORY.undo(),
+  redo: () => ACCESS_HISTORY.redo()
+});
 let accessAdmins = [];
 
 /* One access picker: section boxes, then offers. Reads and writes a
@@ -139,6 +188,7 @@ function renderAccessAdmins() {
         return;
       }
       accessAdmins = accessAdmins.filter((x) => x.id !== a.id);
+      ACCESS_HISTORY.remember();
       renderAccessAdmins();
       notify('Removed ' + (a.name || a.email) + '.');
     });
@@ -157,6 +207,7 @@ function renderAccessAdmins() {
           return;
         }
         Object.assign(a, value);
+        ACCESS_HISTORY.remember();
         summary.textContent = accessSummary(a);
         notify('Access updated for ' + (a.name || a.email) + '.');
       }, 450);
@@ -171,6 +222,7 @@ async function loadAccessAdmins() {
   try {
     const result = await listAdmins();
     accessAdmins = result.admins || [];
+    ACCESS_HISTORY.reset();
     $('#accessNotReady').classList.toggle('hidden', result.ready !== false);
   } catch (err) {
     console.error(err);

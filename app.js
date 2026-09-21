@@ -300,6 +300,7 @@ function undoStack() {
 
 /* kind 'restoreCall'  — put a row back, or roll an edit back
    kind 'removeCall'    — take back a call that was just logged
+   kind 'renameBoard'   — put the offer's old name back
    kind 'restoreTeam'  — put the whole roster back (it is tiny) */
 function pushUndo(entry) {
   const s = undoStack();
@@ -329,6 +330,10 @@ async function applyUndo() {
       await restoreCall(entry.row);        // upsert puts back a delete or an edit alike
     } else if (entry.kind === 'removeCall') {
       await deleteCall(entry.id);
+    } else if (entry.kind === 'renameBoard') {
+      await renameBoard(entry.name, true);
+      if (typeof paintBoardName === 'function') paintBoardName();
+      if (typeof syncBoardAddress === 'function') syncBoardAddress();
     } else if (entry.kind === 'restoreTeam') {
       await replaceTeam(entry.team);
     }

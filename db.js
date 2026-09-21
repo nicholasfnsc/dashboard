@@ -306,7 +306,11 @@ async function archiveBoard(boardId) {
   return serverAction('/api/boards', { action: 'archive', boardId });
 }
 
-async function renameBoard(name) {
+async function renameBoard(name, quiet) {
+  const was = CACHE.board.name;
+  if (!quiet && was !== name) {
+    pushUndo({ kind: 'renameBoard', label: 'Renamed the offer to ' + name, name: was });
+  }
   const { error } = await sb.from('boards').update({ name }).eq('id', CACHE.boardId);
   if (error) throw error;
   CACHE.board.name = name;
@@ -466,6 +470,7 @@ async function loadMetrics(boardId) {
   CACHE.board = board.data;
   CACHE.calls = calls.map((r) => r.data);
   CACHE.metrics = { ready, configs, values };
+  METRICS_HISTORY.reset();
 }
 
 function metricConfig(funnel) {
@@ -475,6 +480,73 @@ function metricConfig(funnel) {
 
 /* Change an offer's metric list. The saved copy is read fresh first, so
    two people editing at once never undo each other's changes. */
+/* A metrics board is its metric lists plus every figure typed into them,
+   so one history covers renaming a metric, moving one, and a number typed
+   into a day. */
+const METRICS_HISTORY = makeHistory(
+  () => ({
+    /* the lists as they are in use, not only the ones saved so far */
+    configs: CACHE.metrics
+      ? ['vsl', 'webinar'].reduce((out, funnel) => {
+        out[funnel] = metricConfig(funnel);
+        return out;
+      }, {})
+      : null,
+    values: CACHE.metrics
+      ? Object.keys(CACHE.metrics.values).reduce((out, funnel) => {
+        out[funnel] = [...CACHE.metrics.values[funnel].entries()];
+        return out;
+      }, {})
+      : null
+  }),
+  (was) => { writeMetricsBack(was).catch((err) => console.error(err)); }
+);
+
+/* Putting a step back writes the lists and every figure that moved. */
+async function writeMetricsBack(was) {
+  METRICS_HISTORY.quiet = true;
+  try {
+    for (const funnel of Object.keys(was.configs || {})) {
+      if (JSON.stringify(CACHE.metrics.configs[funnel]) === JSON.stringify(was.configs[funnel])) continue;
+      const { error } = await sb.from('metric_settings').upsert({
+        board_id: CACHE.boardId, funnel, config: was.configs[funnel], updated_at: new Date().toISOString()
+      });
+      if (error) throw error;
+      CACHE.metrics.configs[funnel] = was.configs[funnel];
+    }
+
+    for (const funnel of Object.keys(was.values || {})) {
+      const wanted = new Map(was.values[funnel]);
+      const now = CACHE.metrics.values[funnel];
+
+      for (const [key, value] of wanted) {
+        if (now.get(key) === value) continue;
+        const [metricId, day] = key.split('|');
+        await saveMetricEntry(funnel, metricId, day, value);
+      }
+      for (const key of [...now.keys()]) {
+        if (wanted.has(key)) continue;
+        const [metricId, day] = key.split('|');
+        await saveMetricEntry(funnel, metricId, day, null);
+      }
+    }
+    notify('Undone.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't undo that — check your connection.");
+  } finally {
+    METRICS_HISTORY.quiet = false;
+  }
+  if (typeof renderMetrics === 'function') renderMetrics();
+}
+
+registerUndo({
+  label: 'metrics tracking',
+  when: () => shellShown('metricsShell'),
+  undo: () => METRICS_HISTORY.undo(),
+  redo: () => METRICS_HISTORY.redo()
+});
+
 async function updateMetricConfig(funnel, change) {
   const { data, error: readError } = await sb.from('metric_settings')
     .select('config').eq('board_id', CACHE.boardId).eq('funnel', funnel).maybeSingle();
@@ -486,6 +558,7 @@ async function updateMetricConfig(funnel, change) {
   });
   if (error) throw error;
   CACHE.metrics.configs[funnel] = config;
+  if (!METRICS_HISTORY.quiet) METRICS_HISTORY.remember();
   return config;
 }
 
@@ -497,6 +570,7 @@ async function saveMetricEntry(funnel, metricId, day, value) {
       .eq('board_id', CACHE.boardId).eq('funnel', funnel).eq('metric_id', metricId).eq('day', day);
     if (error) throw error;
     CACHE.metrics.values[funnel].delete(key);
+    if (!METRICS_HISTORY.quiet) METRICS_HISTORY.remember();
     return;
   }
   const { error } = await sb.from('metric_entries').upsert({
@@ -505,6 +579,7 @@ async function saveMetricEntry(funnel, metricId, day, value) {
   });
   if (error) throw error;
   CACHE.metrics.values[funnel].set(key, value);
+  if (!METRICS_HISTORY.quiet) METRICS_HISTORY.remember();
 }
 
 /* A cheap fingerprint of everything on a metrics board, to notice

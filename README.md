@@ -235,13 +235,16 @@ Each page says how to put itself back, and `undo.js` holds the key handler and t
 
 | Where | What Ctrl+Z takes back |
 |---|---|
-| Sales board | a call just logged, an edit to a call, a deleted call, roster changes |
-| Accounting | every change to the invoice being edited, forward again with Ctrl+Shift+Z |
-| Signal List | anything written or ticked on the day, forward again with Ctrl+Shift+Z |
+| Sales board | a call just logged, an edit to a call, a deleted call, the offer's name, roster changes |
+| Accounting | every change to the invoice being edited |
+| Signal List | anything written or ticked on the day |
+| Metrics Tracking | a figure typed into a day, a renamed or moved metric, a changed target |
+| Team & Access | an admin's sections and offers, and an admin removed |
 | Rep Hub · Handoffs · $1M/Month Playbooks | rows, links, sections, the handoff form, the playbook list |
 
-Metrics Tracking and Team & Access are not covered: a metric's history is the figures themselves,
-and an invitation is an email already sent. A change that changed nothing is never a step.
+A change that changed nothing is never a step. Two things cannot be taken back, because they leave
+the portal: an **invitation email** already sent (undoing one takes that person's access away
+instead, which is the part the portal owns) and an **archived offer**, which asks first.
 
 ## Security
 
