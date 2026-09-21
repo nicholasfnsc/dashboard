@@ -150,6 +150,20 @@ function acBaseline(invoice) {
 function acRestore(from, to, word) {
   if (!from.length) { acMark('Nothing to ' + word); return; }
   const step = from.pop();
+
+  /* an invoice that was deleted: put it back, number and all */
+  if (step.deleted) {
+    to.push({ deleted: false, gone: step.row });
+    acPutBack(step.row);
+    return;
+  }
+  /* the other way: take back an invoice that was put back */
+  if (step.gone) {
+    to.push({ deleted: true, row: step.gone });
+    acRemove(step.gone, true);
+    return;
+  }
+
   const invoice = AC.list.find((x) => x.id === step.id);
   if (!invoice) { acMark('Nothing to ' + word); return; }
 
@@ -356,7 +370,17 @@ function renderAccountingClient() {
       pill.textContent = acStatusLabel(invoice);
       row.appendChild(pill);
 
-      block.appendChild(row);
+      const line = el('div', 'ac-row-line');
+      line.appendChild(row);
+
+      const drop = el('button', 'ac-x ac-row-x', '×');
+      drop.type = 'button';
+      drop.title = 'Delete this invoice';
+      drop.setAttribute('aria-label', 'Delete invoice ' + invoice.number);
+      drop.addEventListener('click', (e) => { e.stopPropagation(); acAskDelete(invoice); });
+      line.appendChild(drop);
+
+      block.appendChild(line);
     });
     host.appendChild(block);
   });
@@ -777,6 +801,11 @@ function acTools() {
     copy.addEventListener('click', () => acDuplicate(invoice));
     host.appendChild(copy);
 
+    const drop = el('button', 'link-btn danger', 'Delete');
+    drop.type = 'button';
+    drop.addEventListener('click', () => acAskDelete(invoice));
+    host.appendChild(drop);
+
     const print = el('button', 'btn-primary', 'Download PDF');
     print.type = 'button';
     print.addEventListener('click', () => window.print());
@@ -837,9 +866,67 @@ function acBlankSections() {
   ];
 }
 
+async function acRemove(invoice, quiet) {
+  try {
+    await deleteInvoice(invoice.id);
+  } catch (err) {
+    console.error(err);
+    notify(/row-level security|policy/i.test(String(err.message || ''))
+      ? 'One setup step first: run the delete policy at the end of supabase/accounting.sql.'
+      : "Couldn't delete that — check your connection.");
+    return;
+  }
+  AC.list = AC.list.filter((x) => x.id !== invoice.id);
+  if (!quiet) AC.past.push({ deleted: true, row: acFullRow(invoice) });
+  if (AC.invoiceId === invoice.id) {
+    AC.invoiceId = '';
+    AC.view = AC.client ? 'client' : 'clients';
+  }
+  renderAccounting();
+  if (!quiet) notify('Deleted #' + String(invoice.number).padStart(3, '0') + '. Ctrl+Z puts it back.');
+}
+
+async function acPutBack(row) {
+  try {
+    const made = await restoreInvoice(row);
+    AC.list.unshift(made);
+    AC.list.sort((a, b) => (Number(a.number) < Number(b.number) ? 1 : -1));
+    renderAccounting();
+    notify('#' + String(row.number).padStart(3, '0') + ' is back.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't put that invoice back — check your connection.");
+  }
+}
+
+/* Everything a row needs to exist again exactly as it was. */
+const acFullRow = (invoice) => ({
+  id: invoice.id, number: invoice.number, status: invoice.status, client: invoice.client,
+  period: invoice.period, issue_date: invoice.issue_date || null, due_date: invoice.due_date || null,
+  paid_date: invoice.paid_date || null, currency: invoice.currency, sections: invoice.sections,
+  pay_link: invoice.pay_link, notes: invoice.notes
+});
+
+function acAskDelete(invoice) {
+  const who = (invoice.client && invoice.client.name) || 'this client';
+  const sent = invoice.status !== 'draft';
+  const lines = [
+    'Delete #' + String(invoice.number).padStart(3, '0') + ' for ' + who + '?',
+    '',
+    sent ? 'This one is marked ' + invoice.status + ' — deleting it removes the record.' : '',
+    'Ctrl+Z puts it back while this page is open.'
+  ].filter((line, n) => line !== '' || n === 1);
+  if (!window.confirm(lines.join('\n'))) return;
+  acRemove(invoice);
+}
+
 async function acNew(clientName) {
   const known = AC.list.find((i) => ((i.client && i.client.name) || '') === clientName);
-  const period = acShiftMonth(acToday().slice(0, 7), 0);
+  /* Their last invoice was for a month; this one is for the next, so a
+     second invoice in the same month is a choice rather than the default. */
+  const latest = AC.list.filter((i) => acClientOf(i) === String(clientName || '').trim().toLowerCase())
+    .map((i) => i.period).filter(Boolean).sort().slice(-1)[0];
+  const period = latest ? acShiftMonth(latest, 1) : acShiftMonth(acToday().slice(0, 7), 0);
   const row = {
     number: acNextNumber(clientName),
     status: 'draft',
@@ -919,7 +1006,7 @@ async function initAccounting() {
     document.body.dataset.acKeys = '1';
     registerUndo({
       label: 'invoice',
-      when: () => shellShown('accountingShell') && AC.view === 'invoice',
+      when: () => shellShown('accountingShell'),
       undo: () => acRestore(AC.past, AC.future, 'undo'),
       redo: () => acRestore(AC.future, AC.past, 'redo')
     });

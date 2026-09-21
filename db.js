@@ -788,3 +788,16 @@ async function saveInvoiceSettings(content) {
     .upsert({ id: 1, content, updated_at: new Date().toISOString() });
   if (error) throw error;
 }
+
+/* An invoice you no longer want. The page asks first, and keeps the row
+   so Ctrl+Z can put it back with its own number. */
+async function deleteInvoice(id) {
+  const { error } = await sb.from('invoices').delete().eq('id', id);
+  if (error) throw error;
+}
+
+async function restoreInvoice(row) {
+  const { data, error } = await sb.from('invoices').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}

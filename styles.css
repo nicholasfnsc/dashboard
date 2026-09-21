@@ -2412,3 +2412,10 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
 }
 
 .ac-money-in { text-align: right; font-variant-numeric: tabular-nums; }
+
+.ac-row-line { display: flex; align-items: center; gap: 6px; }
+.ac-row-line .ac-row { flex: 1; margin-bottom: 0; }
+.ac-row-x { opacity: 0; transition: opacity .14s; flex: none; }
+.ac-row-line:hover .ac-row-x, .ac-row-x:focus-visible { opacity: 1; }
+.ac-year .ac-row-line { margin-bottom: 7px; }
+@media (max-width: 1000px) { .ac-row-x { opacity: 1; } }

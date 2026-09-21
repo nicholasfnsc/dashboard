@@ -203,8 +203,14 @@ margin is zero with the margin inside the document, which is what keeps the brow
 its own header, footer, date and address across the top and bottom. Empty boxes print nothing
 rather than their hint, and headings print as text so a long one wraps instead of being cut.
 
-Invoices are never deleted. One that should not stand is marked **void** and keeps its number.
-The monthly P&L will live beside this and read what these invoices say.
+An invoice can be **deleted** — from its own page or from the × beside it in the list. It asks
+first, says plainly if the one you are deleting is marked sent or paid, and **Ctrl+Z puts it back**
+with its own number while the page is open. **Void** is still there for an invoice that should stay
+on the record without standing.
+
+A new invoice for a client lands on the month **after** their last one, so a second invoice in the
+same month is a choice rather than the default. The monthly P&L will live beside this and read what
+these invoices say.
 
 ## Team & Access
 
@@ -236,7 +242,7 @@ Each page says how to put itself back, and `undo.js` holds the key handler and t
 | Where | What Ctrl+Z takes back |
 |---|---|
 | Sales board | a call just logged, an edit to a call, a deleted call, the offer's name, roster changes |
-| Accounting | every change to the invoice being edited |
+| Accounting | every change to the invoice being edited, and an invoice you deleted |
 | Signal List | anything written or ticked on the day |
 | Metrics Tracking | a figure typed into a day, a renamed or moved metric, a changed target |
 | Team & Access | an admin's sections and offers, and an admin removed |

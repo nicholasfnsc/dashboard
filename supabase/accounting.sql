@@ -81,5 +81,12 @@ create policy invoice_settings_update on public.invoice_settings
   using (public.is_owner())
   with check (public.is_owner());
 
--- There is deliberately no delete policy on either table: an invoice
--- that was sent is a record, and records are kept.
+
+-- ---------- deleting an invoice ----------
+-- Added later: an invoice you no longer want should go, not linger as a
+-- void row. The portal asks first, and Ctrl+Z puts it back with the same
+-- number while the page is open.
+drop policy if exists invoices_delete on public.invoices;
+create policy invoices_delete on public.invoices
+  for delete to authenticated
+  using (public.is_owner());
