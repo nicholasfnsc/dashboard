@@ -61,6 +61,7 @@ team.js           Add Team: offer name, team and roles, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
+undo.js           one Ctrl+Z for the portal: the key handler and the shared history
 playbooks.js      $1M/Month Playbooks: the list of playbooks and their doc links
 accounting.js     Accounting: invoices by client and year, edited in place, printed to PDF
 profile.js        the name, role and photo at the top right, and the rep name picker
@@ -222,6 +223,25 @@ The rules live in the database (`supabase/access.sql`): calls are readable with 
 or metrics, and writable by the offer's reps or whoever has its sales board. The shared Rep Hub
 template (`supabase/rep-hub.sql`) is writable by the owner and by admins who have the sales boards
 and every offer (`has_every_offer()`); an offer's own rows follow that offer instead.
+
+## Undo
+
+**Ctrl+Z** steps back wherever you are; **Ctrl+Shift+Z** (or Ctrl+Y) steps forward again where the
+page supports it. While the cursor is inside a box it stays the browser's own undo for the text
+being typed — that is what anyone expects mid-word — and everywhere else on the page it is the
+portal's.
+
+Each page says how to put itself back, and `undo.js` holds the key handler and the shared history:
+
+| Where | What Ctrl+Z takes back |
+|---|---|
+| Sales board | a call just logged, an edit to a call, a deleted call, roster changes |
+| Accounting | every change to the invoice being edited, forward again with Ctrl+Shift+Z |
+| Signal List | anything written or ticked on the day, forward again with Ctrl+Shift+Z |
+| Rep Hub · Handoffs · $1M/Month Playbooks | rows, links, sections, the handoff form, the playbook list |
+
+Metrics Tracking and Team & Access are not covered: a metric's history is the figures themselves,
+and an invitation is an email already sent. A change that changed nothing is never a step.
 
 ## Security
 

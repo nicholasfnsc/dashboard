@@ -136,7 +136,23 @@ function upgradeSignalDay(c) {
 /* ============================================================
    Saving
    ============================================================ */
+/* The day as it was, before whatever just changed. */
+const SIGNAL_HISTORY = makeHistory(
+  () => SV.content,
+  (was) => {
+    SV.content = was;
+    renderSignal();
+    paintSignalCalendar();
+    SV.dirty = true;
+    clearTimeout(SV.saveTimer);
+    const day = SV.day;
+    SV.saveTimer = setTimeout(() => saveSignalDay(day, SV.content).catch((err) => console.error(err)), 400);
+    notify('Undone.');
+  }
+);
+
 function signalChanged() {
+  SIGNAL_HISTORY.remember();
   SV.dirty = true;
   $('#signalSaved').textContent = 'Saving…';
   clearTimeout(SV.saveTimer);
@@ -1157,6 +1173,7 @@ async function goToDay(iso) {
       SV.month = new Date(shown.getFullYear(), shown.getMonth(), 1);
     }
     $('#signalSaved').textContent = row ? 'Saved' : 'New day — starts saving when you type';
+    SIGNAL_HISTORY.reset();
     renderSignal();
     paintSignalCalendar();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1167,6 +1184,13 @@ async function goToDay(iso) {
     SV.loading = false;
   }
 }
+
+registerUndo({
+  label: 'signal list',
+  when: () => shellShown('signalShell'),
+  undo: () => SIGNAL_HISTORY.undo(),
+  redo: () => SIGNAL_HISTORY.redo()
+});
 
 async function initSignal() {
   document.title = 'Signal List · Inevitable Acquisition';

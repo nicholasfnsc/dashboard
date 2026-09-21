@@ -299,6 +299,7 @@ function undoStack() {
 }
 
 /* kind 'restoreCall'  — put a row back, or roll an edit back
+   kind 'removeCall'    — take back a call that was just logged
    kind 'restoreTeam'  — put the whole roster back (it is tiny) */
 function pushUndo(entry) {
   const s = undoStack();
@@ -326,6 +327,8 @@ async function applyUndo() {
   try {
     if (entry.kind === 'restoreCall') {
       await restoreCall(entry.row);        // upsert puts back a delete or an edit alike
+    } else if (entry.kind === 'removeCall') {
+      await deleteCall(entry.id);
     } else if (entry.kind === 'restoreTeam') {
       await replaceTeam(entry.team);
     }
@@ -805,6 +808,7 @@ function initApp() {
   initTabs();
   initFilters();
   $('#undoBtn').addEventListener('click', applyUndo);
+  registerUndo({ label: 'sales board', when: () => shellShown('boardShell'), undo: applyUndo });
   paintUndo();
   render();
 }

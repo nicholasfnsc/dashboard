@@ -369,9 +369,56 @@ async function loadRepHub() {
   const saved = !error && data && data.content && Array.isArray(data.content.sections) ? data.content : null;
   CACHE.repHubReady = !error;
   CACHE.repHub = saved || JSON.parse(JSON.stringify(DEFAULT_REP_HUB));
+  SHARED_HISTORY.reset();
 }
 
+/* Rep Hub rows, the handoff form, the Loom and the playbooks all live in
+   the same shared settings, so one history covers the lot. An offer's own
+   values live on the offer, and travel with it. */
+const SHARED_HISTORY = makeHistory(
+  () => ({
+    hub: CACHE.repHub,
+    offer: (CACHE.board && CACHE.board.directory && CACHE.board.directory.repHub) || null
+  }),
+  (was) => {
+    CACHE.repHub = was.hub;
+    if (was.offer && CACHE.board) {
+      CACHE.board.directory = Object.assign({}, CACHE.board.directory, { repHub: was.offer });
+    }
+    saveSharedBack(was);
+  }
+);
+
+/* Putting a step back writes it where it came from. */
+async function saveSharedBack(was) {
+  try {
+    await sb.from('rep_hub').upsert({ id: 1, content: was.hub, updated_at: new Date().toISOString() });
+    if (was.offer && CACHE.boardId) {
+      const { data } = await sb.from('boards').select('directory').eq('id', CACHE.boardId).maybeSingle();
+      const directory = Object.assign({}, (data && data.directory) || {}, { repHub: was.offer });
+      await sb.from('boards').update({ directory }).eq('id', CACHE.boardId);
+      CACHE.board.directory = directory;
+    }
+    notify('Undone.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't undo that — check your connection.");
+  }
+  if (typeof renderRepHub === 'function' && document.getElementById('repHubContent')) renderRepHub();
+  if (typeof renderPlaybooks === 'function') renderPlaybooks();
+  if (typeof renderTranscriberGuide === 'function' && document.getElementById('transcriberGuide')) { renderTranscriberGuide(); renderHandoff(); }
+}
+
+registerUndo({
+  label: 'rep hub, handoffs and playbooks',
+  when: () => shellShown('playbookShell') ||
+    (shellShown('boardShell') && !!document.querySelector('[data-panel="rephub"]:not(.hidden), [data-panel="transcriber"]:not(.hidden)')),
+  undo: () => SHARED_HISTORY.undo(),
+  redo: () => SHARED_HISTORY.redo()
+});
+
 async function saveRepHubTemplate() {
+  SHARED_HISTORY.remember();
   const { error } = await sb.from('rep_hub')
     .upsert({ id: 1, content: CACHE.repHub, updated_at: new Date().toISOString() });
   if (error) throw error;
@@ -381,6 +428,7 @@ async function saveRepHubTemplate() {
    fresh first, so a change someone else just made — another value, or
    the offer's address — is kept rather than written over. */
 async function saveOfferHubValue(itemId, value) {
+  SHARED_HISTORY.remember();
   const { data, error: readError } = await sb.from('boards').select('directory').eq('id', CACHE.boardId).maybeSingle();
   if (readError) throw readError;
   const directory = Object.assign({}, (data && data.directory) || CACHE.board.directory || {});

@@ -907,23 +907,6 @@ function acSetupHint(err) {
 }
 
 /* ---------- opening the page ---------- */
-/* While a field has the cursor, Ctrl+Z is the browser's own undo for
-   what is being typed. Everywhere else on the page it is ours. */
-function acKeys(e) {
-  const key = String(e.key || '').toLowerCase();
-  if (key !== 'z' && key !== 'y') return;
-  if (!(e.ctrlKey || e.metaKey)) return;
-  if ($('#accountingShell').classList.contains('hidden')) return;
-  if (AC.view !== 'invoice') return;
-
-  const inField = document.activeElement && /^(input|textarea)$/i.test(document.activeElement.tagName);
-  if (inField) return;
-
-  e.preventDefault();
-  if (key === 'y' || e.shiftKey) acRestore(AC.future, AC.past, 'redo');
-  else acRestore(AC.past, AC.future, 'undo');
-}
-
 async function initAccounting() {
   AC.view = 'clients';
   AC.client = '';
@@ -934,7 +917,12 @@ async function initAccounting() {
   $('#acNotReady').classList.add('hidden');
   if (!document.body.dataset.acKeys) {
     document.body.dataset.acKeys = '1';
-    document.addEventListener('keydown', acKeys);
+    registerUndo({
+      label: 'invoice',
+      when: () => shellShown('accountingShell') && AC.view === 'invoice',
+      undo: () => acRestore(AC.past, AC.future, 'undo'),
+      redo: () => acRestore(AC.future, AC.past, 'redo')
+    });
   }
 
   try {

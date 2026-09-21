@@ -255,6 +255,12 @@ function initPostCallForm() {
       button.disabled = false;
     }
 
+    pushUndo({
+      kind: 'removeCall',
+      label: 'Logged the call for ' + (row.clientName || 'a client'),
+      id: row.id
+    });
+
     resetForm();
     render();
     renderDataTab();
