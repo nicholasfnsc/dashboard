@@ -176,8 +176,14 @@ are saved once and printed on every invoice. Each invoice holds any number of se
 kinds:
 
 - **Revenue share** — Title · Total Cash Collected · Processing Fees · Net Collected · Revenue
-  Share · Total. Net is collected less fees; the total is net × the share.
+  Share · Total. Collected, fees and net are one sum seen three ways: set any two and the third
+  follows, so when you only know what landed you type the net and the fee works itself out.
+  The total is net × the share.
 - **Expenses** — Title · Price · Quantity · Total.
+
+**Ctrl+Z** walks back through changes to an invoice and **Ctrl+Shift+Z** walks forward again. While
+the cursor is in a box it is the browser’s own undo for what is being typed; everywhere else on the
+page it is the invoice’s. A change that changed nothing is never a step.
 
 Everything on the page is editable: section names, row titles, every figure, the share on each row,
 and the column headings themselves, which a section keeps once renamed. The currency is a choice

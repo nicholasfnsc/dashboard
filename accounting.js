@@ -22,6 +22,9 @@ const AC = {
   invoiceId: '',
   list: [],
   settings: null,
+  past: [],
+  future: [],
+  baseline: null,
   saveTimer: 0,
   editingFrom: false
 };
@@ -116,10 +119,60 @@ function acInvoice() {
   return AC.list.find((x) => x.id === AC.invoiceId) || null;
 }
 
+const AC_KEPT = ['number', 'status', 'client', 'period', 'issue_date', 'due_date', 'paid_date', 'currency', 'sections', 'pay_link', 'notes'];
+
+const acSnapshot = (invoice) => JSON.parse(JSON.stringify(AC_KEPT.reduce((out, key) => {
+  out[key] = invoice[key];
+  return out;
+}, { id: invoice.id })));
+
+/* Ctrl+Z walks back through these; Ctrl+Shift+Z walks forward again. */
+function acRemember(invoice) {
+  const now = acSnapshot(invoice);
+  if (AC.baseline && AC.baseline.id === invoice.id) {
+    /* A change that changed nothing is not a step to walk back through. */
+    if (JSON.stringify(AC.baseline) === JSON.stringify(now)) return;
+    AC.past.push(AC.baseline);
+    if (AC.past.length > 60) AC.past.shift();
+    AC.future.length = 0;
+  }
+  AC.baseline = now;
+}
+
+/* Whenever an invoice is opened, history starts from what it says now. */
+function acBaseline(invoice) {
+  if (AC.baseline && AC.baseline.id === invoice.id) return;
+  AC.baseline = acSnapshot(invoice);
+  AC.past.length = 0;
+  AC.future.length = 0;
+}
+
+function acRestore(from, to, word) {
+  if (!from.length) { acMark('Nothing to ' + word); return; }
+  const step = from.pop();
+  const invoice = AC.list.find((x) => x.id === step.id);
+  if (!invoice) { acMark('Nothing to ' + word); return; }
+
+  to.push(acSnapshot(invoice));
+  AC_KEPT.forEach((key) => { invoice[key] = step[key]; });
+  AC.baseline = acSnapshot(invoice);
+  AC.invoiceId = invoice.id;
+  AC.view = 'invoice';
+
+  acSave(invoice);
+  renderAccounting();
+  acMark(word === 'undo' ? 'Undone' : 'Redone');
+}
+
 function acTouch(patch) {
   const invoice = acInvoice();
   if (!invoice) return;
   Object.assign(invoice, patch);
+  acRemember(invoice);
+  acSave(invoice);
+}
+
+function acSave(invoice) {
   clearTimeout(AC.saveTimer);
   AC.saveTimer = setTimeout(async () => {
     try {
@@ -186,6 +239,11 @@ function acMoneyBox(value, currency, onChange, label) {
 
   input.dataset.raw = Number(value) || 0;
   show();
+
+  input.setAmount = (n) => {
+    input.dataset.raw = Number(n) || 0;
+    if (document.activeElement !== input) show();
+  };
 
   input.addEventListener('focus', () => { input.value = String(Number(input.dataset.raw) || 0); input.select(); });
   input.addEventListener('blur', () => { show(); });
@@ -354,12 +412,39 @@ function acSectionTable(invoice, section) {
       tr.appendChild(cell(acMoneyBox(row.price, invoice.currency, (v) => { row.price = v; acRepaintTotals(); acTouch({}); }, 'Price')));
       tr.appendChild(cell(acInput(row.qty, '1', (v) => { row.qty = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Quantity' })));
     } else {
-      tr.appendChild(cell(acMoneyBox(row.collected, invoice.currency, (v) => { row.collected = v; acRepaintTotals(); acTouch({}); }, 'Total cash collected')));
-      tr.appendChild(cell(acMoneyBox(row.fees, invoice.currency, (v) => { row.fees = v; acRepaintTotals(); acTouch({}); }, 'Processing fees')));
-      const net = el('td', 'num ac-derived');
-      net.textContent = acMoney((Number(row.collected) || 0) - (Number(row.fees) || 0), invoice.currency);
-      net.dataset.net = row.id;
-      tr.appendChild(net);
+      /* Collected, fees and net are one sum seen three ways: set any two
+         and the third follows. Usually you know the fee; sometimes you
+         only know what landed. */
+      const collectedBox = acMoneyBox(row.collected, invoice.currency, (v) => {
+        row.collected = v;
+        netBox.setAmount((Number(row.collected) || 0) - (Number(row.fees) || 0));
+        acRepaintTotals();
+        acTouch({});
+      }, 'Total cash collected');
+
+      const feesBox = acMoneyBox(row.fees, invoice.currency, (v) => {
+        row.fees = v;
+        netBox.setAmount((Number(row.collected) || 0) - (Number(row.fees) || 0));
+        acRepaintTotals();
+        acTouch({});
+      }, 'Processing fees');
+
+      const netBox = acMoneyBox((Number(row.collected) || 0) - (Number(row.fees) || 0), invoice.currency, (v) => {
+        const net = Number(v) || 0;
+        if (net > (Number(row.collected) || 0)) {
+          row.collected = net;                 // nothing can net more than it collected
+          collectedBox.setAmount(net);
+        }
+        row.fees = Math.max(0, (Number(row.collected) || 0) - net);
+        feesBox.setAmount(row.fees);
+        acRepaintTotals();
+        acTouch({});
+      }, 'Net collected');
+      netBox.dataset.net = row.id;
+
+      tr.appendChild(cell(collectedBox));
+      tr.appendChild(cell(feesBox));
+      tr.appendChild(cell(netBox));
       const share = document.createElement('td');
       share.className = 'num ac-share-cell';
       share.appendChild(acInput(row.share, '35', (v) => { row.share = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Revenue share percent' }));
@@ -443,7 +528,7 @@ function acRepaintTotals() {
   (invoice.sections || []).forEach((section) => {
     (section.rows || []).forEach((row) => {
       const net = document.querySelector('[data-net="' + row.id + '"]');
-      if (net) net.textContent = acMoney((Number(row.collected) || 0) - (Number(row.fees) || 0), invoice.currency);
+      if (net && net.setAmount) net.setAmount((Number(row.collected) || 0) - (Number(row.fees) || 0));
       const sum = document.querySelector('[data-row-sum="' + row.id + '"]');
       if (sum) sum.textContent = acMoney(acRowTotal(section.kind, row), invoice.currency);
     });
@@ -519,6 +604,7 @@ function renderInvoice() {
   host.textContent = '';
   const invoice = acInvoice();
   if (!invoice) { AC.view = 'clients'; renderAccounting(); return; }
+  acBaseline(invoice);
 
   const doc = el('article', 'ac-doc');
 
@@ -821,11 +907,35 @@ function acSetupHint(err) {
 }
 
 /* ---------- opening the page ---------- */
+/* While a field has the cursor, Ctrl+Z is the browser's own undo for
+   what is being typed. Everywhere else on the page it is ours. */
+function acKeys(e) {
+  const key = String(e.key || '').toLowerCase();
+  if (key !== 'z' && key !== 'y') return;
+  if (!(e.ctrlKey || e.metaKey)) return;
+  if ($('#accountingShell').classList.contains('hidden')) return;
+  if (AC.view !== 'invoice') return;
+
+  const inField = document.activeElement && /^(input|textarea)$/i.test(document.activeElement.tagName);
+  if (inField) return;
+
+  e.preventDefault();
+  if (key === 'y' || e.shiftKey) acRestore(AC.future, AC.past, 'redo');
+  else acRestore(AC.past, AC.future, 'undo');
+}
+
 async function initAccounting() {
   AC.view = 'clients';
   AC.client = '';
   AC.invoiceId = '';
+  AC.past.length = 0;
+  AC.future.length = 0;
+  AC.baseline = null;
   $('#acNotReady').classList.add('hidden');
+  if (!document.body.dataset.acKeys) {
+    document.body.dataset.acKeys = '1';
+    document.addEventListener('keydown', acKeys);
+  }
 
   try {
     AC.settings = Object.assign(JSON.parse(JSON.stringify(DEFAULT_INVOICE_SETTINGS)), (await loadInvoiceSettings()) || {});
