@@ -115,7 +115,7 @@ function acTouch(patch) {
       await saveInvoice(invoice.id, {
         status: invoice.status, client: invoice.client, period: invoice.period,
         issue_date: invoice.issue_date || null, due_date: invoice.due_date || null,
-        paid_date: invoice.paid_date || null, currency: invoice.currency,
+        paid_date: invoice.paid_date || null, currency: invoice.currency, number: invoice.number,
         sections: invoice.sections, pay_link: invoice.pay_link, notes: invoice.notes
       });
       acMark('Saved');
@@ -283,11 +283,17 @@ function acSectionTable(invoice, section) {
   columns.forEach((c, i) => {
     const th = document.createElement('th');
     if (i > 0) th.className = 'num';
-    th.appendChild(acInput(c, c, (v) => {
+    const box = acInput(c, c, (v) => {
       section.labels = Object.assign({}, section.labels);
       section.labels[i] = v.trim();
       acTouch({});
-    }, { label: 'Column name', cls: 'ac-col-name' }));
+      const printed = th.querySelector('.ac-col-print');
+      if (printed) printed.textContent = v.trim() || c;
+    }, { label: 'Column name', cls: 'ac-col-name' });
+    th.appendChild(box);
+    const printed = el('span', 'ac-col-print');
+    printed.textContent = c;
+    th.appendChild(printed);
     headRow.appendChild(th);
   });
   headRow.appendChild(el('th', 'ac-col-x'));
@@ -426,6 +432,29 @@ function acPartyBlock(title, party, onChange, opts) {
   return box;
 }
 
+/* The database hands out the next number, but what an invoice is called
+   is yours: renumber it and nothing else moves, as long as no other
+   invoice already has that number. */
+function acNumberBox(invoice) {
+  const wrap = el('span', 'ac-number-box');
+  wrap.appendChild(acPrinted('#', 'ac-hash'));
+  const input = acInput(invoice.number, '', (v) => {
+    const wanted = Math.round(Number(v) || 0);
+    if (wanted < 1) { input.value = invoice.number; notify('An invoice number starts at 1.'); return; }
+    const taken = AC.list.find((x) => x.id !== invoice.id && Number(x.number) === wanted);
+    if (taken) {
+      input.value = invoice.number;
+      notify('#' + String(wanted).padStart(3, '0') + ' is already used by ' + ((taken.client && taken.client.name) || 'another invoice') + '.');
+      return;
+    }
+    acTouch({ number: wanted });
+    renderAccounting();
+  }, { type: 'number', label: 'Invoice number', cls: 'ac-number' });
+  input.step = '1';
+  wrap.appendChild(input);
+  return wrap;
+}
+
 function renderInvoice() {
   const host = $('#acBody');
   host.textContent = '';
@@ -450,7 +479,7 @@ function renderInvoice() {
     box.appendChild(node);
     return box;
   };
-  facts.appendChild(fact('Invoice Number', acPrinted('#' + String(invoice.number).padStart(3, '0'), 'ac-number')));
+  facts.appendChild(fact('Invoice Number', acNumberBox(invoice)));
   facts.appendChild(fact('Invoice Date', acInput(invoice.issue_date, '', (v) => acTouch({ issue_date: v }), { type: 'date', label: 'Invoice date' })));
   facts.appendChild(fact('Due Date', acInput(invoice.due_date, '', (v) => acTouch({ due_date: v }), { type: 'date', label: 'Due date' })));
   top.appendChild(facts);
@@ -473,6 +502,7 @@ function renderInvoice() {
   (invoice.sections || []).forEach((section) => doc.appendChild(acSectionBlock(invoice, section)));
 
   const add = el('div', 'ac-add-section');
+  add.appendChild(el('span', 'ac-add-label', 'Add a section'));
   const addShare = el('button', 'btn-export', '+ Revenue share section');
   addShare.type = 'button';
   addShare.addEventListener('click', () => {
@@ -494,7 +524,7 @@ function renderInvoice() {
   /* ---- pay, and what is owed ---- */
   const close = el('div', 'ac-close');
 
-  const pay = el('div', 'ac-pay');
+  const pay = el('div', 'ac-pay' + ((invoice.pay_link || '').trim() ? '' : ' is-empty'));
   pay.appendChild(el('p', 'ac-fact-label', 'Pay now with one click'));
   const link = (invoice.pay_link || '').trim();
   if (link) {

@@ -2343,7 +2343,6 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
     border: 1px solid #111 !important; padding: 8px 16px !important;
   }
   body.printing-invoice .ac-section { break-inside: avoid; }
-  @page { margin: 14mm; }
 }
 
 /* ---- fixes: room for the title, a scrollable table, one address ---- */
@@ -2373,4 +2372,41 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
 @media print {
   body.printing-invoice .ac-col-name { color: #6b7280 !important; }
   body.printing-invoice .ac-currency { color: #6b7280 !important; -webkit-appearance: none; appearance: none; }
+}
+
+/* ---- the invoice number, and a clearer way to add a section ---- */
+.ac-number-box { display: inline-flex; align-items: baseline; gap: 1px; }
+.ac-hash { font-family: var(--f-mono); font-size: 14px; color: var(--ink); }
+.ac-number-box .ac-in { width: 72px; text-align: left !important; font-family: var(--f-mono); font-size: 14px; }
+.ac-number-box .ac-in::-webkit-outer-spin-button,
+.ac-number-box .ac-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.ac-add-label { font-size: 11px; letter-spacing: .05em; color: var(--muted); align-self: center; margin-right: 2px; }
+.ac-col-print { display: none; }
+
+/* ---- the PDF: the document alone, on one page, nothing from the browser ---- */
+@media print {
+  @page { margin: 0; }
+  body.printing-invoice { margin: 0 !important; }
+  body.printing-invoice .ac-doc { padding: 14mm 15mm !important; font-size: 10.5pt; }
+  /* an empty box prints nothing, not its hint */
+  body.printing-invoice .ac-in::placeholder { color: transparent !important; opacity: 0 !important; }
+  /* headings print as wrapping text rather than a one-line box */
+  body.printing-invoice .ac-col-name { display: none !important; }
+  body.printing-invoice .ac-col-print {
+    display: block !important; font-size: 8.5pt; letter-spacing: .04em; text-transform: uppercase;
+    color: #6b7280 !important; line-height: 1.25;
+  }
+  body.printing-invoice .ac-table th.num .ac-col-print { text-align: right; }
+  body.printing-invoice .ac-pay.is-empty { display: none !important; }
+  body.printing-invoice .ac-add-label { display: none !important; }
+  /* tighter, so a normal invoice is one page */
+  body.printing-invoice .ac-doc-top { margin-bottom: 20px !important; }
+  body.printing-invoice .ac-mark img { width: 74px !important; }
+  body.printing-invoice .ac-parties { padding-top: 16px !important; gap: 20px !important; }
+  body.printing-invoice .ac-period { margin: 16px 0 4px !important; }
+  body.printing-invoice .ac-section { margin-top: 14px !important; }
+  body.printing-invoice .ac-table td { padding: 5px 10px 5px 0 !important; }
+  body.printing-invoice .ac-close { margin-top: 22px !important; padding-top: 14px !important; break-inside: avoid; }
+  body.printing-invoice .ac-due { font-size: 22pt !important; }
+  body.printing-invoice .ac-notes { margin-top: 12px !important; }
 }

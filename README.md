@@ -168,8 +168,8 @@ Who sees it is a tick box in **Team & Access**, like Metrics Tracking. Reps neve
 Yours alone — the database refuses every other account, whatever the page does. Three screens:
 a folder per client, that client's invoices by year, and the invoice itself.
 
-An invoice is a document you edit in place. Its **number is handed out by the database**, so two
-invoices can never share one and a number is never reused. Your own details (the **From** block)
+An invoice is a document you edit in place. The database hands out the next **number**, and you can
+change it — it refuses a number another invoice already has, so two can never share one. Your own details (the **From** block)
 are saved once and printed on every invoice. Each invoice holds any number of sections, of two
 kinds:
 
@@ -187,7 +187,10 @@ figures cleared — which is how a monthly revenue share is billed. Status runs 
 and an unpaid invoice past its due date reads as overdue on its own.
 
 **Download PDF** prints the invoice alone: white page, no portal around it, the payment link still
-clickable and its address printed underneath so it survives being printed or forwarded.
+clickable and its address printed underneath so it survives being printed or forwarded. The page
+margin is zero with the margin inside the document, which is what keeps the browser from printing
+its own header, footer, date and address across the top and bottom. Empty boxes print nothing
+rather than their hint, and headings print as text so a long one wraps instead of being cut.
 
 Invoices are never deleted. One that should not stand is marked **void** and keeps its number.
 The monthly P&L will live beside this and read what these invoices say.
