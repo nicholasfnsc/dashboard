@@ -33,8 +33,8 @@ const AC_STATUSES = [
   { value: 'void',  label: 'Void' }
 ];
 
-const AC_CURRENCIES = ['USD', 'EUR', 'GBP', 'BRL'];
-const AC_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', BRL: 'R$' };
+const AC_CURRENCIES = ['USD', 'EUR', 'GBP', 'BRL', 'AED'];
+const AC_SYMBOLS = { USD: '$', EUR: '€', GBP: '£', BRL: 'R$', AED: 'AED ' };
 
 const DEFAULT_INVOICE_SETTINGS = {
   from: { name: 'Inevitable Acquisition', address: '', postal: '', email: '' },
@@ -166,6 +166,35 @@ function acInput(value, placeholder, onChange, opts) {
   if (opts && opts.label) input.setAttribute('aria-label', opts.label);
   if (input.type === 'number') { input.step = '0.01'; input.inputMode = 'decimal'; }
   input.addEventListener('change', () => onChange(input.type === 'number' ? Number(input.value) || 0 : input.value));
+  return input;
+}
+
+/* Money you type: it shows as money — symbol, thousands, two decimals —
+   and goes back to a plain number while the cursor is in it. */
+function acMoneyBox(value, currency, onChange, label) {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'ac-in ac-money-in';
+  input.inputMode = 'decimal';
+  input.setAttribute('aria-label', label || 'Amount');
+
+  const show = () => { input.value = acMoney(Number(input.dataset.raw) || 0, currency); };
+  const raw = (v) => {
+    const cleaned = String(v).replace(/[^0-9.-]/g, '');
+    return Number(cleaned) || 0;
+  };
+
+  input.dataset.raw = Number(value) || 0;
+  show();
+
+  input.addEventListener('focus', () => { input.value = String(Number(input.dataset.raw) || 0); input.select(); });
+  input.addEventListener('blur', () => { show(); });
+  input.addEventListener('change', () => {
+    const n = raw(input.value);
+    input.dataset.raw = n;
+    onChange(n);
+    if (document.activeElement !== input) show();
+  });
   return input;
 }
 
@@ -322,11 +351,11 @@ function acSectionTable(invoice, section) {
     const cell = (node) => { const td = document.createElement('td'); td.className = 'num'; td.appendChild(node); return td; };
 
     if (section.kind === 'items') {
-      tr.appendChild(cell(acInput(row.price, '0.00', (v) => { row.price = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Price' })));
+      tr.appendChild(cell(acMoneyBox(row.price, invoice.currency, (v) => { row.price = v; acRepaintTotals(); acTouch({}); }, 'Price')));
       tr.appendChild(cell(acInput(row.qty, '1', (v) => { row.qty = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Quantity' })));
     } else {
-      tr.appendChild(cell(acInput(row.collected, '0.00', (v) => { row.collected = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Total cash collected' })));
-      tr.appendChild(cell(acInput(row.fees, '0.00', (v) => { row.fees = v; acRepaintTotals(); acTouch({}); }, { type: 'number', label: 'Processing fees' })));
+      tr.appendChild(cell(acMoneyBox(row.collected, invoice.currency, (v) => { row.collected = v; acRepaintTotals(); acTouch({}); }, 'Total cash collected')));
+      tr.appendChild(cell(acMoneyBox(row.fees, invoice.currency, (v) => { row.fees = v; acRepaintTotals(); acTouch({}); }, 'Processing fees')));
       const net = el('td', 'num ac-derived');
       net.textContent = acMoney((Number(row.collected) || 0) - (Number(row.fees) || 0), invoice.currency);
       net.dataset.net = row.id;

@@ -181,7 +181,9 @@ kinds:
 
 Everything on the page is editable: section names, row titles, every figure, the share on each row,
 and the column headings themselves, which a section keeps once renamed. The currency is a choice
-per invoice (USD, EUR, GBP, BRL), and whichever you pick last becomes the default for the next one.
+per invoice (USD, EUR, GBP, BRL, AED), and whichever you pick last becomes the default for the next
+one. Every figure you type shows as money — symbol, thousands and two decimals — and goes back to a
+plain number while the cursor is in it.
 
 Nothing is typed twice: every figure, every subtotal and the amount due are worked out as you
 type. **Next month** copies an invoice forward — same client, same lines, new number, the collected

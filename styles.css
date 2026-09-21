@@ -2410,3 +2410,5 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
   body.printing-invoice .ac-due { font-size: 22pt !important; }
   body.printing-invoice .ac-notes { margin-top: 12px !important; }
 }
+
+.ac-money-in { text-align: right; font-variant-numeric: tabular-nums; }
