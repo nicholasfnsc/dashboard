@@ -267,17 +267,27 @@ function renderAccountingClient() {
 /* ============================================================
    Screen 3 — the invoice itself
    ============================================================ */
+/* The headings a section starts with, and whatever they were renamed to. */
+function acColumns(section) {
+  const base = section.kind === 'items'
+    ? ['Title', 'Price', 'Quantity', 'Total']
+    : ['Title', 'Total Cash Collected', 'Processing Fees', 'Net Collected', 'Revenue Share', 'Total'];
+  return base.map((label, i) => ((section.labels && section.labels[i]) || label));
+}
+
 function acSectionTable(invoice, section) {
   const table = el('table', 'ac-table');
   const head = document.createElement('thead');
   const headRow = document.createElement('tr');
-  const columns = section.kind === 'items'
-    ? ['Title', 'Price', 'Quantity', 'Total']
-    : ['Title', 'Total Cash Collected', 'Processing Fees', 'Net Collected', 'Revenue Share', 'Total'];
+  const columns = acColumns(section);
   columns.forEach((c, i) => {
     const th = document.createElement('th');
-    th.textContent = c;
     if (i > 0) th.className = 'num';
+    th.appendChild(acInput(c, c, (v) => {
+      section.labels = Object.assign({}, section.labels);
+      section.labels[i] = v.trim();
+      acTouch({});
+    }, { label: 'Column name', cls: 'ac-col-name' }));
     headRow.appendChild(th);
   });
   headRow.appendChild(el('th', 'ac-col-x'));
@@ -506,7 +516,23 @@ function renderInvoice() {
   due.id = 'acDue';
   due.textContent = acMoney(acInvoiceTotal(invoice), invoice.currency);
   totals.appendChild(due);
-  totals.appendChild(el('p', 'ac-currency-note', invoice.currency));
+  const currency = document.createElement('select');
+  currency.className = 'ac-currency';
+  currency.setAttribute('aria-label', 'Currency');
+  AC_CURRENCIES.forEach((code) => {
+    const o = document.createElement('option');
+    o.value = code;
+    o.textContent = code;
+    currency.appendChild(o);
+  });
+  currency.value = invoice.currency || 'USD';
+  currency.addEventListener('change', () => {
+    acTouch({ currency: currency.value });
+    AC.settings.currency = currency.value;          // what the next invoice starts on
+    acSaveSettings();
+    renderAccounting();
+  });
+  totals.appendChild(currency);
   close.appendChild(totals);
   doc.appendChild(close);
 

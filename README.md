@@ -177,6 +177,10 @@ kinds:
   Share · Total. Net is collected less fees; the total is net × the share.
 - **Expenses** — Title · Price · Quantity · Total.
 
+Everything on the page is editable: section names, row titles, every figure, the share on each row,
+and the column headings themselves, which a section keeps once renamed. The currency is a choice
+per invoice (USD, EUR, GBP, BRL), and whichever you pick last becomes the default for the next one.
+
 Nothing is typed twice: every figure, every subtotal and the amount due are worked out as you
 type. **Next month** copies an invoice forward — same client, same lines, new number, the collected
 figures cleared — which is how a monthly revenue share is billed. Status runs draft → sent → paid,

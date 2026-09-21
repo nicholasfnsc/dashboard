@@ -2357,3 +2357,20 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
   body.printing-invoice .ac-table { min-width: 0 !important; }
   body.printing-invoice .ac-pay-url { display: block !important; }
 }
+
+/* a column heading is a box like any other, but quieter */
+.ac-col-name {
+  font-size: 10.5px !important; letter-spacing: .04em; text-transform: uppercase; color: var(--muted) !important;
+  text-align: inherit; padding: 0 !important;
+}
+.ac-table th.num .ac-col-name { text-align: right; }
+.ac-col-name:focus { color: var(--ink) !important; }
+.ac-currency {
+  margin-top: 4px; background: transparent; border: 0; color: var(--muted);
+  font: inherit; font-size: 11px; cursor: pointer; text-align: right;
+}
+.ac-currency:focus { outline: none; color: var(--ink); }
+@media print {
+  body.printing-invoice .ac-col-name { color: #6b7280 !important; }
+  body.printing-invoice .ac-currency { color: #6b7280 !important; -webkit-appearance: none; appearance: none; }
+}
