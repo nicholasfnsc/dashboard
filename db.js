@@ -111,11 +111,12 @@ async function loadMe() {
 
 /* The parts of the portal, in the order the owner ticks them. */
 /* Signal List is the owner's alone, so it is never offered to admins. */
-const PORTAL_SECTION_KEYS = ['sales', 'metrics', 'funnel', 'content'];
+const PORTAL_SECTION_KEYS = ['sales', 'metrics', 'funnel', 'content', 'playbooks'];
 const PORTAL_SECTION_NAMES = {
   sales: 'Sales Team Boards',
   metrics: 'Metrics Tracking',
   funnel: 'Funnel Revenue Projections',
+  playbooks: '$1M/Month Playbooks',
   content: 'Weekly Content Hub'
 };
 

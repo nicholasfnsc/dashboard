@@ -2090,3 +2090,45 @@ textarea.squote::placeholder { color: #3f434c; }
   border: 1px solid var(--line-soft); border-radius: 9px;
 }
 .field-rate:focus { outline: none; border-color: var(--accent-bright); color: var(--ink); }
+
+/* ============================================================
+   $1M/Month Playbooks — one card per playbook, one click to its doc
+   ============================================================ */
+.pb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pb-hint { margin: 0 0 14px; font-size: 12.5px; color: var(--accent-ink); }
+.pb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); }
+
+.pb-card {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  box-shadow: var(--shadow); padding: 20px 22px; text-decoration: none; color: inherit;
+  transition: border-color .16s, transform .16s, background .16s;
+}
+a.pb-card:hover { border-color: var(--accent-deep); background: linear-gradient(180deg, var(--accent-wash) 0%, var(--surface) 70%); transform: translateY(-1px); }
+a.pb-card:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.pb-card.is-empty { opacity: .72; }
+
+.pb-icon {
+  display: grid; place-items: center; width: 42px; height: 42px; flex: none;
+  border-radius: 12px; background: var(--accent-wash); border: 1px solid var(--accent-deep); color: var(--accent-ink);
+}
+.pb-icon svg { width: 20px; height: 20px; }
+.pb-words { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pb-title { margin: 0; font-size: 15.5px; font-weight: 600; letter-spacing: -.01em; }
+.pb-sub { margin: 0; font-size: 11.5px; color: var(--muted); }
+.pb-arrow { color: var(--muted); display: grid; place-items: center; }
+.pb-arrow svg { width: 16px; height: 16px; }
+a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
+
+.pb-edit { align-items: start; }
+.pb-title-input, .pb-url-input {
+  width: 100%; background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-soft);
+  border-radius: 9px; padding: 9px 12px; font-family: inherit;
+}
+.pb-title-input { font-size: 14.5px; font-weight: 600; }
+.pb-url-input { font-size: 12.5px; color: var(--ink-2); }
+.pb-title-input:focus, .pb-url-input:focus { outline: none; border-color: var(--accent-bright); }
+.pb-remove { align-self: center; }
+.pb-empty { grid-column: 1 / -1; margin: 0; padding: 30px 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 860px) { .pb-grid { grid-template-columns: 1fr; } }

@@ -17,7 +17,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell', 'signalShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell', 'signalShell', 'playbookShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -156,6 +156,15 @@
     $('#undoBtn').classList.add('hidden');
     initProfile();
     await initSignal();
+  }
+
+  function openPlaybooks() {
+    openShell('playbookShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    document.title = '$1M/Month Playbooks · Inevitable Acquisition';
+    initPlaybooks();
+    initProfile();
   }
 
   function openProjections() {
@@ -301,6 +310,13 @@
         if (!canUse('funnel')) { location.replace('/'); return; }
         if (projectionsBoard[1]) { location.replace(PROJECTIONS_PATH + location.search); return; }
         openProjections();
+        return;
+      }
+
+      if (path === PLAYBOOKS_PATH) {
+        if (!canUse('playbooks')) { location.replace('/'); return; }
+        await loadRepHub();
+        openPlaybooks();
         return;
       }
 

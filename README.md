@@ -21,6 +21,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 | `/` | the portal: total revenue generated, Signal List, and one card per section |
 | `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
 | `/projections` | Funnel Revenue Projections: a VSL or Webinar calculator from ad spend to profit |
+| `/playbooks` | $1M/Month Playbooks: every playbook, one click from its doc |
 | `/signal-list` | your own Signal List, one page per day (private) |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
@@ -59,6 +60,7 @@ team.js           Add Team: offer name, team and roles, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
+playbooks.js      $1M/Month Playbooks: the list of playbooks and their doc links
 profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, program lengths, commission rates
 api/enter.js      team code -> that offer's team account
@@ -147,11 +149,22 @@ email or phone. Ended clients are never removed.
 Everyone on a board sees it, including reps. Nobody edits it directly — the Post Call Form is the
 only way anything changes.
 
+## $1M/Month Playbooks
+
+A portal section listing the playbooks for running an offer. Each one is a card; clicking it opens
+that Google Doc in a new tab. The owner (and admins with every offer) press **Edit** to rename a
+playbook, paste its link, add another or remove one — nothing is hard-coded, and removing a card
+never touches the doc itself. The list is shared by everyone who has the section, stored with the
+other shared settings in `rep_hub` content under `playbooks`. The four written so far show as
+starting points until the first save.
+
+Who sees it is a tick box in **Team & Access**, like Metrics Tracking. Reps never see it.
+
 ## Team & Access
 
 The owner invites admins from **Team & Access** and ticks, for each one, the **sections** they
 can use (Sales Team Boards, Metrics Tracking, Funnel Revenue Projections, Weekly Content Hub,
-Signal List) and the **offers** they see inside per-offer sections — every offer, or chosen ones.
+$1M/Month Playbooks) and the **offers** they see inside per-offer sections — every offer, or chosen ones.
 Inside a section they have, an admin edits what the owner edits: metrics and targets, the team and
 its commission, and their offers' Rep Hub rows. Anything **shared by every offer** — the Rep Hub
 template itself (its sections, rows and links), its "All offers" values, and the Audio Transcriber's

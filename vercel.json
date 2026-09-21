@@ -18,6 +18,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/playbooks",
+      "destination": "/index.html"
+    },
+    {
       "source": "/signal-list",
       "destination": "/index.html"
     },

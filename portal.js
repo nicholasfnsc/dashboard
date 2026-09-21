@@ -17,6 +17,7 @@ const PORTAL_ICONS = {
   metrics: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16v-4"/><path d="M12 16V8"/><path d="M16 16v-6"/>',
   funnel:  '<path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/>',
   content: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18"/><path d="M8 2v4"/><path d="M16 2v4"/>',
+  playbooks: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5"/><path d="M8.5 7.5h6"/><path d="M8.5 11h4"/>',
   access:  '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 4.5a3.5 3.5 0 0 1 0 7"/><path d="M19 14.8c1.4.9 2.2 2.6 2.5 5.2"/>'
 };
 
@@ -28,7 +29,9 @@ const PORTAL_SECTIONS = [
   { id: 'funnel',  title: 'Funnel Revenue Projections', icon: 'funnel',  href: () => PROJECTIONS_PATH,
     blurb: 'Model any offer’s funnel from ad spend to revenue and profit.' },
   { id: 'content', title: 'Weekly Content Hub',         icon: 'content',
-    blurb: 'The weekly content plan, board and content bank.' }
+    blurb: 'The weekly content plan, board and content bank.' },
+  { id: 'playbooks', title: '$1M/Month Playbooks',      icon: 'playbooks', href: () => PLAYBOOKS_PATH,
+    blurb: 'Every playbook for running an offer, one click from its doc.' }
 ];
 
 function portalIcon(name) {

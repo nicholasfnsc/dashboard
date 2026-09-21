@@ -414,6 +414,23 @@
 </div>
 
 <!-- ================= TEAM & ACCESS (owner only) ================= -->
+<div class="shell hidden" id="playbookShell">
+  <div class="dash-head">
+    <div>
+      <p class="eyebrow">Inevitable Acquisition Portal</p>
+      <h1 class="dash-title">$1M/Month Playbooks</h1>
+      <p class="hub-sub">How the offer is run, written down. Open one and it takes you straight to its doc.</p>
+    </div>
+    <div class="pb-actions">
+      <button type="button" class="btn-export hidden" id="playbookAdd">Add a playbook</button>
+      <button type="button" class="btn-export hidden" id="playbookEdit">Edit</button>
+    </div>
+  </div>
+
+  <p class="pb-hint hidden" id="playbookHint"></p>
+  <div class="pb-grid" id="playbookList"></div>
+</div>
+
 <div class="shell hidden" id="accessShell">
   <div class="dash-head">
     <div>
@@ -1000,6 +1017,7 @@
 <script src="/rephub.js"></script>
 <script src="/transcriber.js"></script>
 <script src="/clients.js"></script>
+<script src="/playbooks.js"></script>
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
 <script src="/access.js"></script>
