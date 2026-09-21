@@ -168,8 +168,10 @@ Who sees it is a tick box in **Team & Access**, like Metrics Tracking. Reps neve
 Yours alone — the database refuses every other account, whatever the page does. Three screens:
 a folder per client, that client's invoices by year, and the invoice itself.
 
-An invoice is a document you edit in place. The database hands out the next **number**, and you can
-change it — it refuses a number another invoice already has, so two can never share one. Your own details (the **From** block)
+An invoice is a document you edit in place. **Numbers run per client**: each client is numbered from
+#001, so Desmond's #005 and Alex's #005 are different invoices. A new invoice takes that client's
+next number, naming the client on a fresh draft moves it into their run, and you can set the number
+yourself — the only number it refuses is one that same client already has. Your own details (the **From** block)
 are saved once and printed on every invoice. Each invoice holds any number of sections, of two
 kinds:
 

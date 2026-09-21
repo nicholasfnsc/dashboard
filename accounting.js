@@ -101,6 +101,17 @@ function acStatusLabel(invoice) {
 }
 
 /* ---------- saving ---------- */
+const acClientOf = (invoice) => ((invoice && invoice.client && invoice.client.name) || '').trim().toLowerCase();
+
+/* The next number for one client. Each client is numbered from 1, the
+   way a client reads their own invoices — #005 for Desmond and #005 for
+   Alex are different invoices, and that is fine. */
+function acNextNumber(clientName, exceptId) {
+  const key = String(clientName || '').trim().toLowerCase();
+  const theirs = AC.list.filter((i) => acClientOf(i) === key && i.id !== exceptId);
+  return theirs.reduce((top, i) => Math.max(top, Number(i.number) || 0), 0) + 1;
+}
+
 function acInvoice() {
   return AC.list.find((x) => x.id === AC.invoiceId) || null;
 }
@@ -441,18 +452,37 @@ function acNumberBox(invoice) {
   const input = acInput(invoice.number, '', (v) => {
     const wanted = Math.round(Number(v) || 0);
     if (wanted < 1) { input.value = invoice.number; notify('An invoice number starts at 1.'); return; }
-    const taken = AC.list.find((x) => x.id !== invoice.id && Number(x.number) === wanted);
+    /* Only this client's own invoices can clash — another client's
+       numbering is their own. */
+    const taken = AC.list.find((x) => x.id !== invoice.id && Number(x.number) === wanted && acClientOf(x) === acClientOf(invoice));
     if (taken) {
       input.value = invoice.number;
-      notify('#' + String(wanted).padStart(3, '0') + ' is already used by ' + ((taken.client && taken.client.name) || 'another invoice') + '.');
+      notify(((invoice.client && invoice.client.name) || 'This client') + ' already has #' + String(wanted).padStart(3, '0') + '.');
       return;
     }
+    invoice.numbered = true;
     acTouch({ number: wanted });
     renderAccounting();
   }, { type: 'number', label: 'Invoice number', cls: 'ac-number' });
   input.step = '1';
   wrap.appendChild(input);
   return wrap;
+}
+
+/* Say who an invoice is for and it joins that client's numbering, as
+   long as it is still a draft and you have not set a number yourself. */
+function acRenameClient(invoice) {
+  const patch = { client: invoice.client };
+  if (invoice.status === 'draft' && !invoice.numbered) {
+    const next = acNextNumber((invoice.client && invoice.client.name) || '', invoice.id);
+    if (next !== invoice.number) {
+      patch.number = next;
+      acTouch(patch);
+      renderAccounting();
+      return;
+    }
+  }
+  acTouch(patch);
 }
 
 function renderInvoice() {
@@ -488,7 +518,7 @@ function renderInvoice() {
   /* ---- from and to ---- */
   const parties = el('div', 'ac-parties');
   parties.appendChild(acPartyBlock('From', AC.settings.from, () => acSaveSettings(), { note: 'Saved for every invoice.' }));
-  parties.appendChild(acPartyBlock('To', invoice.client, () => acTouch({ client: invoice.client })));
+  parties.appendChild(acPartyBlock('To', invoice.client, () => acRenameClient(invoice)));
   doc.appendChild(parties);
 
   /* ---- what it covers ---- */
@@ -696,6 +726,7 @@ async function acNew(clientName) {
   const known = AC.list.find((i) => ((i.client && i.client.name) || '') === clientName);
   const period = acShiftMonth(acToday().slice(0, 7), 0);
   const row = {
+    number: acNextNumber(clientName),
     status: 'draft',
     client: known ? Object.assign({}, known.client) : { name: clientName || '', address: '', postal: '', email: '' },
     period: period,
@@ -723,6 +754,7 @@ async function acNew(clientName) {
 async function acDuplicate(invoice) {
   const next = acShiftMonth(invoice.period, 1);
   const row = {
+    number: acNextNumber((invoice.client && invoice.client.name) || ''),
     status: 'draft',
     client: Object.assign({}, invoice.client),
     period: next,
