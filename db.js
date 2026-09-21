@@ -627,3 +627,41 @@ function watchChanges(onChange) {
   setInterval(poll, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 }
+
+/* ---------- Accounting ----------
+   Invoices and the details printed on them. Owner only, enforced by
+   the database as well as by the page. An invoice is never deleted:
+   one that should not stand is marked void and keeps its number. */
+async function loadInvoices() {
+  const { data, error } = await sb.from('invoices')
+    .select('id, number, status, client, period, issue_date, due_date, paid_date, currency, sections, pay_link, notes, updated_at')
+    .order('number', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function createInvoice(row) {
+  const { data, error } = await sb.from('invoices').insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function saveInvoice(id, patch) {
+  const { data, error } = await sb.from('invoices')
+    .update(Object.assign({}, patch, { updated_at: new Date().toISOString() }))
+    .eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function loadInvoiceSettings() {
+  const { data, error } = await sb.from('invoice_settings').select('content').eq('id', 1).maybeSingle();
+  if (error) throw error;
+  return (data && data.content) || null;
+}
+
+async function saveInvoiceSettings(content) {
+  const { error } = await sb.from('invoice_settings')
+    .upsert({ id: 1, content, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}

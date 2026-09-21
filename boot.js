@@ -17,7 +17,7 @@
 
 (function () {
   const VIEWS = ['viewLoading', 'viewSignIn', 'viewCode', 'viewWelcome'];
-  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell', 'signalShell', 'playbookShell'];
+  const SHELLS = ['portalShell', 'hubShell', 'boardShell', 'accessShell', 'metricsShell', 'projectionsShell', 'signalShell', 'playbookShell', 'accountingShell'];
 
   function show(id) {
     VIEWS.forEach((v) => $('#' + v).classList.toggle('hidden', v !== id));
@@ -156,6 +156,15 @@
     $('#undoBtn').classList.add('hidden');
     initProfile();
     await initSignal();
+  }
+
+  async function openAccounting() {
+    openShell('accountingShell');
+    crumb('Portal', '/');
+    $('#undoBtn').classList.add('hidden');
+    document.title = 'Accounting · Inevitable Acquisition';
+    initProfile();
+    await initAccounting();
   }
 
   function openPlaybooks() {
@@ -310,6 +319,12 @@
         if (!canUse('funnel')) { location.replace('/'); return; }
         if (projectionsBoard[1]) { location.replace(PROJECTIONS_PATH + location.search); return; }
         openProjections();
+        return;
+      }
+
+      if (path === ACCOUNTING_PATH) {
+        if (!me.isOwner) { location.replace('/'); return; }
+        await openAccounting();
         return;
       }
 

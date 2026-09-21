@@ -414,6 +414,25 @@
 </div>
 
 <!-- ================= TEAM & ACCESS (owner only) ================= -->
+<div class="shell hidden" id="accountingShell">
+  <div class="dash-head ac-head">
+    <div>
+      <p class="eyebrow">Inevitable Acquisition Portal</p>
+      <h1 class="dash-title">Accounting</h1>
+      <nav class="ac-crumbs" id="acCrumbs" aria-label="Where you are"></nav>
+    </div>
+    <div class="ac-tools" id="acTools"></div>
+  </div>
+
+  <p class="access-warning hidden" id="acNotReady">
+    One setup step first: run <b>supabase/accounting.sql</b> in Supabase &rarr; SQL Editor. Until then invoices cannot be saved.
+  </p>
+
+  <div class="ac-summary hidden" id="acSummary"></div>
+  <span class="ac-saved hidden" id="acSaved"></span>
+  <div id="acBody"></div>
+</div>
+
 <div class="shell hidden" id="playbookShell">
   <div class="dash-head">
     <div>
@@ -1018,6 +1037,7 @@
 <script src="/transcriber.js"></script>
 <script src="/clients.js"></script>
 <script src="/playbooks.js"></script>
+<script src="/accounting.js"></script>
 <script src="/hub.js"></script>
 <script src="/portal.js"></script>
 <script src="/access.js"></script>

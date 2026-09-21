@@ -18,6 +18,7 @@ const PORTAL_ICONS = {
   funnel:  '<path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/>',
   content: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18"/><path d="M8 2v4"/><path d="M16 2v4"/>',
   playbooks: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H19v3H6.5"/><path d="M8.5 7.5h6"/><path d="M8.5 11h4"/>',
+  accounting: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/><path d="M8 13h3"/><path d="M8 16.5h3"/><path d="M14.5 13v3.5"/><path d="M17 13v3.5"/>',
   access:  '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 4.5a3.5 3.5 0 0 1 0 7"/><path d="M19 14.8c1.4.9 2.2 2.6 2.5 5.2"/>'
 };
 
@@ -130,6 +131,10 @@ function renderPortal() {
   });
 
   if (CACHE.me.isOwner) {
+    host.appendChild(portalCard({
+      title: 'Accounting', icon: 'accounting', href: ACCOUNTING_PATH,
+      body: el('p', 'portal-card-blurb', 'Invoices for your clients, and the monthly numbers behind them.')
+    }));
     host.appendChild(portalCard({
       title: 'Team &amp; Access', icon: 'access', href: ACCESS_PATH,
       body: el('p', 'portal-card-blurb', 'Invite admins and choose which sections and offers each one can use.')

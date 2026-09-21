@@ -22,6 +22,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/accounting",
+      "destination": "/index.html"
+    },
+    {
       "source": "/signal-list",
       "destination": "/index.html"
     },

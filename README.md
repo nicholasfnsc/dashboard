@@ -22,6 +22,7 @@ portal and the offers it is allowed. A code gets one offer's board and nothing e
 | `/metrics/<offer>` | Metrics Tracking for that offer: VSL or Webinar, week by week |
 | `/projections` | Funnel Revenue Projections: a VSL or Webinar calculator from ad spend to profit |
 | `/playbooks` | $1M/Month Playbooks: every playbook, one click from its doc |
+| `/accounting` | Accounting: client invoices, printed to PDF (owner only) |
 | `/signal-list` | your own Signal List, one page per day (private) |
 | `/team-access` | owner only: invite admins, choose their sections and offers |
 | `/sales-dashboard` | Sales Team Boards: agency summary and offer cards |
@@ -61,6 +62,7 @@ rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
 playbooks.js      $1M/Month Playbooks: the list of playbooks and their doc links
+accounting.js     Accounting: invoices by client and year, edited in place, printed to PDF
 profile.js        the name, role and photo at the top right, and the rep name picker
 data.js           outcomes, funnels, program lengths, commission rates
 api/enter.js      team code -> that offer's team account
@@ -73,6 +75,7 @@ supabase/rep-hub.sql  the shared Rep Hub template table
 supabase/access.sql   admin sections and offers, and the access rules that use them
 supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
 supabase/signal.sql   Signal List days and defaults, private to each person
+supabase/accounting.sql  invoices and the details printed on them, owner only
 ```
 
 ## Metrics Tracking
@@ -159,6 +162,31 @@ other shared settings in `rep_hub` content under `playbooks`. The four written s
 starting points until the first save.
 
 Who sees it is a tick box in **Team & Access**, like Metrics Tracking. Reps never see it.
+
+## Accounting
+
+Yours alone — the database refuses every other account, whatever the page does. Three screens:
+a folder per client, that client's invoices by year, and the invoice itself.
+
+An invoice is a document you edit in place. Its **number is handed out by the database**, so two
+invoices can never share one and a number is never reused. Your own details (the **From** block)
+are saved once and printed on every invoice. Each invoice holds any number of sections, of two
+kinds:
+
+- **Revenue share** — Title · Total Cash Collected · Processing Fees · Net Collected · Revenue
+  Share · Total. Net is collected less fees; the total is net × the share.
+- **Expenses** — Title · Price · Quantity · Total.
+
+Nothing is typed twice: every figure, every subtotal and the amount due are worked out as you
+type. **Next month** copies an invoice forward — same client, same lines, new number, the collected
+figures cleared — which is how a monthly revenue share is billed. Status runs draft → sent → paid,
+and an unpaid invoice past its due date reads as overdue on its own.
+
+**Download PDF** prints the invoice alone: white page, no portal around it, the payment link still
+clickable and its address printed underneath so it survives being printed or forwarded.
+
+Invoices are never deleted. One that should not stand is marked **void** and keeps its number.
+The monthly P&L will live beside this and read what these invoices say.
 
 ## Team & Access
 
