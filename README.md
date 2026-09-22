@@ -115,7 +115,7 @@ signal actions (with why), sub-priority tasks for after the signals, a 30-minute
 evening reflection and journal. Everything saves as you type.
 
 Signal actions and sub-priority tasks are **dragged into the order you want** by the handle on the
-left, and the numbering follows. The play button beside one marks it as **what you are doing now**:
+left, and the numbering follows. The crosshair beside one marks it as **what you have in your sights**:
 it is highlighted, and marking another moves the mark, so only one thing is ever underway — across
 both lists, since a sub-priority task is still one thing at a time. Checking it off clears the mark,
 so the next one is a decision rather than a drift. **Plan tomorrow** carries goals over,

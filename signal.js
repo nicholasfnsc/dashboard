@@ -138,7 +138,12 @@ function doingButton(item, what) {
   b.setAttribute('aria-pressed', String(on));
   b.title = on ? 'Stop marking this as what you are doing' : 'Mark this as what you are doing now';
   b.setAttribute('aria-label', (on ? 'Stop working on ' : 'Work on ') + (item.text || what));
-  b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.4v9.2a.6.6 0 0 0 .92.5l7-4.6a.6.6 0 0 0 0-1l-7-4.6A.6.6 0 0 0 5 3.4z"/></svg>';
+  /* a crosshair: what you have in your sights right now */
+  b.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" ' +
+    'stroke-linecap="round" aria-hidden="true">' +
+    '<circle cx="8" cy="8" r="4.3"/>' +
+    '<path d="M8 .9v2.4M8 12.7v2.4M.9 8h2.4M12.7 8h2.4"/>' +
+    '<circle cx="8" cy="8" r="1.15" fill="currentColor" stroke="none"/></svg>';
   b.addEventListener('click', () => setDoing(item.id));
   return b;
 }

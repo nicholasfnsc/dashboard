@@ -2446,3 +2446,9 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
 /* a row being carried, and the space it will land in */
 #signalShell .sort-gap { border-radius: 12px; background: var(--surface-2); }
 #signalShell .is-dragging { background: var(--surface); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }
+
+/* the crosshair sits quiet until it is the one in your sights */
+.sdoing { width: 28px; height: 28px; color: var(--muted); }
+.sdoing svg { width: 15px; height: 15px; }
+.sdoing:hover { color: var(--accent-bright); border-color: var(--accent-deep); background: var(--accent-wash); }
+.ssignal.is-doing .sdoing, .ssub-row.is-doing .sdoing { color: var(--on-accent); }
