@@ -131,6 +131,19 @@ function setDoing(id) {
   renderSignal();
 }
 
+/* Something finished is no longer what you are doing: the row loses its
+   highlight and the crosshair goes back to empty. */
+function clearDoing(row) {
+  SV.content.doing = '';
+  row.classList.remove('is-doing');
+  const mark = row.querySelector('.sdoing');
+  if (mark) {
+    mark.classList.remove('is-on');
+    mark.setAttribute('aria-pressed', 'false');
+    mark.title = 'Mark this as what you are doing now';
+  }
+}
+
 function doingButton(item, what) {
   const on = SV.content.doing === item.id;
   const b = el('button', 'sdoing' + (on ? ' is-on' : ''));
@@ -445,7 +458,7 @@ function renderSignal() {
         row.classList.toggle('is-done', on);
         /* finishing what you were doing leaves nothing marked, so the next
            one is a decision rather than a drift */
-        if (on && c.doing === s.id) { c.doing = ''; row.classList.remove('is-doing'); }
+        if (on && c.doing === s.id) clearDoing(row);
       }));
       top.appendChild(doingButton(s, 'this signal action'));
       top.appendChild(textBox(s.text, 'Signal action', (v) => {
@@ -510,7 +523,7 @@ function renderSignal() {
       row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => {
         item.done = on;
         row.classList.toggle('is-done', on);
-        if (on && c.doing === item.id) { c.doing = ''; row.classList.remove('is-doing'); }
+        if (on && c.doing === item.id) clearDoing(row);
       }));
       row.appendChild(doingButton(item, 'this task'));
       row.appendChild(textBox(item.text, 'Sub-priority task', (v) => { item.text = v; }, { label: 'Sub-priority task', cls: 'sfield-plain' }));
