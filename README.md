@@ -112,7 +112,13 @@ day written (green: all signal actions done, amber: some, grey: started); click 
 everything written that day. Quotes are edited right at the top. Each day has the morning
 checklist, what broke your speed yesterday, the focus line, goals and limiting factors, highest
 signal actions (with why), sub-priority tasks for after the signals, a 30-minute schedule,
-evening reflection and journal. Everything saves as you type. **Plan tomorrow** carries goals over,
+evening reflection and journal. Everything saves as you type.
+
+Signal actions and sub-priority tasks are **dragged into the order you want** by the handle on the
+left, and the numbering follows. The play button beside one marks it as **what you are doing now**:
+it is highlighted, and marking another moves the mark, so only one thing is ever underway — across
+both lists, since a sub-priority task is still one thing at a time. Checking it off clears the mark,
+so the next one is a decision rather than a drift. **Plan tomorrow** carries goals over,
 resets the checklist, and turns today's reflection into tomorrow's watch list. **Customize** sets
 the focus line, checklist, questions and day length.
 

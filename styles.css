@@ -2419,3 +2419,30 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
 .ac-row-line:hover .ac-row-x, .ac-row-x:focus-visible { opacity: 1; }
 .ac-year .ac-row-line { margin-bottom: 7px; }
 @media (max-width: 1000px) { .ac-row-x { opacity: 1; } }
+
+/* ---------- Signal List: drag to reorder, and one thing at a time ---------- */
+.ssignal-top .hub-grip, .ssub-row .hub-grip { flex: none; align-self: center; }
+
+/* what you are working on right now */
+.sdoing {
+  flex: none; display: grid; place-items: center; width: 26px; height: 26px;
+  background: none; border: 1px solid transparent; border-radius: 999px;
+  color: #3f434c; cursor: pointer; padding: 0; transition: color .14s, border-color .14s, background .14s;
+}
+.sdoing svg { width: 12px; height: 12px; }
+.sdoing:hover { color: var(--accent-ink); border-color: var(--accent-deep); }
+.sdoing.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.sdoing.is-on:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
+
+.ssignal.is-doing, .ssub-row.is-doing {
+  background: linear-gradient(90deg, var(--accent-wash) 0%, transparent 70%);
+  border-radius: 12px;
+  box-shadow: inset 2px 0 0 0 var(--accent-bright);
+}
+.ssignal.is-doing { padding: 6px 8px; margin: -6px -8px; }
+.ssub-row.is-doing { padding: 4px 8px; margin: 0 -8px; }
+.ssignal.is-doing .sfield-signal, .ssub-row.is-doing .sfield { color: #fff; }
+
+/* a row being carried, and the space it will land in */
+#signalShell .sort-gap { border-radius: 12px; background: var(--surface-2); }
+#signalShell .is-dragging { background: var(--surface); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); }

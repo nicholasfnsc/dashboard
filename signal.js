@@ -122,10 +122,32 @@ function sinceTag(item) {
   return tag;
 }
 
+/* One at a time. Whatever is being worked on right now is marked, and
+   marking something else moves the mark — there is only ever one. */
+function setDoing(id) {
+  const c = SV.content;
+  c.doing = c.doing === id ? '' : id;
+  signalChanged();
+  renderSignal();
+}
+
+function doingButton(item, what) {
+  const on = SV.content.doing === item.id;
+  const b = el('button', 'sdoing' + (on ? ' is-on' : ''));
+  b.type = 'button';
+  b.setAttribute('aria-pressed', String(on));
+  b.title = on ? 'Stop marking this as what you are doing' : 'Mark this as what you are doing now';
+  b.setAttribute('aria-label', (on ? 'Stop working on ' : 'Work on ') + (item.text || what));
+  b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.4v9.2a.6.6 0 0 0 .92.5l7-4.6a.6.6 0 0 0 0-1l-7-4.6A.6.6 0 0 0 5 3.4z"/></svg>';
+  b.addEventListener('click', () => setDoing(item.id));
+  return b;
+}
+
 /* Days written before sub-priority tasks had their own list. */
 function upgradeSignalDay(c) {
   if (!Array.isArray(c.calls)) c.calls = [];
   if (typeof c.dump !== 'string') c.dump = '';
+  if (typeof c.doing !== 'string') c.doing = '';
   if (!Array.isArray(c.subs)) {
     c.subs = (c.signals || []).filter((s) => s.sub && s.sub.trim()).map((s) => ({ id: sid(), text: s.sub, done: false }));
   }
@@ -408,11 +430,19 @@ function renderSignal() {
     head.querySelector('.scard-sub').id = 'signalActionCount';
     const list = el('div', 'slist');
     c.signals.forEach((s, i) => {
-      const row = el('div', 'ssignal' + (s.done ? ' is-done' : ''));
+      const row = el('div', 'ssignal' + (s.done ? ' is-done' : '') + (c.doing === s.id ? ' is-doing' : ''));
       row.dataset.id = s.id;
       const top = el('div', 'ssignal-top');
+      top.appendChild(dragHandle('signal action ' + (i + 1)));
       top.appendChild(el('span', 'ssignal-num', String(i + 1)));
-      top.appendChild(checkBox(s.done, s.text || 'signal action', (on) => { s.done = on; row.classList.toggle('is-done', on); }));
+      top.appendChild(checkBox(s.done, s.text || 'signal action', (on) => {
+        s.done = on;
+        row.classList.toggle('is-done', on);
+        /* finishing what you were doing leaves nothing marked, so the next
+           one is a decision rather than a drift */
+        if (on && c.doing === s.id) { c.doing = ''; row.classList.remove('is-doing'); }
+      }));
+      top.appendChild(doingButton(s, 'this signal action'));
       top.appendChild(textBox(s.text, 'Signal action', (v) => {
         s.text = v;
         const title = document.querySelector('.swhy-item[data-id="' + s.id + '"] .swhy-name');
@@ -425,6 +455,11 @@ function renderSignal() {
       list.appendChild(row);
     });
     body.appendChild(list);
+    makeSortable(list, '.ssignal', (order) => {
+      c.signals = reorderBy(c.signals, order);
+      signalChanged();
+      renderSignal();
+    });
     if (c.signals.length < 6) {
       body.appendChild(addButton('Add signal action', () => {
         const s = { id: sid(), text: '', why: '', done: false };
@@ -464,9 +499,15 @@ function renderSignal() {
     const list = el('div', 'slist');
     if (!c.subs.length) list.appendChild(el('p', 'sempty', 'Nothing here yet. These are for after your signal actions.'));
     c.subs.forEach((item) => {
-      const row = el('div', 'srow scheck-row ssub-row' + (item.done ? ' is-done' : ''));
+      const row = el('div', 'srow scheck-row ssub-row' + (item.done ? ' is-done' : '') + (c.doing === item.id ? ' is-doing' : ''));
       row.dataset.id = item.id;
-      row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => { item.done = on; row.classList.toggle('is-done', on); }));
+      row.appendChild(dragHandle('sub-priority task'));
+      row.appendChild(checkBox(item.done, item.text || 'sub-priority task', (on) => {
+        item.done = on;
+        row.classList.toggle('is-done', on);
+        if (on && c.doing === item.id) { c.doing = ''; row.classList.remove('is-doing'); }
+      }));
+      row.appendChild(doingButton(item, 'this task'));
       row.appendChild(textBox(item.text, 'Sub-priority task', (v) => { item.text = v; }, { label: 'Sub-priority task', cls: 'sfield-plain' }));
       const subTag = sinceTag(item);
       if (subTag) row.appendChild(subTag);
@@ -474,6 +515,11 @@ function renderSignal() {
       list.appendChild(row);
     });
     body.appendChild(list);
+    makeSortable(list, '.ssub-row', (order) => {
+      c.subs = reorderBy(c.subs, order);
+      signalChanged();
+      renderSignal();
+    });
     body.appendChild(addButton('Add sub-priority task', () => {
       const item = { id: sid(), text: '', done: false };
       c.subs.push(item);
