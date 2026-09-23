@@ -162,8 +162,7 @@ function huddleMeeting(c) {
 
   row.appendChild(hField(c.meeting.time, '', (v) => { c.meeting.time = v; }, { type: 'time', label: 'Meeting time', cls: 'h-time' }));
 
-  const zones = huddleZones();
-  row.appendChild(hPick(c.meeting.zone || zones[0].value, zones, (v) => { c.meeting.zone = v; }, 'Meeting time zone'));
+  row.appendChild(huddleZoneBox(c));
 
   /* the button to join appears as soon as there is somewhere to go */
   row.appendChild(hField(c.meeting.link, "Paste today's meeting link…", (v) => { c.meeting.link = v; renderHuddles(); }, { label: 'Meeting link', cls: 'h-link' }));
@@ -183,22 +182,107 @@ function huddleMeeting(c) {
   return card;
 }
 
-/* The zones already on your clock, so the team reads a place they know. */
-function huddleZones() {
+/* The same search as the portal clock: any city, anywhere. The places
+   you already watch are offered first, before you type anything. */
+function huddleZoneBox(c) {
+  const wrap = el('div', 'h-zone-wrap');
+
+  const button = el('button', 'h-in h-zone');
+  button.type = 'button';
+  button.textContent = huddleZoneLabel(c) || 'Choose a time zone';
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.disabled = !canRunHuddle();
+  wrap.appendChild(button);
+  if (!canRunHuddle()) return wrap;
+
+  const pop = el('div', 'h-zone-pop hidden');
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'h-in h-zone-search';
+  search.placeholder = 'Search a city — Dubai, London, São Paulo…';
+  search.setAttribute('aria-label', 'Search time zones');
+  pop.appendChild(search);
+  const list = el('div', 'h-zone-list');
+  pop.appendChild(list);
+  wrap.appendChild(pop);
+
+  const pick = (zone, label) => {
+    c.meeting.zone = zone;
+    c.meeting.zoneLabel = label;
+    huddleChanged();
+    renderHuddles();
+  };
+
+  const paint = () => {
+    list.textContent = '';
+    const query = search.value.trim();
+    const found = query && typeof searchPlaces === 'function' ? searchPlaces(query) : huddleNearbyZones();
+    if (!found.length) {
+      list.appendChild(el('p', 'h-empty', query ? 'No city by that name.' : 'Type a city to find its time zone.'));
+      return;
+    }
+    found.slice(0, 40).forEach((place) => {
+      const row = el('button', 'h-zone-row' + (place.zone === c.meeting.zone ? ' is-on' : ''));
+      row.type = 'button';
+      row.appendChild(el('span', 'h-zone-name', place.label));
+      row.appendChild(el('span', 'h-zone-note', (place.note || place.zone.replace(/_/g, ' ')) + ' · ' + huddleZoneClock(place.zone)));
+      row.addEventListener('click', () => pick(place.zone, place.label));
+      list.appendChild(row);
+    });
+  };
+
+  const close = () => {
+    pop.classList.add('hidden');
+    document.removeEventListener('click', away, true);
+  };
+  const away = (e) => { if (!wrap.contains(e.target)) close(); };
+
+  button.addEventListener('click', () => {
+    const open = pop.classList.contains('hidden');
+    pop.classList.toggle('hidden', !open);
+    if (!open) { close(); return; }
+    search.value = '';
+    paint();
+    document.addEventListener('click', away, true);
+    search.focus();
+  });
+  search.addEventListener('input', paint);
+  search.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+  return wrap;
+}
+
+/* What the zone reads as before anything is typed: your own clock first. */
+function huddleNearbyZones() {
   const out = [];
   const seen = new Set();
-  const add = (zone, label) => {
+  const add = (zone, label, note) => {
     if (!zone || seen.has(zone)) return;
     seen.add(zone);
-    out.push({ value: zone, label: label || zone.replace(/_/g, ' ') });
+    out.push({ zone, label: label || zone.split('/').pop().replace(/_/g, ' '), note: note || '' });
   };
   try {
     const main = mainClockZone();
-    add(main.zone, (main.label || main.zone) + ' ★');
-    (clockPlaces() || []).forEach((p) => add(p.zone, p.label));
+    add(main.zone, main.label, 'Your clock');
+    (clockPlaces() || []).forEach((p) => add(p.zone, p.label, 'On your clock'));
   } catch (e) { /* the clock has not been set up */ }
-  add(Intl.DateTimeFormat().resolvedOptions().timeZone, 'This device');
+  add(Intl.DateTimeFormat().resolvedOptions().timeZone, 'This device', '');
   return out;
+}
+
+function huddleZoneLabel(c) {
+  if (c.meeting.zoneLabel) return c.meeting.zoneLabel;
+  if (c.meeting.zone) return c.meeting.zone.split('/').pop().replace(/_/g, ' ');
+  try { return mainClockZone().label; } catch (e) { return ''; }
+}
+
+/* The time there right now, so a zone is chosen by what it says. */
+function huddleZoneClock(zone) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: '2-digit', minute: '2-digit', hour12: true }).format(new Date());
+  } catch (e) {
+    return '';
+  }
 }
 
 /* ---------- 2. did yesterday's calls get logged ---------- */

@@ -394,6 +394,8 @@ function makeSortable(container, itemSelector, onOrder, opts) {
      are also clickable — a tab — wait until the pointer has travelled,
      so a click stays a click. */
   const slack = (opts && opts.threshold) || 0;
+  /* A row of tabs runs across the page rather than down it. */
+  const sideways = !!(opts && opts.axis === 'x');
   const members = () => Array.prototype.filter.call(container.children, (n) => n.matches(itemSelector));
   const ids = () => members().map((n) => n.dataset.id);
 
@@ -428,8 +430,9 @@ function makeSortable(container, itemSelector, onOrder, opts) {
     const glide = calm ? 'none' : 'transform 220ms ' + EASE;
     const startOrder = ids().join('|');
     const start = node.getBoundingClientRect();
-    const grabOffset = e.clientY - start.top;
+    const grabOffset = sideways ? e.clientX - start.left : e.clientY - start.top;
     let pointerY = e.clientY;
+    let pointerX = e.clientX;
     let active = true;
     let frame = 0;
 
@@ -437,6 +440,7 @@ function makeSortable(container, itemSelector, onOrder, opts) {
     const gap = document.createElement('div');
     gap.className = 'sort-gap';
     gap.style.height = start.height + 'px';
+    if (sideways) gap.style.width = start.width + 'px';
     const originalNext = node.nextSibling;
     container.insertBefore(gap, node);
 
@@ -458,26 +462,33 @@ function makeSortable(container, itemSelector, onOrder, opts) {
     function placeGap() {
       const siblings = others();
       const box = container.getBoundingClientRect();
-      const y = pointerY - box.top;
+      const along = sideways ? pointerX - box.left : pointerY - box.top;
 
       let target = null;
       for (const s of siblings) {
-        if (y < s.offsetTop + s.offsetHeight / 2) { target = s; break; }
+        const middle = sideways ? s.offsetLeft + s.offsetWidth / 2 : s.offsetTop + s.offsetHeight / 2;
+        if (along < middle) { target = s; break; }
       }
       let next = gap.nextElementSibling;
       if (next === node) next = next.nextElementSibling;          // the lifted row is not a neighbour
       if (target ? next === target : next === null) return;       // the gap is already there
 
-      const firstTops = new Map(siblings.map((s) => [s, s.getBoundingClientRect().top]));
+    const firstEdges = new Map(siblings.map((s) => {
+        const r = s.getBoundingClientRect();
+        return [s, sideways ? r.left : r.top];
+      }));
       if (target) container.insertBefore(gap, target);
       else container.appendChild(gap);
 
       const newBox = container.getBoundingClientRect();
       siblings.forEach((s) => {
-        const delta = firstTops.get(s) - (newBox.top + s.offsetTop);
+        const now = sideways ? newBox.left + s.offsetLeft : newBox.top + s.offsetTop;
+        const delta = firstEdges.get(s) - now;
         if (Math.abs(delta) < 0.5) return;
         s.style.transition = 'none';
-        s.style.transform = 'translate3d(0, ' + delta + 'px, 0)';
+        s.style.transform = sideways
+          ? 'translate3d(' + delta + 'px, 0, 0)'
+          : 'translate3d(0, ' + delta + 'px, 0)';
         s.getBoundingClientRect();                       // commit the starting point
         s.style.transition = glide;
         s.style.transform = '';
@@ -489,15 +500,19 @@ function makeSortable(container, itemSelector, onOrder, opts) {
 
       /* Scroll when the pointer nears the top or bottom of the window. */
       const edge = 90;
-      if (pointerY < edge) window.scrollBy(0, -Math.ceil((edge - pointerY) / 6));
-      else if (pointerY > window.innerHeight - edge) window.scrollBy(0, Math.ceil((pointerY - (window.innerHeight - edge)) / 6));
+      if (!sideways) {
+        if (pointerY < edge) window.scrollBy(0, -Math.ceil((edge - pointerY) / 6));
+        else if (pointerY > window.innerHeight - edge) window.scrollBy(0, Math.ceil((pointerY - (window.innerHeight - edge)) / 6));
+      }
 
-      node.style.transform = 'translate3d(0, ' + (pointerY - grabOffset - start.top) + 'px, 0)';
+      node.style.transform = sideways
+        ? 'translate3d(' + (pointerX - grabOffset - start.left) + 'px, 0, 0)'
+        : 'translate3d(0, ' + (pointerY - grabOffset - start.top) + 'px, 0)';
       placeGap();
       frame = requestAnimationFrame(tick);
     }
 
-    const onMove = (ev) => { pointerY = ev.clientY; };
+    const onMove = (ev) => { pointerY = ev.clientY; pointerX = ev.clientX; };
     const onKey = (ev) => {
       if (ev.key !== 'Escape') return;
       container.insertBefore(gap, originalNext && originalNext.parentNode === container ? originalNext : null);
@@ -546,12 +561,14 @@ function makeSortable(container, itemSelector, onOrder, opts) {
   /* Keyboard: focus a handle, then the arrow keys move that row. */
   container.addEventListener('keydown', (e) => {
     const grip = e.target.closest(handleSelector);
-    if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    const back = sideways ? 'ArrowLeft' : 'ArrowUp';
+    const forward = sideways ? 'ArrowRight' : 'ArrowDown';
+    if (!grip || (e.key !== back && e.key !== forward)) return;
     const node = grip.closest(itemSelector) || (grip.matches(itemSelector) ? grip : null);
     if (!node) return;
     const order = ids();
     const at = order.indexOf(node.dataset.id);
-    const to = at + (e.key === 'ArrowUp' ? -1 : 1);
+    const to = at + (e.key === back ? -1 : 1);
     if (to < 0 || to >= order.length) return;
     e.preventDefault();
     order.splice(to, 0, order.splice(at, 1)[0]);

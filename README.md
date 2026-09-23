@@ -147,8 +147,9 @@ but not change the shared one.
 
 The tab the day starts on — one living page per offer, run through with the team before calls:
 
-- **Daily Team Meeting** — the time, the time zone (taken from your portal clock) and the link,
-  which becomes a Join button once it is pasted.
+- **Daily Team Meeting** — the time, the time zone and the link, which becomes a Join button once
+  it is pasted. The zone is searched the way the portal clock is: any city anywhere, with the places
+  you already watch offered first and the current time beside each one.
 - **Post-Call Form Accountability** — every rep on the roster, and whether yesterday's calls got
   logged.
 - **Marketing Check** — yesterday's prospects: their situation, qualification average, motivations,

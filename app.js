@@ -872,5 +872,5 @@ function initTabOrder() {
     const next = [TAB_LOCKED].concat(order.filter((name) => name !== TAB_LOCKED));
     saveTabOrder(next);
     paintTabOrder();
-  }, { handle: '.tab:not([data-tab="dashboard"])', threshold: 6 });
+  }, { handle: '.tab:not([data-tab="dashboard"])', threshold: 6, axis: 'x' });
 }
