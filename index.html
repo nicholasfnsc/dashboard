@@ -503,6 +503,7 @@
     <button class="tab" role="tab" data-tab="rephub" aria-selected="false">Rep Hub</button>
     <button class="tab" role="tab" data-tab="transcriber" aria-selected="false">Handoffs</button>
     <button class="tab" role="tab" data-tab="clients" aria-selected="false">Client Tracker</button>
+    <button class="tab" role="tab" data-tab="huddles" aria-selected="false">Daily Huddles</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
   </nav>
 
@@ -931,6 +932,19 @@
     </div>
   </section>
 
+  <!-- ================= DAILY HUDDLES ================= -->
+  <section data-panel="huddles" class="hidden">
+    <div class="h-head">
+      <div>
+        <h2 class="h-title">Daily Huddles</h2>
+        <p class="h-sub">Run through these every day before calls start.</p>
+      </div>
+      <span class="h-saved" id="huddleSaved"></span>
+    </div>
+    <p class="h-read hidden" id="huddleRead">Filled in during the huddle by whoever runs this offer. You can read it any time.</p>
+    <div class="h-body" id="huddleBody"></div>
+  </section>
+
   <!-- ================= CLIENT TRACKER ================= -->
   <section data-panel="clients" class="hidden">
     <div class="ct">
@@ -1037,6 +1051,7 @@
 <script src="/rephub.js"></script>
 <script src="/transcriber.js"></script>
 <script src="/clients.js"></script>
+<script src="/huddles.js"></script>
 <script src="/playbooks.js"></script>
 <script src="/accounting.js"></script>
 <script src="/hub.js"></script>

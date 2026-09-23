@@ -36,7 +36,9 @@ second "Alex" becomes `alex-2`), and every earlier address is remembered in
 point at an offer; calls are tied to the offer's id, so renaming never touches data.
 
 Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, Handoffs, Client Tracker,
-and Add Team (owner and admins only). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
+Daily Huddles, and Add Team (owner and admins only). **Dashboard is always first; the rest are
+dragged into whatever order suits the team** by the owner or an admin with every offer, and everyone
+sees that order (`rep_hub` content, `tabOrder`). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
 
 ## Where things live
 
@@ -61,6 +63,7 @@ team.js           Add Team: offer name, team and roles, login page, code
 rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
+huddles.js        Daily Huddles: the morning run-through, one living page per offer
 undo.js           one Ctrl+Z for the portal: the key handler and the shared history
 playbooks.js      $1M/Month Playbooks: the list of playbooks and their doc links
 accounting.js     Accounting: invoices by client and year, edited in place, printed to PDF
@@ -77,6 +80,7 @@ supabase/access.sql   admin sections and offers, and the access rules that use t
 supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
 supabase/signal.sql   Signal List days and defaults, private to each person
 supabase/accounting.sql  invoices and the details printed on them, owner only
+supabase/huddles.sql  the Daily Huddles page for each offer
 ```
 
 ## Metrics Tracking
@@ -138,6 +142,27 @@ admins with every offer edit it, choosing **All offers** (saved in `rep_hub` con
 `handoffForm`) or **This offer only** (saved on the offer in `directory.repHub['handoff-form']`,
 which wins over the shared form). An admin with only some offers can give their own offers a form,
 but not change the shared one.
+
+## Daily Huddles
+
+The tab the day starts on — one living page per offer, run through with the team before calls:
+
+- **Daily Team Meeting** — the time, the time zone (taken from your portal clock) and the link,
+  which becomes a Join button once it is pasted.
+- **Post-Call Form Accountability** — every rep on the roster, and whether yesterday's calls got
+  logged.
+- **Marketing Check** — yesterday's prospects: their situation, qualification average, motivations,
+  struggles, why they did not move and what would have moved them. **Add New Day** keeps each day,
+  so patterns show up over time. Underneath, the steps of your sales process.
+- **Setter and Closer Bottleneck Spot-Checks** — one rep, one weak number, why it is weak, and the
+  action for today. One each, deliberately.
+- **Pipeline Check** — every live deal with its rep, status, size, last contact and next move. The
+  total at the top counts what is still open, so ticking a row off drops it out.
+- **Students Due to Close Soon** — who needs chasing before they go cold.
+
+Whoever runs the board fills it in while the team watches; **reps read it and cannot change it**.
+It saves as it is typed, Ctrl+Z takes back a change, and nothing resets overnight: the pipeline
+stays until it is ticked or removed.
 
 ## Client Tracker
 

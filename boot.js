@@ -229,6 +229,8 @@
     initRepHub();
     initTranscriber();
     initClientTracker();
+    initHuddles();
+    initTabOrder();
     paintOfferTabs();
     initProfile();
 

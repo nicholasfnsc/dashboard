@@ -387,16 +387,41 @@ function dragHandle(label) {
 
    Movement is tracked on the whole window rather than the handle, so a
    row shifting under the pointer can never drop the drag. */
-function makeSortable(container, itemSelector, onOrder) {
+function makeSortable(container, itemSelector, onOrder, opts) {
   const EASE = 'cubic-bezier(.2, .8, .2, 1)';
+  const handleSelector = (opts && opts.handle) || '.hub-grip';
+  /* Rows with a handle start moving the moment it is held. Things that
+     are also clickable — a tab — wait until the pointer has travelled,
+     so a click stays a click. */
+  const slack = (opts && opts.threshold) || 0;
   const members = () => Array.prototype.filter.call(container.children, (n) => n.matches(itemSelector));
   const ids = () => members().map((n) => n.dataset.id);
 
-  container.addEventListener('pointerdown', (e) => {
-    const grip = e.target.closest('.hub-grip');
-    if (!grip || !container.contains(grip) || e.button > 0) return;
-    const node = grip.closest(itemSelector);
+  container.addEventListener('pointerdown', (down) => {
+    const grip = down.target.closest(handleSelector);
+    if (!grip || !container.contains(grip) || down.button > 0) return;
+    const node = grip.closest(itemSelector) || (grip.matches(itemSelector) ? grip : null);
     if (!node || node.parentElement !== container) return;
+
+    if (!slack) { begin(down); return; }
+
+    const from = { x: down.clientX, y: down.clientY };
+    const watch = (move) => {
+      if (Math.abs(move.clientX - from.x) < slack && Math.abs(move.clientY - from.y) < slack) return;
+      stop();
+      begin(move);
+    };
+    const stop = () => {
+      window.removeEventListener('pointermove', watch);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+    window.addEventListener('pointermove', watch);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+    return;
+
+    function begin(e) {
     e.preventDefault();
 
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -515,13 +540,15 @@ function makeSortable(container, itemSelector, onOrder) {
     window.addEventListener('pointercancel', onUp);
     window.addEventListener('keydown', onKey, true);
     frame = requestAnimationFrame(tick);
+    }
   });
 
   /* Keyboard: focus a handle, then the arrow keys move that row. */
   container.addEventListener('keydown', (e) => {
-    const grip = e.target.closest('.hub-grip');
+    const grip = e.target.closest(handleSelector);
     if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
-    const node = grip.closest(itemSelector);
+    const node = grip.closest(itemSelector) || (grip.matches(itemSelector) ? grip : null);
+    if (!node) return;
     const order = ids();
     const at = order.indexOf(node.dataset.id);
     const to = at + (e.key === 'ArrowUp' ? -1 : 1);

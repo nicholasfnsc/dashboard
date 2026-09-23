@@ -801,3 +801,21 @@ async function restoreInvoice(row) {
   if (error) throw error;
   return data;
 }
+
+/* ---------- Daily Huddles ----------
+   One page per offer: the meeting, the accountability check, the
+   marketing debrief day by day, the bottleneck spot-checks, the
+   pipeline and who is due to close. Everyone on the board reads it;
+   whoever runs the board writes it. */
+async function loadHuddle(boardId) {
+  const { data, error } = await sb.from('huddles').select('content').eq('board_id', boardId).maybeSingle();
+  if (error) throw error;
+  return (data && data.content) || null;
+}
+
+async function saveHuddle(boardId, content) {
+  const { error } = await sb.from('huddles').upsert({
+    board_id: boardId, content, updated_at: new Date().toISOString(), updated_by: currentLogger()
+  });
+  if (error) throw error;
+}

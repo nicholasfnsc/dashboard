@@ -301,3 +301,18 @@ function initClock() {
     if (e.key === 'Escape' && !$('#viewClock').classList.contains('hidden')) $('#viewClock').classList.add('hidden');
   });
 }
+
+/* ---------- what "now" means to you ----------
+   The place your clock leads with. Other pages ask this so a day
+   turns over where you are, not where the device thinks it is.
+   Before the clock has been set up, the device is the answer. */
+function mainClockZone() {
+  const lead = CLOCK.places[0];
+  if (lead && lead.zone) return { zone: lead.zone, label: lead.label || lead.zone };
+  return { zone: Intl.DateTimeFormat().resolvedOptions().timeZone, label: 'This device' };
+}
+
+/* Every place you watch, the leading one first. */
+function clockPlaces() {
+  return CLOCK.places.slice();
+}

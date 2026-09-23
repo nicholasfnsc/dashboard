@@ -776,6 +776,7 @@ function showTab(name) {
   if (name === 'data' && typeof renderDataTab === 'function') renderDataTab();
   if (name === 'rephub' && typeof renderRepHub === 'function') renderRepHub();
   if (name === 'clients' && typeof renderClients === 'function') renderClients();
+  if (name === 'huddles' && typeof renderHuddles === 'function') renderHuddles();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -816,4 +817,60 @@ function initApp() {
   registerUndo({ label: 'sales board', when: () => shellShown('boardShell'), undo: applyUndo });
   paintUndo();
   render();
+}
+
+/* ============================================================
+   The order of the tabs
+   ------------------------------------------------------------
+   Dashboard is always first — it is what the board is for. The rest
+   are dragged into whatever order suits the team, by the owner or an
+   admin with every offer, and everyone sees that order.
+   ============================================================ */
+const TAB_LOCKED = 'dashboard';
+
+function tabOrder() {
+  const saved = (CACHE.repHub && CACHE.repHub.tabOrder) || [];
+  const nav = $('#offerTabsNav') || document.querySelector('.tabs');
+  const here = Array.prototype.map.call(nav.querySelectorAll('.tab'), (t) => t.dataset.tab);
+  const wanted = saved.filter((name) => here.indexOf(name) !== -1);
+  here.forEach((name) => { if (wanted.indexOf(name) === -1) wanted.push(name); });
+  return [TAB_LOCKED].concat(wanted.filter((name) => name !== TAB_LOCKED));
+}
+
+function paintTabOrder() {
+  const nav = document.querySelector('.tabs');
+  if (!nav) return;
+  const byName = {};
+  nav.querySelectorAll('.tab').forEach((t) => { byName[t.dataset.tab] = t; });
+  tabOrder().forEach((name) => { if (byName[name]) nav.appendChild(byName[name]); });
+}
+
+async function saveTabOrder(order) {
+  CACHE.repHub.tabOrder = order;
+  try {
+    await saveRepHubTemplate();
+    notify('Tab order saved for everyone.');
+  } catch (err) {
+    console.error(err);
+    notify("Couldn't save the tab order — check your connection.");
+  }
+}
+
+function initTabOrder() {
+  const nav = document.querySelector('.tabs');
+  if (!nav) return;
+  nav.querySelectorAll('.tab').forEach((t) => { t.dataset.id = t.dataset.tab; });
+  paintTabOrder();
+
+  const mine = typeof canEditShared === 'function' && canEditShared();
+  nav.classList.toggle('is-sortable', mine);
+  if (!mine || nav.dataset.sortable) return;
+  nav.dataset.sortable = '1';
+
+  makeSortable(nav, '.tab', (order) => {
+    /* Dashboard cannot be moved off the front. */
+    const next = [TAB_LOCKED].concat(order.filter((name) => name !== TAB_LOCKED));
+    saveTabOrder(next);
+    paintTabOrder();
+  }, { handle: '.tab:not([data-tab="dashboard"])', threshold: 6 });
 }
