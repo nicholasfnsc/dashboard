@@ -218,7 +218,7 @@ function huddleZoneBox(c) {
     const query = search.value.trim();
     const found = query && typeof searchPlaces === 'function' ? searchPlaces(query) : huddleNearbyZones();
     if (!found.length) {
-      list.appendChild(el('p', 'h-empty', query ? 'No city by that name.' : 'Type a city to find its time zone.'));
+      list.appendChild(el('p', 'h-empty', query ? 'No city by that name.' : 'Search any city to find its time zone.'));
       return;
     }
     found.slice(0, 40).forEach((place) => {
@@ -267,6 +267,13 @@ function huddleNearbyZones() {
     (clockPlaces() || []).forEach((p) => add(p.zone, p.label, 'On your clock'));
   } catch (e) { /* the clock has not been set up */ }
   add(Intl.DateTimeFormat().resolvedOptions().timeZone, 'This device', '');
+
+  /* Somewhere to start from when your clock is still on one place. */
+  ['America/Sao_Paulo', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Lisbon', 'Asia/Dubai']
+    .forEach((zone) => {
+      const city = typeof CLOCK_CITIES !== 'undefined' ? CLOCK_CITIES.find((x) => x.zone === zone) : null;
+      add(zone, city ? city.name : zone.split('/').pop().replace(/_/g, ' '), city ? city.country : '');
+    });
   return out;
 }
 

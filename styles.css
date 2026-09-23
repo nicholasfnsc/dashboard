@@ -2466,7 +2466,9 @@ a.pb-card:hover .pb-arrow { color: var(--accent-ink); }
 }
 .h-body { display: flex; flex-direction: column; gap: var(--gap); margin-top: 14px; }
 
-.h-card { padding: 0; overflow: hidden; }
+/* the panel clips its corners; this one has to let a picker out */
+.h-card { padding: 0; overflow: visible; }
+.h-card-head { border-radius: var(--r-card) var(--r-card) 0 0; }
 .h-card-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
   padding: 16px 20px 12px; border-bottom: 1px solid var(--line-soft);

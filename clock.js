@@ -307,6 +307,7 @@ function initClock() {
    turns over where you are, not where the device thinks it is.
    Before the clock has been set up, the device is the answer. */
 function mainClockZone() {
+  if (!CLOCK.places.length) readClockSettings();
   const lead = CLOCK.places[0];
   if (lead && lead.zone) return { zone: lead.zone, label: lead.label || lead.zone };
   return { zone: Intl.DateTimeFormat().resolvedOptions().timeZone, label: 'This device' };
@@ -314,5 +315,6 @@ function mainClockZone() {
 
 /* Every place you watch, the leading one first. */
 function clockPlaces() {
+  if (!CLOCK.places.length) readClockSettings();
   return CLOCK.places.slice();
 }
