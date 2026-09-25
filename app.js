@@ -777,6 +777,7 @@ function showTab(name) {
   if (name === 'rephub' && typeof renderRepHub === 'function') renderRepHub();
   if (name === 'clients' && typeof renderClients === 'function') renderClients();
   if (name === 'huddles' && typeof renderHuddles === 'function') renderHuddles();
+  if (name === 'scorecards' && typeof renderScorecards === 'function') renderScorecards();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

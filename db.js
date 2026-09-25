@@ -819,3 +819,34 @@ async function saveHuddle(boardId, content) {
   });
   if (error) throw error;
 }
+
+/* ---------- Rep Daily Numbers ----------
+   The metric list and the targets belong to whoever runs the board;
+   the numbers belong to the reps, who fill them in every day. Two
+   tables, so the database keeps them apart rather than the page. */
+async function loadScorecardSettings(boardId) {
+  const { data, error } = await sb.from('scorecard_settings').select('content').eq('board_id', boardId).maybeSingle();
+  if (error) throw error;
+  return (data && data.content) || null;
+}
+
+async function saveScorecardSettings(boardId, content) {
+  const { error } = await sb.from('scorecard_settings')
+    .upsert({ board_id: boardId, content, updated_at: new Date().toISOString() });
+  if (error) throw error;
+}
+
+/* Every week that has anything in it, newest first. */
+async function loadScorecardWeeks(boardId) {
+  const { data, error } = await sb.from('scorecard_numbers')
+    .select('week, content').eq('board_id', boardId).order('week', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+async function saveScorecardWeek(boardId, week, content) {
+  const { error } = await sb.from('scorecard_numbers').upsert({
+    board_id: boardId, week, content, updated_at: new Date().toISOString(), updated_by: currentLogger()
+  });
+  if (error) throw error;
+}

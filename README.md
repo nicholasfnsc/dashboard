@@ -36,7 +36,7 @@ second "Alex" becomes `alex-2`), and every earlier address is remembered in
 point at an offer; calls are tied to the offer's id, so renaming never touches data.
 
 Every board has the same tabs: Dashboard, Post Call Form, Data, Rep Hub, Handoffs, Client Tracker,
-Daily Huddles, and Add Team (owner and admins only). **Dashboard is always first; the rest are
+Daily Huddles, Rep Daily Numbers, and Add Team (owner and admins only). **Dashboard is always first; the rest are
 dragged into whatever order suits the team** by the owner or an admin with every offer, and everyone
 sees that order (`rep_hub` content, `tabOrder`). The offer's name is set at the top of Add Team. Offers differ only by name and data — one board, rendered per offer.
 
@@ -64,6 +64,7 @@ rephub.js         Rep Hub: onboarding, standards, assets and SOPs, as a template
 transcriber.js    Handoffs tab: drop a call recording, copy the transcript, handoff form
 clients.js        Client Tracker: every client built from closed calls, soonest renewal first
 huddles.js        Daily Huddles: the morning run-through, one living page per offer
+scorecards.js     Rep Daily Numbers: each rep's week, day by day, with pace and targets
 undo.js           one Ctrl+Z for the portal: the key handler and the shared history
 playbooks.js      $1M/Month Playbooks: the list of playbooks and their doc links
 accounting.js     Accounting: invoices by client and year, edited in place, printed to PDF
@@ -81,6 +82,7 @@ supabase/metrics.sql  metric lists and typed-in numbers per offer and funnel
 supabase/signal.sql   Signal List days and defaults, private to each person
 supabase/accounting.sql  invoices and the details printed on them, owner only
 supabase/huddles.sql  the Daily Huddles page for each offer
+supabase/scorecards.sql  rep KPIs and targets, and the numbers each rep types in
 ```
 
 ## Metrics Tracking
@@ -142,6 +144,30 @@ admins with every offer edit it, choosing **All offers** (saved in `rep_hub` con
 `handoffForm`) or **This offer only** (saved on the offer in `directory.repHub['handoff-form']`,
 which wins over the shared form). An admin with only some offers can give their own offers a form,
 but not change the shared one.
+
+## Rep Daily Numbers
+
+A tab on every board: one scorecard for setters, one for closers, each rep's metrics laid out across
+the seven days of a week. Reps type their numbers every day; **the metric list, the Daily KPI and the
+targets belong to whoever runs the board** — and the database enforces that split, not the page, by
+keeping the targets and the numbers in two tables with different write rules.
+
+Everything to the right is worked out, never typed:
+
+| Column | What it is |
+|---|---|
+| Daily pace | the week's total over the days actually filled in |
+| Weekly pace | the week's total |
+| Monthly pace | the week's total, four weeks on |
+| Target % | the week's total against the weekly target |
+| Actual % | the week's total against the metric it converts from — connections out of dials, closes out of bookings |
+
+A weekly target left empty reads as the Daily KPI across five days, a monthly one across twenty-one;
+typing over either sticks. Which metric a row converts from is set per metric, so a funnel can be
+whatever shape the offer is. Metrics are renamed, reordered by dragging, added and removed.
+
+Each week is its own row in the database: **+ Add New Week** starts the next one, and every earlier
+week stays one click away.
 
 ## Daily Huddles
 

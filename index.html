@@ -504,6 +504,7 @@
     <button class="tab" role="tab" data-tab="transcriber" aria-selected="false">Handoffs</button>
     <button class="tab" role="tab" data-tab="clients" aria-selected="false">Client Tracker</button>
     <button class="tab" role="tab" data-tab="huddles" aria-selected="false">Daily Huddles</button>
+    <button class="tab" role="tab" data-tab="scorecards" aria-selected="false">Rep Daily Numbers</button>
     <button class="tab" role="tab" data-tab="team" aria-selected="false" id="teamTabBtn">Add Team</button>
   </nav>
 
@@ -932,6 +933,25 @@
     </div>
   </section>
 
+  <!-- ================= REP DAILY NUMBERS ================= -->
+  <section data-panel="scorecards" class="hidden">
+    <div class="sc-head">
+      <div>
+        <h2 class="sc-title">Rep Daily Numbers</h2>
+        <p class="sc-sub">Daily KPIs, pace and targets for every setter and closer.</p>
+      </div>
+      <span class="sc-saved" id="scoreSaved"></span>
+    </div>
+
+    <div class="sc-weeks-row">
+      <span class="sc-weeks-label">Week</span>
+      <div class="sc-weeks" id="scoreWeeks"></div>
+    </div>
+
+    <p class="sc-read hidden" id="scoreRead">Filled in each day by the reps on this offer. You can read it any time.</p>
+    <div class="sc-body" id="scoreBody"></div>
+  </section>
+
   <!-- ================= DAILY HUDDLES ================= -->
   <section data-panel="huddles" class="hidden">
     <div class="h-head">
@@ -1052,6 +1072,7 @@
 <script src="/transcriber.js"></script>
 <script src="/clients.js"></script>
 <script src="/huddles.js"></script>
+<script src="/scorecards.js"></script>
 <script src="/playbooks.js"></script>
 <script src="/accounting.js"></script>
 <script src="/hub.js"></script>

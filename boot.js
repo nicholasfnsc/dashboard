@@ -230,6 +230,7 @@
     initTranscriber();
     initClientTracker();
     initHuddles();
+    initScorecards();
     initTabOrder();
     paintOfferTabs();
     initProfile();
