@@ -164,7 +164,8 @@ Everything to the right is worked out, never typed:
 
 A weekly target left empty reads as the Daily KPI across five days, a monthly one across twenty-one;
 typing over either sticks. Which metric a row converts from is set per metric, so a funnel can be
-whatever shape the offer is. Metrics are renamed, reordered by dragging, added and removed.
+whatever shape the offer is — out of the box: connections and bookings both out of dials, closes out
+of bookings. Metrics are renamed, reordered by dragging, added and removed.
 
 Each week is its own row in the database: **+ Add New Week** starts the next one, and every earlier
 week stays one click away.

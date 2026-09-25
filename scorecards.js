@@ -33,7 +33,8 @@ const SCORE_DEFAULTS = {
   setter: [
     { id: 's-dials', name: 'Dials', kpi: 0, weekly: 0, monthly: 0, money: false, from: '' },
     { id: 's-connections', name: 'Connections (calls answered)', kpi: 0, weekly: 0, monthly: 0, money: false, from: 's-dials' },
-    { id: 's-bookings', name: 'Bookings / triages', kpi: 0, weekly: 0, monthly: 0, money: false, from: 's-connections' },
+    /* booking rate is measured per dial, not per connection */
+    { id: 's-bookings', name: 'Bookings / triages', kpi: 0, weekly: 0, monthly: 0, money: false, from: 's-dials' },
     { id: 's-closes', name: 'Total closes', kpi: 0, weekly: 0, monthly: 0, money: false, from: 's-bookings' },
     { id: 's-commission', name: 'Est commission', kpi: 0, weekly: 0, monthly: 0, money: true, from: '' }
   ],
@@ -128,7 +129,10 @@ function metricTotalOf(rep, metricId, role) {
 const scoreMoney = (n) => '$' + (Math.round((Number(n) || 0) * 10) / 10).toLocaleString('en-US');
 const scoreCount = (n) => {
   const value = Number(n) || 0;
-  return Math.abs(value - Math.round(value)) < 0.05 ? String(Math.round(value)) : value.toFixed(1);
+  /* whole numbers group in thousands; a pace keeps one decimal */
+  return Math.abs(value - Math.round(value)) < 0.05
+    ? Math.round(value).toLocaleString('en-US')
+    : Number(value.toFixed(1)).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 };
 const scorePercent = (n) => (Math.round((Number(n) || 0) * 1000) / 10) + '%';
 
